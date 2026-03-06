@@ -1,8 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
-  getTradeRoutes, createTradeRoute, deleteTradeRoute,
-  toggleRouteFuel, resumeRoute, getRouteLogs, scoutCaravans,
-} from '../services/api';
+  getTradeRoutes,
+  deleteTradeRoute,
+  toggleRouteFuel,
+  resumeRoute,
+  getRouteLogs,
+  scoutCaravans,
+} from "../services/api";
 
 interface ActiveCaravan {
   id: string;
@@ -60,7 +64,11 @@ interface Props {
   bare?: boolean;
 }
 
-export default function TradeRoutesPanel({ refreshKey, onCommand, bare }: Props) {
+export default function TradeRoutesPanel({
+  refreshKey,
+  onCommand: _onCommand,
+  bare,
+}: Props) {
   const [routes, setRoutes] = useState<TradeRoute[]>([]);
   const [maxSlots, setMaxSlots] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
@@ -80,7 +88,7 @@ export default function TradeRoutesPanel({ refreshKey, onCommand, bare }: Props)
         setPlayerLevel(data.playerLevel || 0);
         setError(null);
       })
-      .catch(() => setError('Could not load trade routes'));
+      .catch(() => setError("Could not load trade routes"));
   };
 
   useEffect(refresh, [refreshKey]);
@@ -100,7 +108,7 @@ export default function TradeRoutesPanel({ refreshKey, onCommand, bare }: Props)
       await deleteTradeRoute(id);
       refresh();
     } catch (e: any) {
-      setError(e.response?.data?.error || 'Failed to delete');
+      setError(e.response?.data?.error || "Failed to delete");
     }
   };
 
@@ -109,7 +117,7 @@ export default function TradeRoutesPanel({ refreshKey, onCommand, bare }: Props)
       await toggleRouteFuel(id, !current);
       refresh();
     } catch (e: any) {
-      setError(e.response?.data?.error || 'Failed to toggle fuel');
+      setError(e.response?.data?.error || "Failed to toggle fuel");
     }
   };
 
@@ -118,7 +126,7 @@ export default function TradeRoutesPanel({ refreshKey, onCommand, bare }: Props)
       await resumeRoute(id);
       refresh();
     } catch (e: any) {
-      setError(e.response?.data?.error || 'Failed to resume');
+      setError(e.response?.data?.error || "Failed to resume");
     }
   };
 
@@ -128,79 +136,125 @@ export default function TradeRoutesPanel({ refreshKey, onCommand, bare }: Props)
       const { data } = await scoutCaravans();
       setScoutResults(data.caravans || []);
     } catch (e: any) {
-      setError(e.response?.data?.error || 'Scout failed');
+      setError(e.response?.data?.error || "Scout failed");
     }
     setLoading(false);
   };
 
   const statusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'var(--green)';
-      case 'paused': return 'var(--yellow)';
-      case 'destroyed': return 'var(--red)';
-      default: return 'var(--grey)';
+      case "active":
+        return "var(--green)";
+      case "paused":
+        return "var(--yellow)";
+      case "destroyed":
+        return "var(--red)";
+      default:
+        return "var(--grey)";
     }
   };
 
   const eventTypeLabel = (type: string) => {
     switch (type) {
-      case 'dispatched': return 'Dispatched';
-      case 'arrived': return 'Delivered';
-      case 'ransacked': return 'Ransacked!';
-      case 'escorted': return 'Escorted';
-      default: return type;
+      case "dispatched":
+        return "Dispatched";
+      case "arrived":
+        return "Delivered";
+      case "ransacked":
+        return "Ransacked!";
+      case "escorted":
+        return "Escorted";
+      default:
+        return type;
     }
   };
 
   const content = (
     <>
-      <div className="panel-subheader" style={{ display: 'flex', justifyContent: 'space-between' }}>
+      <div
+        className="panel-subheader"
+        style={{ display: "flex", justifyContent: "space-between" }}
+      >
         <span>Trade Routes</span>
         <span className="text-muted" style={{ fontSize: 10 }}>
           {activeCount}/{maxSlots} slots (Lv.{playerLevel})
         </span>
       </div>
 
-      {error && <div style={{ color: 'var(--red)', fontSize: 11, marginBottom: 4 }}>{error}</div>}
+      {error && (
+        <div style={{ color: "var(--red)", fontSize: 11, marginBottom: 4 }}>
+          {error}
+        </div>
+      )}
 
       {routes.length === 0 ? (
         <div className="text-muted">No trade routes established.</div>
       ) : (
-        routes.map(r => (
+        routes.map((r) => (
           <div
             key={r.id}
             className="resource-event-item"
             onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}
-            style={{ cursor: 'pointer' }}
+            style={{ cursor: "pointer" }}
           >
             <div className="resource-event-item__header">
               <span className="resource-event-item__type">
-                {r.sourceType === 'star_mall' ? 'Mall' : 'Outpost'} &rarr; {r.destPlanetName}
+                {r.sourceType === "star_mall" ? "Mall" : "Outpost"} &rarr;{" "}
+                {r.destPlanetName}
               </span>
-              <span style={{ color: statusColor(r.status), fontSize: 10, textTransform: 'uppercase' }}>
+              <span
+                style={{
+                  color: statusColor(r.status),
+                  fontSize: 10,
+                  textTransform: "uppercase",
+                }}
+              >
                 {r.status}
               </span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginTop: 2 }}>
-              <span>{r.pathLength} hops | {r.foodPerCycle} food | {r.creditCost} cr</span>
-              <span style={{ color: r.fuelPaid ? 'var(--cyan)' : 'var(--orange)' }}>
-                {r.fuelPaid ? 'FUELED' : 'UNFUELED'}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 10,
+                marginTop: 2,
+              }}
+            >
+              <span>
+                {r.pathLength} hops | {r.foodPerCycle} food | {r.creditCost} cr
+              </span>
+              <span
+                style={{ color: r.fuelPaid ? "var(--cyan)" : "var(--orange)" }}
+              >
+                {r.fuelPaid ? "FUELED" : "UNFUELED"}
               </span>
             </div>
 
             {r.activeCaravan && (
               <div style={{ marginTop: 4 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 2 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: 10,
+                    marginBottom: 2,
+                  }}
+                >
                   <span>Caravan in transit</span>
-                  <span>Sector {r.activeCaravan.pathIndex + 1}/{r.activeCaravan.pathLength}</span>
+                  <span>
+                    Sector {r.activeCaravan.pathIndex + 1}/
+                    {r.activeCaravan.pathLength}
+                  </span>
                 </div>
                 <div className="guardian-hp-bar">
                   <div
                     className="guardian-hp-bar__fill"
                     style={{
                       width: `${Math.round(((r.activeCaravan.pathIndex + 1) / r.activeCaravan.pathLength) * 100)}%`,
-                      background: r.activeCaravan.isProtected ? 'var(--cyan)' : 'var(--orange)',
+                      background: r.activeCaravan.isProtected
+                        ? "var(--cyan)"
+                        : "var(--orange)",
                     }}
                   />
                 </div>
@@ -208,35 +262,87 @@ export default function TradeRoutesPanel({ refreshKey, onCommand, bare }: Props)
             )}
 
             {expandedId === r.id && (
-              <div style={{ marginTop: 8, borderTop: '1px solid #333', paddingTop: 6 }}>
-                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
-                  <button className="btn-sm btn-buy" onClick={e => { e.stopPropagation(); handleToggleFuel(r.id, r.fuelPaid); }}>
-                    {r.fuelPaid ? 'DISABLE FUEL' : 'ENABLE FUEL'}
+              <div
+                style={{
+                  marginTop: 8,
+                  borderTop: "1px solid #333",
+                  paddingTop: 6,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 4,
+                    flexWrap: "wrap",
+                    marginBottom: 6,
+                  }}
+                >
+                  <button
+                    className="btn-sm btn-buy"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleFuel(r.id, r.fuelPaid);
+                    }}
+                  >
+                    {r.fuelPaid ? "DISABLE FUEL" : "ENABLE FUEL"}
                   </button>
-                  {r.status === 'paused' && (
-                    <button className="btn-sm btn-buy" onClick={e => { e.stopPropagation(); handleResume(r.id); }}>
+                  {r.status === "paused" && (
+                    <button
+                      className="btn-sm btn-buy"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleResume(r.id);
+                      }}
+                    >
                       RESUME
                     </button>
                   )}
-                  <button className="btn-sm btn-sell" onClick={e => { e.stopPropagation(); handleDelete(r.id); }}>
+                  <button
+                    className="btn-sm btn-sell"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(r.id);
+                    }}
+                  >
                     DELETE
                   </button>
                 </div>
 
                 {logs.length > 0 && (
                   <>
-                    <div style={{ fontSize: 10, color: 'var(--grey)', marginBottom: 2 }}>Recent Events</div>
-                    {logs.slice(0, 5).map(l => (
-                      <div key={l.id} className="panel-row" style={{ justifyContent: 'space-between', fontSize: 10 }}>
-                        <span style={{
-                          color: l.eventType === 'ransacked' ? 'var(--red)'
-                            : l.eventType === 'arrived' ? 'var(--green)' : 'var(--grey)',
-                        }}>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: "var(--grey)",
+                        marginBottom: 2,
+                      }}
+                    >
+                      Recent Events
+                    </div>
+                    {logs.slice(0, 5).map((l) => (
+                      <div
+                        key={l.id}
+                        className="panel-row"
+                        style={{
+                          justifyContent: "space-between",
+                          fontSize: 10,
+                        }}
+                      >
+                        <span
+                          style={{
+                            color:
+                              l.eventType === "ransacked"
+                                ? "var(--red)"
+                                : l.eventType === "arrived"
+                                  ? "var(--green)"
+                                  : "var(--grey)",
+                          }}
+                        >
                           {eventTypeLabel(l.eventType)}
                         </span>
                         <span className="text-muted">
-                          {l.foodAmount ? `${l.foodAmount} food` : ''}
-                          {l.sectorId ? ` S${l.sectorId}` : ''}
+                          {l.foodAmount ? `${l.foodAmount} food` : ""}
+                          {l.sectorId ? ` S${l.sectorId}` : ""}
                         </span>
                       </div>
                     ))}
@@ -251,11 +357,14 @@ export default function TradeRoutesPanel({ refreshKey, onCommand, bare }: Props)
       <div style={{ marginTop: 8 }}>
         <button
           className="btn-sm btn-buy"
-          onClick={e => { e.stopPropagation(); handleScout(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleScout();
+          }}
           disabled={loading}
           style={{ marginRight: 4 }}
         >
-          {loading ? 'SCANNING...' : 'SCOUT CARAVANS'}
+          {loading ? "SCANNING..." : "SCOUT CARAVANS"}
         </button>
       </div>
 
@@ -263,12 +372,22 @@ export default function TradeRoutesPanel({ refreshKey, onCommand, bare }: Props)
         <div style={{ marginTop: 6 }}>
           <div className="panel-subheader">Scout Results</div>
           {scoutResults.length === 0 ? (
-            <div className="text-muted">No unprotected caravans detected nearby.</div>
+            <div className="text-muted">
+              No unprotected caravans detected nearby.
+            </div>
           ) : (
-            scoutResults.map(c => (
-              <div key={c.id} className="panel-row" style={{ justifyContent: 'space-between', fontSize: 11 }}>
-                <span>{c.ownerName}'s caravan (S{c.sectorId})</span>
-                <span style={{ color: 'var(--orange)' }}>{c.foodCargo} food | {c.defenseHp} HP</span>
+            scoutResults.map((c) => (
+              <div
+                key={c.id}
+                className="panel-row"
+                style={{ justifyContent: "space-between", fontSize: 11 }}
+              >
+                <span>
+                  {c.ownerName}'s caravan (S{c.sectorId})
+                </span>
+                <span style={{ color: "var(--orange)" }}>
+                  {c.foodCargo} food | {c.defenseHp} HP
+                </span>
               </div>
             ))
           )}

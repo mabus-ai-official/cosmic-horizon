@@ -1059,6 +1059,34 @@ export function handleCommand(input: string, ctx: CommandContext): void {
           });
         break;
       }
+      if (args[0] === "go-singleplayer") {
+        // MP → SP transition command
+        if (ctx.player?.gameMode === "singleplayer") {
+          ctx.addLine("You are already in single player mode.", "error");
+          break;
+        }
+        ctx.addLine("Transitioning to single player...", "system");
+        ctx.addLine(
+          "A fresh 1000-sector universe will be generated for you.",
+          "info",
+        );
+        api
+          .transitionToSP()
+          .then(({ data }) => {
+            ctx.addLine(data.message, "success");
+            ctx.addLine(`New sector: ${data.newSectorId}`, "info");
+            ctx.addLine("Refreshing game state...", "system");
+            ctx.refreshStatus();
+            ctx.refreshSector();
+          })
+          .catch((err: any) => {
+            ctx.addLine(
+              err.response?.data?.error || "Transition failed",
+              "error",
+            );
+          });
+        break;
+      }
       api
         .getProfile()
         .then(({ data }) => {
@@ -1069,6 +1097,8 @@ export function handleCommand(input: string, ctx: CommandContext): void {
               `Mode: Single Player (${sp?.completed || 0}/${sp?.total || 20} missions complete)`,
               "warning",
             );
+          } else {
+            ctx.addLine("Mode: Multiplayer", "info");
           }
           ctx.addLine(
             `Level: ${data.level}/100 | XP: ${data.xp.toLocaleString()}${data.xpForNextLevel ? ` / ${data.xpForNextLevel.toLocaleString()}` : " (MAX)"}`,
@@ -1087,10 +1117,15 @@ export function handleCommand(input: string, ctx: CommandContext): void {
               "success",
             );
           }
+          ctx.addLine("", "info");
           if (ctx.player?.gameMode === "singleplayer") {
-            ctx.addLine("", "info");
             ctx.addLine(
-              'Type "profile transition" to switch to multiplayer.',
+              'Type "profile go-multiplayer" to switch to multiplayer.',
+              "info",
+            );
+          } else {
+            ctx.addLine(
+              'Type "profile go-singleplayer" to switch to single player.',
               "info",
             );
           }

@@ -365,7 +365,6 @@ export default function PixelScene({
   const hasScanlines = state.activeEffects.some((e) => e.type === "scanlines");
 
   const containerClass = `pixel-scene pixel-scene--${renderMode}`;
-  const _bgColor = scene.bgColor ?? "var(--bg-primary)";
   const bgTransparent = scene.bgColor
     ? `color-mix(in srgb, ${scene.bgColor} 40%, transparent)`
     : "var(--bg-primary)";

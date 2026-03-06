@@ -40,9 +40,6 @@ export default function SyndicateGroupPanel({
 
   const syndicateId = syndicateData?.id;
   const members = syndicateData?.members || [];
-  const _myMembership = members.find(
-    (m: any) => m.id === syndicateData?.leaderId,
-  );
   const isLeader =
     syndicateData?.leaderId &&
     members.some(

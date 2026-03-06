@@ -446,8 +446,6 @@ export default function SectorMap({
   const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (!dragging.current) return;
     const z = zoomRef.current;
-    const _vw = WIDTH / z;
-    const _vh = HEIGHT / z;
     // Convert pixel movement to viewBox units
     const svgEl = e.currentTarget;
     const rect = svgEl.getBoundingClientRect();

@@ -20,7 +20,12 @@ RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/knexfile.ts ./
+COPY entrypoint.sh ./
+
+# Remove .d.ts and .map files from migrations (knex tries to load .d.ts as code)
+RUN rm -f dist/db/migrations/*.d.ts dist/db/migrations/*.d.ts.map dist/db/migrations/*.js.map
+RUN chmod +x entrypoint.sh
 
 EXPOSE 3105
 
-CMD ["node", "dist/index.js"]
+CMD ["sh", "entrypoint.sh"]

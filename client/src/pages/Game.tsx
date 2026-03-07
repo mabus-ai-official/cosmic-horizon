@@ -34,6 +34,7 @@ import SectorMap3D from "../components/SectorMap3D";
 import NotificationLog from "../components/NotificationLog";
 import ToastManager from "../components/ToastManager";
 import DailyMissions from "../components/DailyMissions";
+import DailyMissionsOverlay from "../components/DailyMissionsOverlay";
 import FloatingNumbers from "../components/FloatingNumbers";
 import LevelUpOverlay from "../components/LevelUpOverlay";
 import { useToast } from "../hooks/useToast";
@@ -792,6 +793,17 @@ export default function Game({ onLogout }: GameProps) {
       <LevelUpOverlay
         level={game.player?.level ?? 0}
         rank={game.player?.rank ?? ""}
+        onLevelUp={(lvl, rnk) => {
+          game.addLine(
+            `LEVEL UP! You are now level ${lvl} — ${rnk}`,
+            "success",
+          );
+          showToast(`Level ${lvl} — ${rnk}!`, "success", 8000);
+        }}
+      />
+      <DailyMissionsOverlay
+        onOpenMissions={() => selectPanel("missions")}
+        onToastReminder={(msg) => showToast(msg, "system", 6000)}
       />
       {showSPComplete && (
         <div

@@ -484,6 +484,19 @@ export function useGameState() {
           setSceneQueue((prev) => [...prev, encounterScene]);
           api.markNPCEncountered(enc.id).catch(() => {});
         }
+        // Apply XP/level from move response immediately (for level-up detection)
+        if (data.xp) {
+          setPlayer((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  xp: data.xp.total,
+                  level: data.xp.level,
+                  rank: data.xp.rank,
+                }
+              : null,
+          );
+        }
         await refreshSector();
         await refreshStatus();
         await refreshMap();
@@ -614,7 +627,18 @@ export function useGameState() {
         );
         setPlayer((prev) =>
           prev
-            ? { ...prev, credits: data.newCredits, energy: data.energy }
+            ? {
+                ...prev,
+                credits: data.newCredits,
+                energy: data.energy,
+                ...(data.xp
+                  ? {
+                      xp: data.xp.total,
+                      level: data.xp.level,
+                      rank: data.xp.rank,
+                    }
+                  : {}),
+              }
             : null,
         );
         enqueueScene(
@@ -654,7 +678,18 @@ export function useGameState() {
         );
         setPlayer((prev) =>
           prev
-            ? { ...prev, credits: data.newCredits, energy: data.energy }
+            ? {
+                ...prev,
+                credits: data.newCredits,
+                energy: data.energy,
+                ...(data.xp
+                  ? {
+                      xp: data.xp.total,
+                      level: data.xp.level,
+                      rank: data.xp.rank,
+                    }
+                  : {}),
+              }
             : null,
         );
         enqueueScene(
@@ -707,7 +742,21 @@ export function useGameState() {
           addLine("Target destroyed!", "success");
           if (data.killMessage) addLine(data.killMessage, "npc");
         }
-        setPlayer((prev) => (prev ? { ...prev, energy: data.energy } : null));
+        setPlayer((prev) =>
+          prev
+            ? {
+                ...prev,
+                energy: data.energy,
+                ...(data.xp
+                  ? {
+                      xp: data.xp.total,
+                      level: data.xp.level,
+                      rank: data.xp.rank,
+                    }
+                  : {}),
+              }
+            : null,
+        );
         await refreshStatus();
       } catch (err: any) {
         addLine(err.response?.data?.error || "Attack failed", "error");

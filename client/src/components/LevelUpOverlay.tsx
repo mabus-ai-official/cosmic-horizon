@@ -3,9 +3,14 @@ import { useEffect, useRef, useState } from "react";
 interface LevelUpOverlayProps {
   level: number;
   rank: string;
+  onLevelUp?: (level: number, rank: string) => void;
 }
 
-export default function LevelUpOverlay({ level, rank }: LevelUpOverlayProps) {
+export default function LevelUpOverlay({
+  level,
+  rank,
+  onLevelUp,
+}: LevelUpOverlayProps) {
   const [show, setShow] = useState(false);
   const [displayLevel, setDisplayLevel] = useState(0);
   const [displayRank, setDisplayRank] = useState("");
@@ -18,12 +23,13 @@ export default function LevelUpOverlay({ level, rank }: LevelUpOverlayProps) {
       setDisplayLevel(level);
       setDisplayRank(rank);
       setShow(true);
-      const timer = setTimeout(() => setShow(false), 4000);
+      onLevelUp?.(level, rank);
+      const timer = setTimeout(() => setShow(false), 6000);
       prevLevel.current = level;
       return () => clearTimeout(timer);
     }
     prevLevel.current = level;
-  }, [level, rank]);
+  }, [level, rank, onLevelUp]);
 
   if (!show) return null;
 

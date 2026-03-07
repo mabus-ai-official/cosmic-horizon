@@ -41,7 +41,6 @@ import planetCombatRouter from "./api/planet-combat";
 import dailyMissionsRouter from "./api/daily-missions";
 import { setupWebSocket } from "./ws/handlers";
 import { startGameTick } from "./engine/game-tick";
-import db from "./db/connection";
 import {
   loadTutorialState,
   blockDuringTutorial,
@@ -54,15 +53,32 @@ const app = express();
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: [
+      process.env.CLIENT_URL || "http://localhost:5173",
+      process.env.WIDGET_URL || "https://coho-matrix.mabus.ai",
+    ],
     credentials: true,
   },
 });
 
 app.set("io", io);
 
+const allowedOrigins = [
+  process.env.CLIENT_URL || "http://localhost:5173",
+  process.env.WIDGET_URL || "https://coho-matrix.mabus.ai",
+];
 const corsOptions = {
-  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  origin: (
+    origin: string | undefined,
+    callback: (err: Error | null, allow?: boolean) => void,
+  ) => {
+    // Allow requests with no origin (server-to-server, curl, etc.)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, false);
+    }
+  },
   credentials: true,
 };
 app.use(cors(corsOptions));
@@ -282,29 +298,9 @@ setupWebSocket(io);
 // Game tick
 startGameTick(io);
 
-// Run migrations on startup
-async function runMigrations() {
-  try {
-    const [batch, migrations] = await db.migrate.latest({
-      directory: __dirname + "/db/migrations",
-    });
-    if (migrations.length > 0) {
-      console.log(`Ran ${migrations.length} migration(s) (batch ${batch}):`);
-      migrations.forEach((m: string) => console.log(`  - ${m}`));
-    } else {
-      console.log("Database is up to date.");
-    }
-  } catch (err) {
-    console.error("Migration failed:", err);
-    process.exit(1);
-  }
-}
-
 const PORT = process.env.PORT || 3000;
-runMigrations().then(() => {
-  server.listen(PORT, () => {
-    console.log(`Cosmic Horizon server running on port ${PORT}`);
-  });
+server.listen(PORT, () => {
+  console.log(`Cosmic Horizon server running on port ${PORT}`);
 });
 
 export { app, server, io };

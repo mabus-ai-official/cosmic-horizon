@@ -17,6 +17,9 @@ import {
   namePlanet,
   depositFood,
   depositColonists,
+  bombardPlanet,
+  fortifyPlanet,
+  getPlanetDefenses,
 } from "../services/api";
 
 interface RacePopulation {
@@ -168,6 +171,13 @@ export default function PlanetsPanel({
   const [scanning, setScanning] = useState(false);
   const [localRefreshKey, setLocalRefreshKey] = useState(0);
   const [hoveredPlanetId, setHoveredPlanetId] = useState<string | null>(null);
+  const [fortifyType, setFortifyType] = useState<Record<string, string>>({});
+  const [fortifyAmt, setFortifyAmt] = useState<Record<string, number>>({});
+  const [bombardEnergy, setBombardEnergy] = useState<Record<string, number>>(
+    {},
+  );
+  const [defenseData, setDefenseData] = useState<Record<string, any>>({});
+  const [combatResult, setCombatResult] = useState<string | null>(null);
 
   const refresh = () => setLocalRefreshKey((k) => k + 1);
 
@@ -332,6 +342,61 @@ export default function PlanetsPanel({
       setError(err.response?.data?.error || "Scanner failed");
     } finally {
       setScanning(false);
+    }
+  };
+
+  const handleFortify = async (planetId: string) => {
+    const type = fortifyType[planetId] || "shield";
+    const amount = fortifyAmt[planetId] || 1;
+    setBusy(planetId + "-fortify");
+    setError("");
+    try {
+      await fortifyPlanet(planetId, type, amount);
+      refresh();
+      onAction?.();
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Fortify failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleBombard = async (planetId: string) => {
+    const energy = bombardEnergy[planetId] || 10;
+    setBusy(planetId + "-bombard");
+    setError("");
+    setCombatResult(null);
+    try {
+      const { data } = await bombardPlanet(planetId, energy);
+      const parts: string[] = [];
+      if (data.shieldDamage) parts.push(`Shield -${data.shieldDamage}`);
+      if (data.cannonDamage) parts.push(`Cannon -${data.cannonDamage}`);
+      if (data.droneDamage) parts.push(`Drones -${data.droneDamage}`);
+      if (data.returnFireDamage)
+        parts.push(`Return fire: ${data.returnFireDamage} dmg to you`);
+      if (data.conquered) parts.push("PLANET CONQUERED!");
+      setCombatResult(
+        parts.join(" | ") || data.message || "Bombardment complete",
+      );
+      refresh();
+      onAction?.();
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Bombardment failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleScanDefenses = async (planetId: string) => {
+    setBusy(planetId + "-defenses");
+    setError("");
+    try {
+      const { data } = await getPlanetDefenses(planetId);
+      setDefenseData((prev) => ({ ...prev, [planetId]: data }));
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to scan defenses");
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -782,6 +847,73 @@ export default function PlanetsPanel({
                       </div>
                     </div>
                   )}
+                  <div style={{ marginTop: 6 }}>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: "var(--orange)",
+                        textTransform: "uppercase",
+                        letterSpacing: 1,
+                        marginBottom: 4,
+                      }}
+                    >
+                      Fortify Defenses
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 4,
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <select
+                        value={fortifyType[p.id] || "shield"}
+                        onChange={(e) =>
+                          setFortifyType((prev) => ({
+                            ...prev,
+                            [p.id]: e.target.value,
+                          }))
+                        }
+                        style={{
+                          background: "#111",
+                          border: "1px solid #333",
+                          color: "#ccc",
+                          padding: "2px 4px",
+                          fontSize: 10,
+                          width: 80,
+                        }}
+                      >
+                        <option value="shield">Shield</option>
+                        <option value="cannon">Cannon</option>
+                        <option value="drone">Drone</option>
+                      </select>
+                      <input
+                        type="number"
+                        className="qty-input"
+                        min={1}
+                        value={fortifyAmt[p.id] || 1}
+                        onChange={(e) =>
+                          setFortifyAmt((prev) => ({
+                            ...prev,
+                            [p.id]: Math.max(1, parseInt(e.target.value) || 1),
+                          }))
+                        }
+                        style={{ width: "48px" }}
+                      />
+                      <button
+                        className="btn-sm"
+                        disabled={busy === p.id + "-fortify"}
+                        onClick={() => handleFortify(p.id)}
+                        style={{
+                          color: "var(--orange)",
+                          borderColor: "var(--orange)",
+                        }}
+                      >
+                        {busy === p.id + "-fortify" ? "..." : "FORTIFY"}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1174,6 +1306,84 @@ export default function PlanetsPanel({
                     : "Unclaimed"}{" "}
                 | Lv.{p.upgradeLevel} | {p.colonists} colonists
               </div>
+              {p.ownerName && !p.owned && (
+                <div style={{ marginTop: 4 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 4,
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <button
+                      className="btn-sm"
+                      disabled={busy === p.id + "-defenses"}
+                      onClick={() => handleScanDefenses(p.id)}
+                      style={{
+                        color: "var(--cyan)",
+                        borderColor: "var(--cyan)",
+                      }}
+                    >
+                      {busy === p.id + "-defenses" ? "..." : "SCAN"}
+                    </button>
+                    <input
+                      type="number"
+                      className="qty-input"
+                      min={1}
+                      placeholder="Energy"
+                      value={bombardEnergy[p.id] || ""}
+                      onChange={(e) =>
+                        setBombardEnergy((prev) => ({
+                          ...prev,
+                          [p.id]: Math.max(1, parseInt(e.target.value) || 1),
+                        }))
+                      }
+                      style={{ width: "56px" }}
+                    />
+                    <button
+                      className="btn-sm"
+                      disabled={
+                        busy === p.id + "-bombard" || !bombardEnergy[p.id]
+                      }
+                      onClick={() => handleBombard(p.id)}
+                      style={{ color: "#f44", borderColor: "#f44" }}
+                    >
+                      {busy === p.id + "-bombard" ? "..." : "BOMBARD"}
+                    </button>
+                  </div>
+                  {defenseData[p.id] && (
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: "var(--orange)",
+                        marginTop: 4,
+                        padding: "4px 6px",
+                        background: "var(--bg-tertiary)",
+                        borderRadius: 3,
+                      }}
+                    >
+                      Shield: {defenseData[p.id].shieldEnergy ?? 0} | Cannon:{" "}
+                      {defenseData[p.id].cannonEnergy ?? 0} | Drones:{" "}
+                      {defenseData[p.id].droneCount ?? 0}
+                    </div>
+                  )}
+                  {combatResult && busy === null && (
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: "var(--green)",
+                        marginTop: 4,
+                        padding: "4px 6px",
+                        background: "var(--bg-tertiary)",
+                        borderRadius: 3,
+                      }}
+                    >
+                      {combatResult}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })

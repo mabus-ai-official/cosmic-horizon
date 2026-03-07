@@ -4,6 +4,7 @@ import MapPanel from "../components/MapPanel";
 import AriaPanel from "../components/AriaPanel";
 import TradeTable from "../components/TradeTable";
 import TradeRoutesPanel from "../components/TradeRoutesPanel";
+import TradeOffersPanel from "../components/TradeOffersPanel";
 import MallPanel from "../components/MallPanel";
 import CombatGroupPanel from "../components/CombatGroupPanel";
 import ActiveMissionsPanel from "../components/ActiveMissionsPanel";
@@ -249,7 +250,6 @@ export default function Game({ onLogout }: GameProps) {
       }),
       on("player:entered", (data: { username: string; sectorId: number }) => {
         game.addLine(`${data.username} has entered the sector`, "warning");
-        showToast(`${data.username} entered your sector`, "warning");
         game.refreshSector();
         if (activePanelRef.current !== "crew") incrementBadge("crew");
       }),
@@ -315,8 +315,16 @@ export default function Game({ onLogout }: GameProps) {
         showToast(data.message, "system");
         if (activePanelRef.current !== "missions") incrementBadge("missions");
       }),
-      on("alliance:request", () => {
+      on("alliance:request", (data: { fromName?: string }) => {
         refreshAlliances();
+        showToast(
+          data?.fromName
+            ? `${data.fromName} wants to ally with you!`
+            : "New alliance request received!",
+          "system",
+          6000,
+        );
+        if (activePanelRef.current !== "crew") incrementBadge("crew");
       }),
       on(
         "chat:syndicate",
@@ -544,6 +552,14 @@ export default function Game({ onLogout }: GameProps) {
             <TradeRoutesPanel
               refreshKey={refreshKey}
               onCommand={handleActionButton}
+              bare
+            />
+            <TradeOffersPanel
+              refreshKey={refreshKey}
+              onAction={() => {
+                game.refreshStatus();
+                setRefreshKey((k) => k + 1);
+              }}
               bare
             />
           </>

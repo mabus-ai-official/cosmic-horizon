@@ -62,6 +62,7 @@ export default function ActivityBar({
             <React.Fragment key={p.id}>
               <button
                 className={`activity-bar__btn${isActive ? " activity-bar__btn--active" : " activity-bar__btn--shimmer"}`}
+                data-tutorial={`panel-${p.id}`}
                 onClick={() => onSelect(p.id)}
                 onMouseEnter={(e) => handleMouseEnter(e, i)}
                 onMouseLeave={handleMouseLeave}

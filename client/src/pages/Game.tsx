@@ -20,6 +20,7 @@ import ActionsPanel from "../components/ActionsPanel";
 import NotesPanel from "../components/NotesPanel";
 import ProfilePanel from "../components/ProfilePanel";
 import TutorialOverlay from "../components/TutorialOverlay";
+import TutorialWelcomeOverlay from "../components/TutorialWelcomeOverlay";
 import IntroSequence, {
   INTRO_BEATS,
   POST_TUTORIAL_BEATS,
@@ -870,10 +871,16 @@ export default function Game({ onLogout }: GameProps) {
           </div>
         </div>
       )}
+      <TutorialWelcomeOverlay
+        tutorialCompleted={game.player?.tutorialCompleted ?? true}
+        onPlay={() => {}}
+        onSkip={game.skipTutorial}
+      />
       <TutorialOverlay
         tutorialStep={game.player?.tutorialStep ?? 0}
         tutorialCompleted={game.player?.tutorialCompleted ?? true}
         onSkip={game.skipTutorial}
+        onSelectPanel={(id) => selectPanel(id as any)}
       />
       <StatusBar
         player={game.player}

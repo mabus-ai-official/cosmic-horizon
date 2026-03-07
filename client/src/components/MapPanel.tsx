@@ -119,27 +119,44 @@ export default function MapPanel({
     <>
       {/* Quick Actions */}
       <div className="action-buttons" style={{ marginBottom: 6 }}>
-        <button className="btn-action" onClick={() => onCommand?.("look")}>
+        <button
+          className="btn-action"
+          data-tutorial="look-btn"
+          onClick={() => onCommand?.("look")}
+        >
           LOOK
         </button>
         {!isLanded && (
-          <button className="btn-action" onClick={() => onCommand?.("scan")}>
+          <button
+            className="btn-action"
+            data-tutorial="scan-btn"
+            onClick={() => onCommand?.("scan")}
+          >
             SCAN
           </button>
         )}
         {sector.outposts.length > 0 && !isDocked && !isLanded && (
-          <button className="btn-action" onClick={() => onDock?.()}>
+          <button
+            className="btn-action"
+            data-tutorial="dock-btn"
+            onClick={() => onDock?.()}
+          >
             DOCK
           </button>
         )}
         {isDocked && (
-          <button className="btn-action" onClick={() => onUndock?.()}>
+          <button
+            className="btn-action"
+            data-tutorial="undock-btn"
+            onClick={() => onUndock?.()}
+          >
             UNDOCK
           </button>
         )}
         {isLanded && (
           <button
             className="btn-action"
+            data-tutorial="liftoff-btn"
             onClick={() => onLiftoff?.()}
             style={{ borderColor: "var(--yellow)", color: "var(--yellow)" }}
           >
@@ -272,6 +289,7 @@ export default function MapPanel({
               <button
                 key={adj.sectorId}
                 className="sector-btn"
+                data-tutorial="move-btn"
                 onClick={() => onMoveToSector(adj.sectorId)}
                 title={adj.oneWay ? "One-way route" : "Two-way route"}
               >

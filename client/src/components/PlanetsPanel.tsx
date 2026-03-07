@@ -120,7 +120,7 @@ function getBestRace(
   return best;
 }
 
-type TabView = "owned" | "discovered" | "analytics";
+type TabView = "sector" | "owned" | "discovered" | "analytics";
 
 export default function PlanetsPanel({
   refreshKey,
@@ -140,7 +140,7 @@ export default function PlanetsPanel({
 }: Props) {
   const [planets, setPlanets] = useState<PlanetData[]>([]);
   const [discovered, setDiscovered] = useState<DiscoveredPlanetData[]>([]);
-  const [tab, setTab] = useState<TabView>("owned");
+  const [tab, setTab] = useState<TabView>("sector");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [planetDetail, setPlanetDetail] = useState<any>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -180,7 +180,7 @@ export default function PlanetsPanel({
   }, [refreshKey, localRefreshKey]);
 
   useEffect(() => {
-    if (tab === "discovered") {
+    if (tab === "discovered" || tab === "sector") {
       getDiscoveredPlanets()
         .then(({ data }) => setDiscovered(data.planets || []))
         .catch(() => setDiscovered([]));
@@ -360,8 +360,19 @@ export default function PlanetsPanel({
     </select>
   );
 
+  const sectorPlanets = discovered.filter(
+    (p) => p.sectorId === currentSectorId,
+  );
+
   const tabBar = (
     <div className="group-panel-tabs">
+      <span
+        onClick={() => setTab("sector")}
+        style={{ cursor: "pointer", color: tab === "sector" ? "#0f0" : "#666" }}
+      >
+        {tab === "sector" ? "[Sector]" : "Sector"}
+      </span>
+      <span style={{ color: "#444", margin: "0 0.5rem" }}>|</span>
       <span
         onClick={() => setTab("owned")}
         style={{ cursor: "pointer", color: tab === "owned" ? "#0f0" : "#666" }}
@@ -1015,9 +1026,81 @@ export default function PlanetsPanel({
     </>
   );
 
+  const sectorContent = (
+    <>
+      {sectorPlanets.length === 0 ? (
+        <div className="text-muted">No planets in this sector.</div>
+      ) : (
+        sectorPlanets.map((p) => {
+          const classLabel = CLASS_LABELS[p.planetClass] || p.planetClass;
+          const isLanded = landedAtPlanetId === p.id;
+          return (
+            <div
+              key={p.id}
+              className="discovered-planet-item"
+              style={{
+                padding: "4px 0",
+                borderBottom: "1px solid var(--border)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <div>
+                  <span style={{ color: "var(--text-primary)" }}>{p.name}</span>{" "}
+                  <span style={{ color: "var(--cyan)" }}>
+                    [{p.planetClass}]
+                  </span>{" "}
+                  <span className="text-muted" style={{ fontSize: "11px" }}>
+                    {classLabel}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {!isLanded && onLand && (
+                    <button
+                      className="btn-sm btn-buy"
+                      onClick={() => onLand(p.id)}
+                    >
+                      LAND
+                    </button>
+                  )}
+                  {isLanded && onLiftoff && (
+                    <button
+                      className="btn-sm"
+                      onClick={onLiftoff}
+                      style={{
+                        borderColor: "var(--yellow)",
+                        color: "var(--yellow)",
+                      }}
+                    >
+                      LIFTOFF
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div style={{ fontSize: "11px", color: "var(--text-secondary)" }}>
+                {p.owned
+                  ? `Owner: ${p.ownerName || "You"}`
+                  : p.planetClass === "S"
+                    ? "Seed World"
+                    : "Unclaimed"}{" "}
+                | Lv.{p.upgradeLevel} | {p.colonists} colonists
+              </div>
+            </div>
+          );
+        })
+      )}
+    </>
+  );
+
   const content = (
     <>
       {tabBar}
+      {tab === "sector" && sectorContent}
       {tab === "owned" && ownedContent}
       {tab === "discovered" && discoveredContent}
       {tab === "analytics" && <PlanetAnalytics planets={planets} />}

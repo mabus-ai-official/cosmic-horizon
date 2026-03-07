@@ -91,7 +91,8 @@ export interface TerminalLine {
     | "system"
     | "combat"
     | "trade"
-    | "npc";
+    | "npc"
+    | "ai";
 }
 
 let lineIdCounter = 0;

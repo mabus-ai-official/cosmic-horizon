@@ -15,6 +15,7 @@ const PREFIX_MAP: Record<string, { icon: string; cls: string }> = {
   combat: { icon: "[⚔]", cls: "log-prefix--combat" },
   trade: { icon: "[$]", cls: "log-prefix--trade" },
   npc: { icon: "[>]", cls: "log-prefix--npc" },
+  ai: { icon: "[◈]", cls: "log-prefix--ai" },
 };
 
 function renderLine(line: TerminalLine) {

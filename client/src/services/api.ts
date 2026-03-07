@@ -365,6 +365,9 @@ export const collectPlanetResources = (planetId: string) =>
 export const collectAllRefinery = (planetId: string) =>
   api.post("/crafting/collect-all", { planetId });
 
+// AI Assistant
+export const askAI = (question: string) => api.post("/ai/ask", { question });
+
 // Rare Spawns
 export const getResourceEvents = () => api.get("/events/resource-events");
 export const harvestEvent = (eventId: string, nodeIndex: number) =>

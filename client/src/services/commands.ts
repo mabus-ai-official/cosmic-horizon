@@ -27,7 +27,8 @@ interface CommandContext {
       | "system"
       | "combat"
       | "trade"
-      | "npc",
+      | "npc"
+      | "ai",
   ) => void;
   clearLines: () => void;
   player: any;
@@ -389,24 +390,44 @@ export function handleCommand(input: string, ctx: CommandContext): void {
             ctx.addLine("No scanner data returned", "warning");
             return;
           }
+
+          // Collect scan summary stats
+          let totalPlanets = 0;
+          let totalEvents = 0;
+          let totalHostiles = 0;
+
+          // Separate sectors by significance for ordered output
+          const highlights: {
+            sector: any;
+            lines: { text: string; type: any }[];
+          }[] = [];
+          const normal: {
+            sector: any;
+            lines: { text: string; type: any }[];
+          }[] = [];
+
           for (const sector of data.scannedSectors) {
-            const parts = [`Sector ${sector.id} [${sector.type}]`];
-            if (sector.planets.length > 0)
-              parts.push(`${sector.planets.length} planet(s)`);
+            const sectorLines: { text: string; type: any }[] = [];
+            let isHighlight = false;
+
+            totalPlanets += sector.planets.length;
             if (sector.players.length > 0)
-              parts.push(`${sector.players.length} pilot(s)`);
-            ctx.addLine(`  ${parts.join(" - ")}`, "info");
-            // Show variant planets
+              totalHostiles += sector.players.length;
+
+            // Variant planets — high significance
             for (const p of sector.planets) {
               if (p.variant) {
-                ctx.addLine(
-                  `    ${p.name} [${p.planetClass}] ★ ${(p.variantName || p.variant).toUpperCase()} VARIANT`,
-                  "success",
-                );
+                sectorLines.push({
+                  text: `    ★ ${p.name} [${p.planetClass}] — ${(p.variantName || p.variant).toUpperCase()} VARIANT`,
+                  type: "success",
+                });
+                isHighlight = true;
               }
             }
-            // Show resource events
+
+            // Resource events — medium significance
             if (sector.resourceEvents?.length > 0) {
+              totalEvents += sector.resourceEvents.length;
               for (const re of sector.resourceEvents) {
                 const timeMs = Math.max(
                   0,
@@ -415,32 +436,76 @@ export function handleCommand(input: string, ctx: CommandContext): void {
                 const hours = Math.floor(timeMs / 3600000);
                 const mins = Math.floor((timeMs % 3600000) / 60000);
                 const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-                if (re.eventType === "asteroid_field") {
-                  ctx.addLine(
-                    `    Asteroid Field (${re.remainingNodes} nodes, expires ${timeStr})`,
-                    "trade",
-                  );
-                } else if (re.eventType === "anomaly") {
-                  ctx.addLine(
-                    `    Resource Anomaly (expires ${timeStr})`,
-                    "trade",
-                  );
-                } else if (re.eventType === "derelict") {
-                  ctx.addLine(
-                    `    Derelict Ship (expires ${timeStr})`,
-                    "trade",
-                  );
-                } else if (re.eventType === "alien_cache") {
+                if (re.eventType === "alien_cache") {
                   const gStr =
                     re.guardianHp > 0 ? "guardian active" : "guardian defeated";
-                  ctx.addLine(
-                    `    !! ALIEN CACHE !! (${gStr}, expires ${timeStr})`,
-                    "warning",
-                  );
+                  sectorLines.push({
+                    text: `    !! ALIEN CACHE !! (${gStr}, expires ${timeStr})`,
+                    type: "warning",
+                  });
+                  isHighlight = true;
+                } else if (re.eventType === "asteroid_field") {
+                  sectorLines.push({
+                    text: `    Asteroid Field (${re.remainingNodes} nodes, expires ${timeStr})`,
+                    type: "trade",
+                  });
+                  isHighlight = true;
+                } else if (re.eventType === "anomaly") {
+                  sectorLines.push({
+                    text: `    Resource Anomaly (expires ${timeStr})`,
+                    type: "trade",
+                  });
+                  isHighlight = true;
+                } else if (re.eventType === "derelict") {
+                  sectorLines.push({
+                    text: `    Derelict Ship (expires ${timeStr})`,
+                    type: "trade",
+                  });
+                  isHighlight = true;
                 }
               }
             }
+
+            // Players — warning
+            if (sector.players.length > 0) {
+              sectorLines.push({
+                text: `    ${sector.players.length} pilot(s) detected`,
+                type: "warning",
+              });
+              isHighlight = true;
+            }
+
+            const entry = { sector, lines: sectorLines };
+            if (isHighlight) {
+              highlights.push(entry);
+            } else {
+              normal.push(entry);
+            }
           }
+
+          ctx.addLine(
+            `=== SCAN RESULTS: ${data.scannedSectors.length} sectors analyzed ===`,
+            "system",
+          );
+
+          // Show highlights first
+          for (const { sector, lines: sLines } of [...highlights, ...normal]) {
+            const parts = [`Sector ${sector.id} [${sector.type}]`];
+            if (sector.planets.length > 0)
+              parts.push(`${sector.planets.length} planet(s)`);
+            ctx.addLine(
+              `  ${parts.join(" — ")}`,
+              sLines.length > 0 ? "info" : "info",
+            );
+            for (const sl of sLines) {
+              ctx.addLine(sl.text, sl.type);
+            }
+          }
+
+          ctx.addLine(
+            `Scan complete: ${totalPlanets} planets, ${totalEvents} events, ${totalHostiles} hostiles`,
+            "system",
+          );
         })
         .catch((err: any) =>
           ctx.addLine(err.response?.data?.error || "Scan failed", "error"),
@@ -4772,8 +4837,34 @@ export function handleCommand(input: string, ctx: CommandContext): void {
           'Type "help <category>" for commands or "help <command>" for details.',
           "info",
         );
+        ctx.addLine(
+          "  ai              Ask ARIA, your ship AI (ask <question>)",
+          "info",
+        );
+        ctx.addLine("", "info");
         ctx.addLine('Type "tips" for contextual guidance.', "info");
       }
+      break;
+    }
+
+    case "ask": {
+      if (args.length === 0) {
+        ctx.addLine("Usage: ask <question> — Ask ARIA, your ship AI.", "info");
+        break;
+      }
+      const question = args.join(" ");
+      ctx.addLine(`> ${question}`, "info");
+      ctx.addLine("ARIA is thinking...", "system");
+      api
+        .askAI(question)
+        .then(({ data }) => {
+          ctx.addLine(`ARIA: ${data.answer}`, "ai");
+        })
+        .catch((err: any) => {
+          const msg =
+            err?.response?.data?.error || "ARIA is unavailable right now.";
+          ctx.addLine(`ARIA: ${msg}`, "error");
+        });
       break;
     }
 

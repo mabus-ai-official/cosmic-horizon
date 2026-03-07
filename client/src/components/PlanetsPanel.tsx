@@ -499,12 +499,27 @@ export default function PlanetsPanel({
                 onClick={() => setExpandedId(expanded ? null : p.id)}
               >
                 <span className="planet-panel-item__name">
-                  {expanded ? "[-]" : "[+]"} {p.name}
+                  <span style={{ color: "var(--cyan)", fontWeight: "bold" }}>
+                    {expanded ? "[-]" : "[+]"}
+                  </span>{" "}
+                  {p.name}
+                  <span
+                    style={{
+                      color: happinessColor,
+                      fontSize: "0.8rem",
+                      marginLeft: 8,
+                    }}
+                  >
+                    Lv.{p.upgradeLevel}
+                  </span>
                 </span>
                 <span
                   className="planet-panel-item__class"
                   style={{ position: "relative", cursor: "help" }}
-                  onMouseEnter={() => setHoveredPlanetId(p.id)}
+                  onMouseEnter={(e) => {
+                    e.stopPropagation();
+                    setHoveredPlanetId(p.id);
+                  }}
                   onMouseLeave={() => setHoveredPlanetId(null)}
                 >
                   [{p.planetClass}] {CLASS_LABELS[p.planetClass] || ""}
@@ -530,391 +545,417 @@ export default function PlanetsPanel({
                     })()}
                 </span>
               </div>
-              <div className="planet-panel-item__details">
-                <span>Sector {p.sectorId}</span>
-                <span>Level {p.upgradeLevel}</span>
-                <span>{p.colonists.toLocaleString()} colonists</span>
-                <span style={{ color: happinessColor }}>
-                  {p.happinessTier} ({Math.round(p.happiness)})
-                </span>
-                {bestRace && (
-                  <span style={{ color: "var(--cyan)" }}>
-                    Best: {RACE_LABELS[bestRace.race] || bestRace.race} (
-                    {Math.round(bestRace.multiplier * 100)}%)
-                  </span>
-                )}
-              </div>
-              <div className="planet-panel-item__stocks">
-                <span title="Cyrillium">Cyr: {p.cyrilliumStock}</span>
-                <span title="Food" style={{ color: foodColor }}>
-                  Food: {p.foodStock} (
-                  {p.foodConsumption > 0
-                    ? `-${p.foodConsumption}/tick`
-                    : "no consumption"}
-                  )
-                </span>
-                <span title="Tech">Tech: {p.techStock}</span>
-              </div>
-              <div className="planet-panel-item__production">
-                Production: Cyr={p.production.cyrillium} Tech=
-                {p.production.tech}
-              </div>
-              {p.racePopulations && p.racePopulations.length > 0 && (
-                <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>
-                  Pop:{" "}
-                  {p.racePopulations
-                    .map(
-                      (rp) =>
-                        `${RACE_LABELS[rp.race] || rp.race}:${rp.count.toLocaleString()}`,
-                    )
-                    .join(", ")}
-                </div>
-              )}
-              <div className="planet-actions">
-                <button
-                  className="btn-sm btn-buy"
-                  disabled={busy === p.id + "-collect"}
-                  onClick={() => handleCollect(p.id)}
-                >
-                  {busy === p.id + "-collect" ? "..." : "COLLECT"}
-                </button>
-                <button
-                  className="btn-sm btn-primary"
-                  disabled={busy === p.id + "-upgrade"}
-                  onClick={() => handleUpgrade(p.id)}
-                >
-                  {busy === p.id + "-upgrade" ? "..." : "UPGRADE"}
-                </button>
-                {!inSector && onWarpTo && (
-                  <button
-                    className="btn-sm"
-                    onClick={() => onWarpTo(p.sectorId)}
-                    style={{
-                      color: "var(--magenta)",
-                      borderColor: "var(--magenta)",
-                    }}
-                  >
-                    WARP
-                  </button>
-                )}
-                {inSector && landedAtPlanetId === p.id && onLiftoff && (
-                  <button
-                    className="btn-sm"
-                    onClick={() => onLiftoff()}
-                    style={{
-                      color: "var(--yellow)",
-                      borderColor: "var(--yellow)",
-                    }}
-                  >
-                    LIFTOFF
-                  </button>
-                )}
-                {inSector && landedAtPlanetId !== p.id && onLand && (
-                  <button
-                    className="btn-sm"
-                    onClick={() => onLand(p.id)}
-                    style={{
-                      color: "var(--green)",
-                      borderColor: "var(--green)",
-                    }}
-                  >
-                    LAND
-                  </button>
-                )}
-                {inSector && (landedAtPlanetId === p.id || hasTransporter) && (
-                  <span className="planet-colonize-group">
-                    <input
-                      type="number"
-                      className="qty-input"
-                      min={1}
-                      value={colonizeQty[p.id] || 10}
-                      onChange={(e) =>
-                        setColonizeQty((prev) => ({
-                          ...prev,
-                          [p.id]: Math.max(1, parseInt(e.target.value) || 1),
-                        }))
-                      }
-                      style={{ width: "48px" }}
-                    />
-                    {raceSelect(
-                      p.id,
-                      colonizeRace[p.id] || defaultRace,
-                      setColonizeRace,
+
+              {expanded && (
+                <>
+                  <div className="planet-panel-item__details">
+                    <span>Sector {p.sectorId}</span>
+                    <span>Level {p.upgradeLevel}</span>
+                    <span>{p.colonists.toLocaleString()} colonists</span>
+                    <span style={{ color: happinessColor }}>
+                      {p.happinessTier} ({Math.round(p.happiness)})
+                    </span>
+                    {bestRace && (
+                      <span style={{ color: "var(--cyan)" }}>
+                        Best: {RACE_LABELS[bestRace.race] || bestRace.race} (
+                        {Math.round(bestRace.multiplier * 100)}%)
+                      </span>
                     )}
+                  </div>
+                  <div className="planet-panel-item__stocks">
+                    <span title="Cyrillium">Cyr: {p.cyrilliumStock}</span>
+                    <span title="Food" style={{ color: foodColor }}>
+                      Food: {p.foodStock} (
+                      {p.foodConsumption > 0
+                        ? `-${p.foodConsumption}/tick`
+                        : "no consumption"}
+                      )
+                    </span>
+                    <span title="Tech">Tech: {p.techStock}</span>
+                  </div>
+                  <div className="planet-panel-item__production">
+                    Production: Cyr={p.production.cyrillium} Tech=
+                    {p.production.tech}
+                  </div>
+                  {p.racePopulations && p.racePopulations.length > 0 && (
+                    <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>
+                      Pop:{" "}
+                      {p.racePopulations
+                        .map(
+                          (rp) =>
+                            `${RACE_LABELS[rp.race] || rp.race}:${rp.count.toLocaleString()}`,
+                        )
+                        .join(", ")}
+                    </div>
+                  )}
+                  <div className="planet-actions">
                     <button
-                      className="btn-sm"
-                      disabled={busy === p.id + "-colonize"}
-                      onClick={() => handleColonize(p.id)}
-                      style={{
-                        color: "var(--cyan)",
-                        borderColor: "var(--cyan)",
-                      }}
+                      className="btn-sm btn-buy"
+                      disabled={busy === p.id + "-collect"}
+                      onClick={() => handleCollect(p.id)}
                     >
-                      {busy === p.id + "-colonize" ? "..." : "COLONIZE"}
+                      {busy === p.id + "-collect" ? "..." : "COLLECT"}
                     </button>
-                  </span>
-                )}
-                {inSector &&
-                  (landedAtPlanetId === p.id || hasTransporter) &&
-                  hasShipFood &&
-                  p.planetClass !== "S" && (
-                    <span className="planet-colonize-group">
-                      <input
-                        type="number"
-                        className="qty-input"
-                        min={1}
-                        value={depositFoodQty[p.id] || 10}
-                        onChange={(e) =>
-                          setDepositFoodQty((prev) => ({
-                            ...prev,
-                            [p.id]: Math.max(1, parseInt(e.target.value) || 1),
-                          }))
-                        }
-                        style={{ width: "48px" }}
-                      />
+                    <button
+                      className="btn-sm btn-primary"
+                      disabled={busy === p.id + "-upgrade"}
+                      onClick={() => handleUpgrade(p.id)}
+                    >
+                      {busy === p.id + "-upgrade" ? "..." : "UPGRADE"}
+                    </button>
+                    {!inSector && onWarpTo && (
                       <button
                         className="btn-sm"
-                        disabled={busy === p.id + "-depositfood"}
-                        onClick={() => handleDepositFood(p.id)}
+                        onClick={() => onWarpTo(p.sectorId)}
+                        style={{
+                          color: "var(--magenta)",
+                          borderColor: "var(--magenta)",
+                        }}
+                      >
+                        WARP
+                      </button>
+                    )}
+                    {inSector && landedAtPlanetId === p.id && onLiftoff && (
+                      <button
+                        className="btn-sm"
+                        onClick={() => onLiftoff()}
+                        style={{
+                          color: "var(--yellow)",
+                          borderColor: "var(--yellow)",
+                        }}
+                      >
+                        LIFTOFF
+                      </button>
+                    )}
+                    {inSector && landedAtPlanetId !== p.id && onLand && (
+                      <button
+                        className="btn-sm"
+                        onClick={() => onLand(p.id)}
                         style={{
                           color: "var(--green)",
                           borderColor: "var(--green)",
                         }}
                       >
-                        {busy === p.id + "-depositfood"
-                          ? "..."
-                          : "DEPOSIT FOOD"}
+                        LAND
                       </button>
-                    </span>
-                  )}
-                {inSector &&
-                  p.colonists > 0 &&
-                  (landedAtPlanetId === p.id || hasTransporter) && (
-                    <span className="planet-colonize-group">
-                      <input
-                        type="number"
-                        className="qty-input"
-                        min={1}
-                        value={collectColonistQty[p.id] || 10}
-                        onChange={(e) =>
-                          setCollectColonistQty((prev) => ({
-                            ...prev,
-                            [p.id]: Math.max(1, parseInt(e.target.value) || 1),
-                          }))
-                        }
-                        style={{ width: "48px" }}
-                      />
-                      {raceSelect(
-                        p.id,
-                        collectColonistRace[p.id] || defaultRace,
-                        setCollectColonistRace,
+                    )}
+                    {inSector &&
+                      (landedAtPlanetId === p.id || hasTransporter) && (
+                        <span className="planet-colonize-group">
+                          <input
+                            type="number"
+                            className="qty-input"
+                            min={1}
+                            value={colonizeQty[p.id] || 10}
+                            onChange={(e) =>
+                              setColonizeQty((prev) => ({
+                                ...prev,
+                                [p.id]: Math.max(
+                                  1,
+                                  parseInt(e.target.value) || 1,
+                                ),
+                              }))
+                            }
+                            style={{ width: "48px" }}
+                          />
+                          {raceSelect(
+                            p.id,
+                            colonizeRace[p.id] || defaultRace,
+                            setColonizeRace,
+                          )}
+                          <button
+                            className="btn-sm"
+                            disabled={busy === p.id + "-colonize"}
+                            onClick={() => handleColonize(p.id)}
+                            style={{
+                              color: "var(--cyan)",
+                              borderColor: "var(--cyan)",
+                            }}
+                          >
+                            {busy === p.id + "-colonize" ? "..." : "COLONIZE"}
+                          </button>
+                        </span>
                       )}
-                      <button
-                        className="btn-sm"
-                        disabled={busy === p.id + "-collectcol"}
-                        onClick={() => handleCollectColonists(p.id)}
-                        style={{
-                          color: "var(--orange)",
-                          borderColor: "var(--orange)",
-                        }}
-                      >
-                        {busy === p.id + "-collectcol"
-                          ? "..."
-                          : "WITHDRAW COLONISTS"}
-                      </button>
-                    </span>
-                  )}
-                {inSector &&
-                  p.planetClass === "S" &&
-                  (landedAtPlanetId === p.id || hasTransporter) &&
-                  colonistsByRace &&
-                  colonistsByRace.some((r) => r.count > 0) && (
-                    <span className="planet-colonize-group">
-                      <input
-                        type="number"
-                        className="qty-input"
-                        min={1}
-                        value={depositColonistQty[p.id] || 10}
-                        onChange={(e) =>
-                          setDepositColonistQty((prev) => ({
-                            ...prev,
-                            [p.id]: Math.max(1, parseInt(e.target.value) || 1),
-                          }))
-                        }
-                        style={{ width: "48px" }}
-                      />
-                      {raceSelect(
-                        p.id,
-                        depositColonistRace[p.id] || defaultRace,
-                        setDepositColonistRace,
+                    {inSector &&
+                      (landedAtPlanetId === p.id || hasTransporter) &&
+                      hasShipFood &&
+                      p.planetClass !== "S" && (
+                        <span className="planet-colonize-group">
+                          <input
+                            type="number"
+                            className="qty-input"
+                            min={1}
+                            value={depositFoodQty[p.id] || 10}
+                            onChange={(e) =>
+                              setDepositFoodQty((prev) => ({
+                                ...prev,
+                                [p.id]: Math.max(
+                                  1,
+                                  parseInt(e.target.value) || 1,
+                                ),
+                              }))
+                            }
+                            style={{ width: "48px" }}
+                          />
+                          <button
+                            className="btn-sm"
+                            disabled={busy === p.id + "-depositfood"}
+                            onClick={() => handleDepositFood(p.id)}
+                            style={{
+                              color: "var(--green)",
+                              borderColor: "var(--green)",
+                            }}
+                          >
+                            {busy === p.id + "-depositfood"
+                              ? "..."
+                              : "DEPOSIT FOOD"}
+                          </button>
+                        </span>
                       )}
-                      <button
-                        className="btn-sm"
-                        disabled={busy === p.id + "-depositcol"}
-                        onClick={() => handleDepositColonists(p.id)}
-                        style={{
-                          color: "var(--cyan)",
-                          borderColor: "var(--cyan)",
-                        }}
-                      >
-                        {busy === p.id + "-depositcol"
-                          ? "..."
-                          : "DEPOSIT COLONISTS"}
-                      </button>
-                    </span>
-                  )}
-              </div>
-              {expanded && planetDetail && (
-                <div className="planet-detail-expanded">
-                  {planetDetail.refineryQueue?.length > 0 && (
-                    <div className="planet-refinery">
-                      <span className="panel-subheader">Refinery Queue</span>
-                      {planetDetail.refineryQueue.map((q: any) => (
-                        <div key={q.id} className="refinery-item">
-                          <span>
-                            {q.recipeName || q.recipeId} — {q.status}
+                    {inSector &&
+                      p.colonists > 0 &&
+                      (landedAtPlanetId === p.id || hasTransporter) && (
+                        <span className="planet-colonize-group">
+                          <input
+                            type="number"
+                            className="qty-input"
+                            min={1}
+                            value={collectColonistQty[p.id] || 10}
+                            onChange={(e) =>
+                              setCollectColonistQty((prev) => ({
+                                ...prev,
+                                [p.id]: Math.max(
+                                  1,
+                                  parseInt(e.target.value) || 1,
+                                ),
+                              }))
+                            }
+                            style={{ width: "48px" }}
+                          />
+                          {raceSelect(
+                            p.id,
+                            collectColonistRace[p.id] || defaultRace,
+                            setCollectColonistRace,
+                          )}
+                          <button
+                            className="btn-sm"
+                            disabled={busy === p.id + "-collectcol"}
+                            onClick={() => handleCollectColonists(p.id)}
+                            style={{
+                              color: "var(--orange)",
+                              borderColor: "var(--orange)",
+                            }}
+                          >
+                            {busy === p.id + "-collectcol"
+                              ? "..."
+                              : "WITHDRAW COLONISTS"}
+                          </button>
+                        </span>
+                      )}
+                    {inSector &&
+                      p.planetClass === "S" &&
+                      (landedAtPlanetId === p.id || hasTransporter) &&
+                      colonistsByRace &&
+                      colonistsByRace.some((r) => r.count > 0) && (
+                        <span className="planet-colonize-group">
+                          <input
+                            type="number"
+                            className="qty-input"
+                            min={1}
+                            value={depositColonistQty[p.id] || 10}
+                            onChange={(e) =>
+                              setDepositColonistQty((prev) => ({
+                                ...prev,
+                                [p.id]: Math.max(
+                                  1,
+                                  parseInt(e.target.value) || 1,
+                                ),
+                              }))
+                            }
+                            style={{ width: "48px" }}
+                          />
+                          {raceSelect(
+                            p.id,
+                            depositColonistRace[p.id] || defaultRace,
+                            setDepositColonistRace,
+                          )}
+                          <button
+                            className="btn-sm"
+                            disabled={busy === p.id + "-depositcol"}
+                            onClick={() => handleDepositColonists(p.id)}
+                            style={{
+                              color: "var(--cyan)",
+                              borderColor: "var(--cyan)",
+                            }}
+                          >
+                            {busy === p.id + "-depositcol"
+                              ? "..."
+                              : "DEPOSIT COLONISTS"}
+                          </button>
+                        </span>
+                      )}
+                  </div>
+
+                  {planetDetail && (
+                    <div className="planet-detail-expanded">
+                      {planetDetail.refineryQueue?.length > 0 && (
+                        <div className="planet-refinery">
+                          <span className="panel-subheader">
+                            Refinery Queue
                           </span>
-                          {q.status === "ready" && (
+                          {planetDetail.refineryQueue.map((q: any) => (
+                            <div key={q.id} className="refinery-item">
+                              <span>
+                                {q.recipeName || q.recipeId} — {q.status}
+                              </span>
+                              {q.status === "ready" && (
+                                <button
+                                  className="btn-sm btn-buy"
+                                  onClick={() => {
+                                    collectRefinery(q.id).then(() => {
+                                      refresh();
+                                      onAction?.();
+                                    });
+                                  }}
+                                >
+                                  COLLECT
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {planetDetail.uniqueResources?.length > 0 && (
+                        <div className="planet-unique">
+                          <span className="panel-subheader">
+                            Unique Resources
+                          </span>
+                          {planetDetail.uniqueResources.map((r: any) => (
+                            <div
+                              key={r.id || r.name}
+                              className="text-muted"
+                              style={{ fontSize: "11px" }}
+                            >
+                              {r.name}: {r.quantity}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {hasNamingAuthority && (
+                        <div style={{ marginTop: 6 }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: 4,
+                              alignItems: "center",
+                            }}
+                          >
+                            <input
+                              type="text"
+                              value={renameInput[p.id] || ""}
+                              onChange={(e) =>
+                                setRenameInput((prev) => ({
+                                  ...prev,
+                                  [p.id]: e.target.value,
+                                }))
+                              }
+                              placeholder="New planet name"
+                              maxLength={32}
+                              style={{
+                                background: "#111",
+                                border: "1px solid #333",
+                                color: "#ccc",
+                                padding: "2px 6px",
+                                fontSize: 11,
+                                flex: 1,
+                              }}
+                            />
                             <button
                               className="btn-sm btn-buy"
-                              onClick={() => {
-                                collectRefinery(q.id).then(() => {
-                                  refresh();
-                                  onAction?.();
-                                });
-                              }}
+                              onClick={() => handleRename(p.id)}
+                              disabled={
+                                busy === p.id + "-rename" ||
+                                !renameInput[p.id]?.trim()
+                              }
                             >
-                              COLLECT
+                              {busy === p.id + "-rename" ? "..." : "RENAME"}
                             </button>
-                          )}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                  {planetDetail.uniqueResources?.length > 0 && (
-                    <div className="planet-unique">
-                      <span className="panel-subheader">Unique Resources</span>
-                      {planetDetail.uniqueResources.map((r: any) => (
+                      )}
+                      <div className="planet-combat-section">
                         <div
-                          key={r.id || r.name}
-                          className="text-muted"
-                          style={{ fontSize: "11px" }}
-                        >
-                          {r.name}: {r.quantity}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {hasNamingAuthority && (
-                    <div style={{ marginTop: 6 }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 4,
-                          alignItems: "center",
-                        }}
-                      >
-                        <input
-                          type="text"
-                          value={renameInput[p.id] || ""}
-                          onChange={(e) =>
-                            setRenameInput((prev) => ({
-                              ...prev,
-                              [p.id]: e.target.value,
-                            }))
-                          }
-                          placeholder="New planet name"
-                          maxLength={32}
                           style={{
-                            background: "#111",
-                            border: "1px solid #333",
-                            color: "#ccc",
-                            padding: "2px 6px",
-                            fontSize: 11,
-                            flex: 1,
+                            fontSize: 10,
+                            color: "var(--orange)",
+                            textTransform: "uppercase",
+                            letterSpacing: 1,
+                            marginBottom: 6,
                           }}
-                        />
-                        <button
-                          className="btn-sm btn-buy"
-                          onClick={() => handleRename(p.id)}
-                          disabled={
-                            busy === p.id + "-rename" ||
-                            !renameInput[p.id]?.trim()
-                          }
                         >
-                          {busy === p.id + "-rename" ? "..." : "RENAME"}
-                        </button>
+                          Fortify Defenses
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 6,
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <select
+                            value={fortifyType[p.id] || "shield"}
+                            onChange={(e) =>
+                              setFortifyType((prev) => ({
+                                ...prev,
+                                [p.id]: e.target.value,
+                              }))
+                            }
+                            style={{
+                              background: "#111",
+                              border: "1px solid #333",
+                              color: "#ccc",
+                              padding: "2px 4px",
+                              fontSize: 10,
+                              width: 80,
+                            }}
+                          >
+                            <option value="shield">Shield</option>
+                            <option value="cannon">Cannon</option>
+                            <option value="drone">Drone</option>
+                          </select>
+                          <input
+                            type="number"
+                            className="qty-input"
+                            min={1}
+                            value={fortifyAmt[p.id] || 1}
+                            onChange={(e) =>
+                              setFortifyAmt((prev) => ({
+                                ...prev,
+                                [p.id]: Math.max(
+                                  1,
+                                  parseInt(e.target.value) || 1,
+                                ),
+                              }))
+                            }
+                            style={{ width: "48px" }}
+                          />
+                          <button
+                            className="btn-sm"
+                            disabled={busy === p.id + "-fortify"}
+                            onClick={() => handleFortify(p.id)}
+                            style={{
+                              color: "var(--orange)",
+                              borderColor: "var(--orange)",
+                            }}
+                          >
+                            {busy === p.id + "-fortify" ? "..." : "FORTIFY"}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
-                  <div className="planet-combat-section">
-                    <div
-                      style={{
-                        fontSize: 10,
-                        color: "var(--orange)",
-                        textTransform: "uppercase",
-                        letterSpacing: 1,
-                        marginBottom: 6,
-                      }}
-                    >
-                      Fortify Defenses
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 6,
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <select
-                        value={fortifyType[p.id] || "shield"}
-                        onChange={(e) =>
-                          setFortifyType((prev) => ({
-                            ...prev,
-                            [p.id]: e.target.value,
-                          }))
-                        }
-                        style={{
-                          background: "#111",
-                          border: "1px solid #333",
-                          color: "#ccc",
-                          padding: "2px 4px",
-                          fontSize: 10,
-                          width: 80,
-                        }}
-                      >
-                        <option value="shield">Shield</option>
-                        <option value="cannon">Cannon</option>
-                        <option value="drone">Drone</option>
-                      </select>
-                      <input
-                        type="number"
-                        className="qty-input"
-                        min={1}
-                        value={fortifyAmt[p.id] || 1}
-                        onChange={(e) =>
-                          setFortifyAmt((prev) => ({
-                            ...prev,
-                            [p.id]: Math.max(1, parseInt(e.target.value) || 1),
-                          }))
-                        }
-                        style={{ width: "48px" }}
-                      />
-                      <button
-                        className="btn-sm"
-                        disabled={busy === p.id + "-fortify"}
-                        onClick={() => handleFortify(p.id)}
-                        style={{
-                          color: "var(--orange)",
-                          borderColor: "var(--orange)",
-                        }}
-                      >
-                        {busy === p.id + "-fortify" ? "..." : "FORTIFY"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                </>
               )}
             </div>
           );

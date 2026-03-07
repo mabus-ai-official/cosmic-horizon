@@ -17,6 +17,7 @@ import CommsGroupPanel from "../components/CommsGroupPanel";
 import SyndicateGroupPanel from "../components/SyndicateGroupPanel";
 import WalletPanel from "../components/WalletPanel";
 import ActionsPanel from "../components/ActionsPanel";
+import NotesPanel from "../components/NotesPanel";
 import ProfilePanel from "../components/ProfilePanel";
 import TutorialOverlay from "../components/TutorialOverlay";
 import IntroSequence, {
@@ -679,6 +680,8 @@ export default function Game({ onLogout }: GameProps) {
             bare
           />
         );
+      case "notes":
+        return <NotesPanel refreshKey={refreshKey} bare />;
       case "profile":
         return <ProfilePanel refreshKey={refreshKey} bare />;
     }

@@ -25,25 +25,16 @@ interface StepGuide {
 }
 
 const STEPS: StepGuide[] = [
-  // Step 0 — starting state
+  // tutorialStep=0: server expects "look" action to advance to step 1
   {
-    title: "SURVEY YOUR SECTOR",
-    desc: "The HELM panel shows your current sector. Click the SCAN button to survey what's around you.",
-    hint: "Click SCAN in the Helm panel",
-    target: "[data-tutorial='scan-btn']",
+    title: "LOOK AROUND",
+    desc: "Click LOOK to survey your current sector and see what's here.",
+    hint: "Click LOOK in the Helm panel",
+    target: "[data-tutorial='look-btn']",
     arrow: "left",
     autoPanel: "nav",
   },
-  // Step 1 — look
-  {
-    title: "SURVEY YOUR SECTOR",
-    desc: "The HELM panel shows your current sector. Click the SCAN button to survey what's around you.",
-    hint: "Click SCAN in the Helm panel",
-    target: "[data-tutorial='scan-btn']",
-    arrow: "left",
-    autoPanel: "nav",
-  },
-  // Step 2 — check status
+  // tutorialStep=1: server expects "status" action to advance to step 2
   {
     title: "CHECK YOUR STATUS",
     desc: "Click your PILOT profile to see your ship stats, credits, and energy level.",
@@ -52,7 +43,7 @@ const STEPS: StepGuide[] = [
     arrow: "right",
     autoPanel: "profile",
   },
-  // Step 3 — move to sector
+  // tutorialStep=2: server expects "move" action to advance to step 3
   {
     title: "FLY TO A NEW SECTOR",
     desc: "See the adjacent sectors in your Helm? Click on sector 90002 to fly there. That's where the Training Depot is.",
@@ -61,16 +52,16 @@ const STEPS: StepGuide[] = [
     arrow: "left",
     autoPanel: "nav",
   },
-  // Step 4 — scan
+  // tutorialStep=3: server expects "scan" action to advance to step 4
   {
     title: "SCAN THE AREA",
-    desc: "Open the SCANNER panel to scan nearby sectors and discover what's out there.",
+    desc: "Open the SCANNER panel to detect what's in nearby sectors before you fly there.",
     hint: "Click the SCANNER icon, then click SCAN",
     target: "[data-tutorial='panel-explore']",
     arrow: "right",
     autoPanel: "explore",
   },
-  // Step 5 — explore further (2 moves)
+  // tutorialStep=4: server expects 2 "move" actions to advance to step 5
   {
     title: "EXPLORE FURTHER",
     desc: "Keep flying! Navigate through sectors 90003 and 90004. Click adjacent sectors in the Helm to move.",
@@ -79,16 +70,16 @@ const STEPS: StepGuide[] = [
     arrow: "left",
     autoPanel: "nav",
   },
-  // Step 6 — dock
+  // tutorialStep=5: server expects "dock" action to advance to step 6
   {
     title: "DOCK AT THE OUTPOST",
-    desc: "You should be near sector 90002 with the Training Depot. Fly there and click DOCK to enter the outpost.",
+    desc: "Head to sector 90002 where the Training Depot is. Click DOCK to enter the outpost and access trading.",
     hint: "Click DOCK when at an outpost",
     target: "[data-tutorial='dock-btn']",
     arrow: "left",
     autoPanel: "nav",
   },
-  // Step 7 — buy
+  // tutorialStep=6: server expects "buy" action to advance to step 7
   {
     title: "BUY COMMODITIES",
     desc: "You're docked! Open the MARKET panel to see what's for sale. Buy some Cyrillium to trade later.",
@@ -97,7 +88,7 @@ const STEPS: StepGuide[] = [
     arrow: "right",
     autoPanel: "trade",
   },
-  // Step 8 — sell
+  // tutorialStep=7: server expects "sell" action to advance to step 8
   {
     title: "SELL FOR PROFIT",
     desc: "Undock and fly to sector 90004 (Frontier Post). Dock there and sell your Cyrillium for a profit!",
@@ -105,7 +96,7 @@ const STEPS: StepGuide[] = [
     target: "[data-tutorial='panel-trade']",
     arrow: "right",
   },
-  // Step 9 — discover planet
+  // tutorialStep=8: server expects "move" action (to 90005) to advance to step 9
   {
     title: "FIND A PLANET",
     desc: "Fly to sector 90005. There's a planet called Nova Prime waiting to be discovered!",
@@ -114,7 +105,7 @@ const STEPS: StepGuide[] = [
     arrow: "left",
     autoPanel: "nav",
   },
-  // Step 10 — land
+  // tutorialStep=9: server expects "land" action to advance to step 10
   {
     title: "LAND ON THE PLANET",
     desc: "Open the PLANETS panel and click LAND to touch down on Nova Prime.",
@@ -123,7 +114,7 @@ const STEPS: StepGuide[] = [
     arrow: "right",
     autoPanel: "planets",
   },
-  // Step 11 — claim
+  // tutorialStep=10: server expects "claim" action to advance to step 11
   {
     title: "CLAIM YOUR PLANET",
     desc: "Now claim this planet as your own! Click CLAIM in the Planets panel.",
@@ -132,7 +123,7 @@ const STEPS: StepGuide[] = [
     arrow: "right",
     autoPanel: "planets",
   },
-  // Step 12 — liftoff
+  // tutorialStep=11: server expects "liftoff" action to advance to step 12
   {
     title: "RETURN TO SPACE",
     desc: "Liftoff from the planet surface. Click LIFTOFF in the Helm panel to return to orbit.",
@@ -141,7 +132,7 @@ const STEPS: StepGuide[] = [
     arrow: "left",
     autoPanel: "nav",
   },
-  // Step 13 — map
+  // tutorialStep=12: server expects "map" action to advance to step 13
   {
     title: "VIEW THE GALAXY MAP",
     desc: "Look at the 3D galaxy map above. This shows all the sectors you've explored. Click sectors to fly to them!",
@@ -149,7 +140,7 @@ const STEPS: StepGuide[] = [
     target: ".game-map-area",
     arrow: "bottom",
   },
-  // Step 14 — help
+  // tutorialStep=13: server expects "help" action to advance to step 14
   {
     title: "OPEN THE DATABANK",
     desc: "The DATABANK has all available commands and game info. Click it in the sidebar — you can always come back here.",
@@ -158,7 +149,7 @@ const STEPS: StepGuide[] = [
     arrow: "right",
     autoPanel: "actions",
   },
-  // Step 15 — complete
+  // tutorialStep=14: auto-complete
   {
     title: "TRAINING COMPLETE!",
     desc: "You're ready for the frontier, Commander. The real galaxy awaits.",

@@ -63,6 +63,7 @@ export default function MapPanel({
   const [warpGates, setWarpGates] = useState<WarpGate[]>([]);
   const [warpTarget, setWarpTarget] = useState("");
   const [hoveredPlanet, setHoveredPlanet] = useState<string | null>(null);
+  const [planetsExpanded, setPlanetsExpanded] = useState(false);
   const exploredSet = exploredSectorIds ? new Set(exploredSectorIds) : null;
   const [resourceEvents, setResourceEvents] = useState<ResourceEvent[]>([]);
 
@@ -356,46 +357,59 @@ export default function MapPanel({
 
       {sector.planets.length > 0 && (
         <>
-          <div className="panel-subheader">
+          <div
+            className="panel-subheader"
+            style={{ cursor: "pointer", userSelect: "none" }}
+            onClick={() => setPlanetsExpanded((v) => !v)}
+          >
+            <span style={{ color: "var(--cyan)", marginRight: 4 }}>
+              {planetsExpanded ? "[-]" : "[+]"}
+            </span>
             Planets ({sector.planets.length})
           </div>
-          {sector.planets.map((p) => {
-            const typeInfo = getPlanetTypeInfo(p.planetClass);
-            return (
-              <div
-                key={p.id}
-                className="panel-row map-planet-row"
-                onMouseEnter={() => setHoveredPlanet(p.id)}
-                onMouseLeave={() => setHoveredPlanet(null)}
-              >
-                <PixelSprite spriteKey={`planet_${p.planetClass}`} size={16} />
-                <span>
-                  {p.name} [{p.planetClass}]
-                  {p.ownerId
-                    ? " (claimed)"
-                    : p.planetClass === "S"
-                      ? " [seed world]"
-                      : " (unclaimed)"}
-                </span>
-                {hoveredPlanet === p.id && typeInfo && (
-                  <div className="planet-tooltip">
-                    <div className="planet-tooltip__name">{typeInfo.name}</div>
-                    <div className="planet-tooltip__row">
-                      {typeInfo.description}
-                    </div>
-                    <div className="planet-tooltip__row">
-                      Production: <span>{typeInfo.production}</span>
-                    </div>
-                    {typeInfo.uniqueResource && (
-                      <div className="planet-tooltip__row">
-                        Unique: <span>{typeInfo.uniqueResource}</span>
+          {planetsExpanded &&
+            sector.planets.map((p) => {
+              const typeInfo = getPlanetTypeInfo(p.planetClass);
+              return (
+                <div
+                  key={p.id}
+                  className="panel-row map-planet-row"
+                  onMouseEnter={() => setHoveredPlanet(p.id)}
+                  onMouseLeave={() => setHoveredPlanet(null)}
+                >
+                  <PixelSprite
+                    spriteKey={`planet_${p.planetClass}`}
+                    size={16}
+                  />
+                  <span>
+                    {p.name} [{p.planetClass}]
+                    {p.ownerId
+                      ? " (claimed)"
+                      : p.planetClass === "S"
+                        ? " [seed world]"
+                        : " (unclaimed)"}
+                  </span>
+                  {hoveredPlanet === p.id && typeInfo && (
+                    <div className="planet-tooltip">
+                      <div className="planet-tooltip__name">
+                        {typeInfo.name}
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                      <div className="planet-tooltip__row">
+                        {typeInfo.description}
+                      </div>
+                      <div className="planet-tooltip__row">
+                        Production: <span>{typeInfo.production}</span>
+                      </div>
+                      {typeInfo.uniqueResource && (
+                        <div className="planet-tooltip__row">
+                          Unique: <span>{typeInfo.uniqueResource}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
         </>
       )}
     </>

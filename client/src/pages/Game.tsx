@@ -888,13 +888,16 @@ export default function Game({ onLogout }: GameProps) {
               </div>
               {renderActivePanel()}
             </div>
-            <SceneViewport
-              actionScene={game.inlineScene}
-              ambientScene={ambientScene}
-              onActionComplete={game.dequeueScene}
-              sectorId={game.player?.currentSectorId}
-              shipType={game.player?.currentShip?.shipTypeId}
-            />
+            <div className="game-viewport-wrapper">
+              <div className="panel-area-header">VIEWPORT</div>
+              <SceneViewport
+                actionScene={game.inlineScene}
+                ambientScene={ambientScene}
+                onActionComplete={game.dequeueScene}
+                sectorId={game.player?.currentSectorId}
+                shipType={game.player?.currentShip?.shipTypeId}
+              />
+            </div>
           </div>
           <NotificationLog lines={game.lines} onClear={game.clearLines} />
         </div>

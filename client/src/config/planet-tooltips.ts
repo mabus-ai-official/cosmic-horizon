@@ -25,6 +25,18 @@ export const PLANET_TYPES: Record<string, PlanetTypeInfo> = {
     production: "Tech Components",
     uniqueResource: "Cryogenic Compounds",
   },
+  A: {
+    name: "Arctic",
+    description: "Frozen tundra world with extreme cold",
+    production: "Tech Components",
+    uniqueResource: "Cryogenic Compounds",
+  },
+  F: {
+    name: "Forest",
+    description: "Dense woodland world teeming with life",
+    production: "Food, Organic Compounds",
+    uniqueResource: "Biofiber",
+  },
   V: {
     name: "Volcanic",
     description: "Tectonically active with lava flows",

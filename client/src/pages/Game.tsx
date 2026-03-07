@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import StatusBar from "../components/StatusBar";
 import MapPanel from "../components/MapPanel";
+import AriaPanel from "../components/AriaPanel";
 import TradeTable from "../components/TradeTable";
 import TradeRoutesPanel from "../components/TradeRoutesPanel";
 import MallPanel from "../components/MallPanel";
@@ -499,6 +500,8 @@ export default function Game({ onLogout }: GameProps) {
             bare
           />
         );
+      case "aria":
+        return <AriaPanel bare />;
       case "explore":
         return (
           <ExplorePanel

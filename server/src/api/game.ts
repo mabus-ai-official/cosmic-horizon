@@ -33,6 +33,8 @@ import {
 } from "../engine/profile-stats";
 import { syncPlayer } from "../ws/sync";
 import { handleSectorChange } from "../ws/handlers";
+import { pickFlavor, outpostNpcRace } from "../config/flavor-text";
+import type { RaceId } from "../config/races";
 
 const router = Router();
 
@@ -1048,12 +1050,10 @@ router.post("/use-scanner", requireAuth, async (req, res) => {
       .first();
 
     if (!scannerItem) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "No Planetary Scanner Probe in inventory. Buy one at a Star Mall.",
-        });
+      return res.status(400).json({
+        error:
+          "No Planetary Scanner Probe in inventory. Buy one at a Star Mall.",
+      });
     }
 
     // Consume one scanner probe (mark event as read)
@@ -1206,6 +1206,9 @@ router.post("/dock", requireAuth, async (req, res) => {
       name: outpost.name,
       treasury: outpost.treasury,
       prices,
+      message: pickFlavor("dock", outpostNpcRace(outpost.id), {
+        name: outpost.name,
+      }),
     });
   } catch (err) {
     console.error("Dock error:", err);
@@ -1225,6 +1228,10 @@ router.post("/undock", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Not currently docked" });
     }
 
+    const undockOutpost = await db("outposts")
+      .where({ id: player.docked_at_outpost_id })
+      .first();
+
     await db("players").where({ id: player.id }).update({
       docked_at_outpost_id: null,
     });
@@ -1239,7 +1246,14 @@ router.post("/undock", requireAuth, async (req, res) => {
         req.headers["x-socket-id"] as string | undefined,
       );
 
-    res.json({ undocked: true });
+    res.json({
+      undocked: true,
+      message: undockOutpost
+        ? pickFlavor("undock", outpostNpcRace(undockOutpost.id), {
+            name: undockOutpost.name,
+          })
+        : undefined,
+    });
   } catch (err) {
     console.error("Undock error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -1480,6 +1494,7 @@ router.post("/land", requireAuth, async (req, res) => {
         req.headers["x-socket-id"] as string | undefined,
       );
 
+    const landRace = (player.race as RaceId) || "generic";
     res.json({
       landed: true,
       planetId: planet.id,
@@ -1488,6 +1503,7 @@ router.post("/land", requireAuth, async (req, res) => {
       className: planetType?.name || planet.planet_class,
       ownerId: planet.owner_id || null,
       upgradeLevel: planet.upgrade_level,
+      message: pickFlavor("land", landRace, { planet: planet.name }),
     });
   } catch (err) {
     console.error("Land error:", err);
@@ -1523,7 +1539,16 @@ router.post("/liftoff", requireAuth, async (req, res) => {
         req.headers["x-socket-id"] as string | undefined,
       );
 
-    res.json({ lifted: true });
+    const liftRace = (player.race as RaceId) || "generic";
+    const landedPlanet = await db("planets")
+      .where({ id: player.landed_at_planet_id })
+      .first();
+    res.json({
+      lifted: true,
+      message: landedPlanet
+        ? pickFlavor("liftoff", liftRace, { planet: landedPlanet.name })
+        : undefined,
+    });
   } catch (err) {
     console.error("Liftoff error:", err);
     res.status(500).json({ error: "Internal server error" });

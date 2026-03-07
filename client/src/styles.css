@@ -3286,6 +3286,10 @@ body {
 .log-line--trade {
   color: var(--purple);
 }
+.log-line--npc {
+  color: #56d4dd;
+  font-style: italic;
+}
 
 .log-prefix {
   font-weight: bold;
@@ -3313,6 +3317,9 @@ body {
 }
 .log-prefix--trade {
   color: var(--purple);
+}
+.log-prefix--npc {
+  color: #56d4dd;
 }
 
 /* === Sector Map Full Mode === */

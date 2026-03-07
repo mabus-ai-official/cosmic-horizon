@@ -26,7 +26,8 @@ interface CommandContext {
       | "warning"
       | "system"
       | "combat"
-      | "trade",
+      | "trade"
+      | "npc",
   ) => void;
   clearLines: () => void;
   player: any;
@@ -649,8 +650,9 @@ export function handleCommand(input: string, ctx: CommandContext): void {
       if (result === "ambiguous") break;
       api
         .claimPlanet(result.id)
-        .then(() => {
+        .then(({ data }) => {
           ctx.addLine(`Claimed ${result.name}!`, "success");
+          if (data.message) ctx.addLine(data.message, "npc");
           ctx.refreshSector();
         })
         .catch((err: any) =>
@@ -696,6 +698,7 @@ export function handleCommand(input: string, ctx: CommandContext): void {
             `Deposited ${data.deposited} colonists on ${result.name} (${data.planetColonists} total)`,
             "success",
           );
+          if (data.message) ctx.addLine(data.message, "npc");
           ctx.refreshStatus();
         })
         .catch((err: any) =>
@@ -1228,6 +1231,7 @@ export function handleCommand(input: string, ctx: CommandContext): void {
             `Purchased ${data.shipType}! Credits remaining: ${data.newCredits.toLocaleString()}`,
             "success",
           );
+          if (data.message) ctx.addLine(data.message, "npc");
           ctx.refreshStatus();
         })
         .catch((err: any) =>
@@ -1246,6 +1250,7 @@ export function handleCommand(input: string, ctx: CommandContext): void {
               : "Cloaking device disengaged",
             data.cloaked ? "success" : "info",
           );
+          if (data.message) ctx.addLine(data.message, "npc");
         })
         .catch((err: any) =>
           ctx.addLine(err.response?.data?.error || "Cloak failed", "error"),
@@ -1264,6 +1269,7 @@ export function handleCommand(input: string, ctx: CommandContext): void {
             `Jettisoned ${data.ejected} ${data.commodity} (${data.remaining} remaining)`,
             "warning",
           );
+          if (data.message) ctx.addLine(data.message, "npc");
           ctx.refreshStatus();
         })
         .catch((err: any) =>
@@ -1359,6 +1365,7 @@ export function handleCommand(input: string, ctx: CommandContext): void {
             );
           }
           ctx.addLine(`Credits: ${data.credits.toLocaleString()}`, "info");
+          if (data.message) ctx.addLine(data.message, "npc");
         })
         .catch((err: any) =>
           ctx.addLine(
@@ -1427,6 +1434,7 @@ export function handleCommand(input: string, ctx: CommandContext): void {
                 `Purchased ${buyData.name || buyData.item}! Credits: ${buyData.newCredits?.toLocaleString() ?? "N/A"}`,
                 "success",
               );
+              if (buyData.message) ctx.addLine(buyData.message, "npc");
               ctx.refreshStatus();
             })
             .catch((err: any) =>
@@ -1601,6 +1609,7 @@ export function handleCommand(input: string, ctx: CommandContext): void {
             "success",
           );
           if (data.note) ctx.addLine(data.note, "warning");
+          if (data.message) ctx.addLine(data.message, "npc");
           ctx.refreshStatus();
         })
         .catch((err: any) =>
@@ -1637,6 +1646,7 @@ export function handleCommand(input: string, ctx: CommandContext): void {
                 buildGarageScene(retData.shipTypeId ?? "scout", true),
               );
               ctx.addLine(`Retrieved ${retData.name} from garage`, "success");
+              if (retData.message) ctx.addLine(retData.message, "npc");
               ctx.refreshStatus();
             })
             .catch((err: any) =>
@@ -1751,6 +1761,7 @@ export function handleCommand(input: string, ctx: CommandContext): void {
                   `Salvaged ${salvData.shipType} for ${salvData.salvageValue.toLocaleString()} credits`,
                   "success",
                 );
+                if (salvData.message) ctx.addLine(salvData.message, "npc");
                 ctx.refreshStatus();
               })
               .catch((err: any) =>
@@ -1804,6 +1815,7 @@ export function handleCommand(input: string, ctx: CommandContext): void {
             buildCantinaScene(ctx.player?.currentShip?.shipTypeId ?? "scout"),
           );
           ctx.addLine("=== CANTINA ===", "system");
+          if (data.message) ctx.addLine(data.message, "npc");
           ctx.addLine(`"${data.rumor}"`, "info");
           ctx.addLine(
             `Intel available for ${data.intelCost} credits. Type "intel" to buy.`,
@@ -1895,6 +1907,7 @@ export function handleCommand(input: string, ctx: CommandContext): void {
             `Cost: ${data.cost} cr | Credits: ${data.newCredits.toLocaleString()}`,
             "trade",
           );
+          if (data.message) ctx.addLine(data.message, "npc");
         })
         .catch((err: any) =>
           ctx.addLine(err.response?.data?.error || "Intel failed", "error"),
@@ -1913,6 +1926,7 @@ export function handleCommand(input: string, ctx: CommandContext): void {
             `Refueled ${data.refueled} energy for ${data.cost} credits. Energy: ${data.newEnergy}`,
             "success",
           );
+          if (data.message) ctx.addLine(data.message, "npc");
           ctx.refreshStatus();
         })
         .catch((err: any) =>
@@ -2231,6 +2245,7 @@ export function handleCommand(input: string, ctx: CommandContext): void {
                 `Reward: ${accData.rewardCredits} cr${accData.expiresAt ? ` | Expires: ${new Date(accData.expiresAt).toLocaleTimeString()}` : ""}`,
                 "trade",
               );
+              if (accData.message) ctx.addLine(accData.message, "npc");
             })
             .catch((err: any) =>
               ctx.addLine(

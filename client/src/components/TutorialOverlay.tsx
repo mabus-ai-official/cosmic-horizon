@@ -5,9 +5,11 @@ interface TutorialOverlayProps {
   tutorialCompleted: boolean;
   onSkip: () => void;
   onSelectPanel?: (panelId: string) => void;
+  onAdvanceTutorial?: (action: string) => void;
+  activePanel?: string;
 }
 
-const TOTAL_STEPS = 15;
+const TOTAL_STEPS = 14;
 
 /** CSS selector to highlight, arrow direction, which panel to auto-open */
 interface StepGuide {
@@ -20,8 +22,8 @@ interface StepGuide {
   arrow?: "left" | "right" | "top" | "bottom";
   /** Panel to auto-select when this step is active */
   autoPanel?: string;
-  /** If true, pulse the notification log / command area */
-  pulseCommand?: boolean;
+  /** If set, auto-advance tutorial with this action when the target panel is opened */
+  advanceOnPanel?: { panel: string; action: string };
 }
 
 const STEPS: StepGuide[] = [
@@ -42,6 +44,7 @@ const STEPS: StepGuide[] = [
     target: "[data-tutorial='panel-profile']",
     arrow: "right",
     autoPanel: "profile",
+    advanceOnPanel: { panel: "profile", action: "status" },
   },
   // tutorialStep=2: server expects "move" action to advance to step 3
   {
@@ -60,6 +63,7 @@ const STEPS: StepGuide[] = [
     target: "[data-tutorial='panel-explore']",
     arrow: "right",
     autoPanel: "explore",
+    advanceOnPanel: { panel: "explore", action: "scan" },
   },
   // tutorialStep=4: server expects 2 "move" actions to advance to step 5
   {
@@ -139,6 +143,7 @@ const STEPS: StepGuide[] = [
     hint: "Check out the galaxy map",
     target: ".game-map-area",
     arrow: "bottom",
+    advanceOnPanel: { panel: "nav", action: "map" },
   },
   // tutorialStep=13: server expects "help" action to advance to step 14
   {
@@ -148,6 +153,7 @@ const STEPS: StepGuide[] = [
     target: "[data-tutorial='panel-actions']",
     arrow: "right",
     autoPanel: "actions",
+    advanceOnPanel: { panel: "actions", action: "help" },
   },
   // tutorialStep=14: auto-complete
   {
@@ -162,10 +168,13 @@ export default function TutorialOverlay({
   tutorialCompleted,
   onSkip,
   onSelectPanel,
+  onAdvanceTutorial,
+  activePanel,
 }: TutorialOverlayProps) {
   const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null);
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
   const animFrame = useRef(0);
+  const advancedRef = useRef<number>(-1);
 
   const step = STEPS[Math.min(tutorialStep, STEPS.length - 1)];
 
@@ -174,6 +183,21 @@ export default function TutorialOverlay({
     if (tutorialCompleted || !step.autoPanel || !onSelectPanel) return;
     onSelectPanel(step.autoPanel);
   }, [tutorialStep, tutorialCompleted]);
+
+  // Auto-advance when the correct panel is opened for panel-based steps
+  useEffect(() => {
+    if (tutorialCompleted || !step.advanceOnPanel || !onAdvanceTutorial) return;
+    if (!activePanel) return;
+    // Only advance once per step
+    if (advancedRef.current === tutorialStep) return;
+    if (activePanel === step.advanceOnPanel.panel) {
+      advancedRef.current = tutorialStep;
+      // Small delay so the panel renders first
+      setTimeout(() => {
+        onAdvanceTutorial(step.advanceOnPanel!.action);
+      }, 500);
+    }
+  }, [activePanel, tutorialStep, tutorialCompleted]);
 
   // Track target element position
   const updateSpotlight = useCallback(() => {
@@ -192,30 +216,63 @@ export default function TutorialOverlay({
     const rect = el.getBoundingClientRect();
     setSpotlightRect(rect);
 
-    // Position tooltip relative to spotlight
+    // Position tooltip relative to spotlight, clamped to viewport
     const arrow = step.arrow || "left";
     const style: React.CSSProperties = { position: "fixed" };
+    const pad = 12; // min distance from viewport edge
+    const tooltipW = 280;
+    const tooltipH = 120;
 
     if (arrow === "right") {
-      // Tooltip appears to the right of the element
-      style.left = rect.right + 16;
-      style.top = rect.top + rect.height / 2;
+      style.left = Math.min(
+        rect.right + 16,
+        window.innerWidth - tooltipW - pad,
+      );
+      style.top = Math.max(
+        pad,
+        Math.min(
+          rect.top + rect.height / 2,
+          window.innerHeight - tooltipH - pad,
+        ),
+      );
       style.transform = "translateY(-50%)";
     } else if (arrow === "left") {
-      // Tooltip appears to the left
-      style.right = window.innerWidth - rect.left + 16;
-      style.top = rect.top + rect.height / 2;
+      const leftPos = rect.left - 16 - tooltipW;
+      if (leftPos < pad) {
+        // Not enough room on left, flip to right
+        style.left = rect.right + 16;
+      } else {
+        style.left = leftPos;
+      }
+      style.top = Math.max(
+        pad,
+        Math.min(
+          rect.top + rect.height / 2,
+          window.innerHeight - tooltipH - pad,
+        ),
+      );
       style.transform = "translateY(-50%)";
     } else if (arrow === "bottom") {
-      // Tooltip below
-      style.left = rect.left + rect.width / 2;
-      style.top = rect.bottom + 16;
-      style.transform = "translateX(-50%)";
+      style.left = Math.max(
+        pad,
+        Math.min(
+          rect.left + rect.width / 2 - tooltipW / 2,
+          window.innerWidth - tooltipW - pad,
+        ),
+      );
+      style.top = Math.min(
+        rect.bottom + 16,
+        window.innerHeight - tooltipH - pad,
+      );
     } else {
-      // Tooltip above
-      style.left = rect.left + rect.width / 2;
-      style.bottom = window.innerHeight - rect.top + 16;
-      style.transform = "translateX(-50%)";
+      style.left = Math.max(
+        pad,
+        Math.min(
+          rect.left + rect.width / 2 - tooltipW / 2,
+          window.innerWidth - tooltipW - pad,
+        ),
+      );
+      style.bottom = Math.max(pad, window.innerHeight - rect.top + 16);
     }
 
     setTooltipStyle(style);

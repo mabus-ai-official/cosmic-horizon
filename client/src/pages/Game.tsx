@@ -881,6 +881,8 @@ export default function Game({ onLogout }: GameProps) {
         tutorialCompleted={game.player?.tutorialCompleted ?? true}
         onSkip={game.skipTutorial}
         onSelectPanel={(id) => selectPanel(id as any)}
+        onAdvanceTutorial={game.advanceTutorial}
+        activePanel={activePanel}
       />
       <StatusBar
         player={game.player}

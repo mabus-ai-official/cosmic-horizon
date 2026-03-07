@@ -2137,18 +2137,27 @@ body {
 
 /* === Planets Panel === */
 .planet-panel-item {
-  padding: 6px 0;
-  border-bottom: 1px solid var(--bg-tertiary);
+  padding: 10px;
+  margin-bottom: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: border-color 0.15s;
+}
+
+.planet-panel-item:hover {
+  border-color: var(--cyan);
 }
 
 .planet-panel-item:last-child {
-  border-bottom: none;
+  margin-bottom: 0;
 }
 
 .planet-panel-item__header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  margin-bottom: 6px;
 }
 
 .planet-panel-item__name {
@@ -2163,25 +2172,31 @@ body {
 }
 
 .planet-panel-item__details {
-  display: flex;
-  gap: 10px;
-  font-size: 0.846rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 4px 12px;
+  font-size: 0.8rem;
   color: var(--comment);
-  margin-top: 2px;
+  margin-top: 6px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
 }
 
 .planet-panel-item__stocks {
-  display: flex;
-  gap: 10px;
-  font-size: 0.846rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px 12px;
+  font-size: 0.8rem;
   color: var(--yellow);
-  margin-top: 2px;
+  margin-top: 6px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
 }
 
 .planet-panel-item__production {
   font-size: 0.769rem;
   color: var(--green);
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 /* === Sector Chat Panel === */
@@ -4685,24 +4700,33 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
   flex-wrap: wrap;
 }
 .planet-colonize-group {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 4px;
+  padding: 4px 0;
+  width: 100%;
 }
 .planet-detail-expanded {
-  margin-top: 6px;
-  padding-top: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
   border-top: 1px solid var(--border);
 }
 .planet-refinery {
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 .planet-unique {
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+}
+.planet-combat-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
 }
 
 /* === NPC Dialogue === */

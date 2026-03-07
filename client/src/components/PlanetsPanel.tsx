@@ -847,14 +847,14 @@ export default function PlanetsPanel({
                       </div>
                     </div>
                   )}
-                  <div style={{ marginTop: 6 }}>
+                  <div className="planet-combat-section">
                     <div
                       style={{
                         fontSize: 10,
                         color: "var(--orange)",
                         textTransform: "uppercase",
                         letterSpacing: 1,
-                        marginBottom: 4,
+                        marginBottom: 6,
                       }}
                     >
                       Fortify Defenses
@@ -862,7 +862,7 @@ export default function PlanetsPanel({
                     <div
                       style={{
                         display: "flex",
-                        gap: 4,
+                        gap: 6,
                         alignItems: "center",
                         flexWrap: "wrap",
                       }}
@@ -1220,98 +1220,102 @@ export default function PlanetsPanel({
         sectorPlanets.map((p) => {
           const classLabel = CLASS_LABELS[p.planetClass] || p.planetClass;
           const isLanded = landedAtPlanetId === p.id;
+          const isEnemy = p.ownerName && !p.owned;
+          const isUnclaimed = !p.owned && !p.ownerName && p.planetClass !== "S";
           return (
-            <div
-              key={p.id}
-              className="discovered-planet-item"
-              style={{
-                padding: "4px 0",
-                borderBottom: "1px solid var(--border)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <div>
-                  <span style={{ color: "var(--text-primary)" }}>{p.name}</span>{" "}
-                  <span
-                    style={{
-                      color: "var(--cyan)",
-                      position: "relative",
-                      cursor: "help",
-                    }}
-                    onMouseEnter={() => setHoveredPlanetId(p.id)}
-                    onMouseLeave={() => setHoveredPlanetId(null)}
-                  >
-                    [{p.planetClass}]
-                    {hoveredPlanetId === p.id &&
-                      (() => {
-                        const ti = getPlanetTypeInfo(p.planetClass);
-                        return ti ? (
-                          <div className="planet-tooltip">
-                            <div className="planet-tooltip__name">
-                              {ti.name}
-                            </div>
-                            <div className="planet-tooltip__row">
-                              {ti.description}
-                            </div>
-                            <div className="planet-tooltip__row">
-                              Production: <span>{ti.production}</span>
-                            </div>
-                            {ti.uniqueResource && (
-                              <div className="planet-tooltip__row">
-                                Unique: <span>{ti.uniqueResource}</span>
-                              </div>
-                            )}
+            <div key={p.id} className="planet-panel-item">
+              <div className="planet-panel-item__header">
+                <span className="planet-panel-item__name">{p.name}</span>
+                <span
+                  className="planet-panel-item__class"
+                  style={{ position: "relative", cursor: "help" }}
+                  onMouseEnter={() => setHoveredPlanetId(p.id)}
+                  onMouseLeave={() => setHoveredPlanetId(null)}
+                >
+                  [{p.planetClass}] {classLabel}
+                  {hoveredPlanetId === p.id &&
+                    (() => {
+                      const ti = getPlanetTypeInfo(p.planetClass);
+                      return ti ? (
+                        <div className="planet-tooltip">
+                          <div className="planet-tooltip__name">{ti.name}</div>
+                          <div className="planet-tooltip__row">
+                            {ti.description}
                           </div>
-                        ) : null;
-                      })()}
-                  </span>{" "}
-                  <span className="text-muted" style={{ fontSize: "11px" }}>
-                    {classLabel}
-                  </span>
-                </div>
-                <div style={{ display: "flex", gap: 4 }}>
-                  {!isLanded && onLand && (
-                    <button
-                      className="btn-sm btn-buy"
-                      onClick={() => onLand(p.id)}
-                    >
-                      LAND
-                    </button>
-                  )}
-                  {isLanded && onLiftoff && (
-                    <button
-                      className="btn-sm"
-                      onClick={onLiftoff}
-                      style={{
-                        borderColor: "var(--yellow)",
-                        color: "var(--yellow)",
-                      }}
-                    >
-                      LIFTOFF
-                    </button>
-                  )}
-                </div>
+                          <div className="planet-tooltip__row">
+                            Production: <span>{ti.production}</span>
+                          </div>
+                          {ti.uniqueResource && (
+                            <div className="planet-tooltip__row">
+                              Unique: <span>{ti.uniqueResource}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : null;
+                    })()}
+                </span>
               </div>
-              <div style={{ fontSize: "11px", color: "var(--text-secondary)" }}>
-                {p.owned
-                  ? `Owner: ${p.ownerName || "You"}`
-                  : p.planetClass === "S"
-                    ? "Seed World"
-                    : "Unclaimed"}{" "}
-                | Lv.{p.upgradeLevel} | {p.colonists} colonists
+              <div className="planet-panel-item__details">
+                <span>
+                  {p.owned
+                    ? `Owner: ${p.ownerName || "You"}`
+                    : p.planetClass === "S"
+                      ? "Seed World"
+                      : isEnemy
+                        ? `Owner: ${p.ownerName}`
+                        : "Unclaimed"}
+                </span>
+                <span>Level {p.upgradeLevel}</span>
+                <span>{p.colonists.toLocaleString()} colonists</span>
               </div>
-              {p.ownerName && !p.owned && (
-                <div style={{ marginTop: 4 }}>
+              <div className="planet-actions">
+                {!isLanded && onLand && (
+                  <button
+                    className="btn-sm btn-buy"
+                    onClick={() => onLand(p.id)}
+                  >
+                    LAND
+                  </button>
+                )}
+                {isLanded && onLiftoff && (
+                  <button
+                    className="btn-sm"
+                    onClick={onLiftoff}
+                    style={{
+                      borderColor: "var(--yellow)",
+                      color: "var(--yellow)",
+                    }}
+                  >
+                    LIFTOFF
+                  </button>
+                )}
+                {isUnclaimed && (
+                  <button
+                    className="btn-sm btn-buy"
+                    disabled={busy === p.id + "-claim"}
+                    onClick={() => handleClaim(p.id)}
+                  >
+                    {busy === p.id + "-claim" ? "..." : "CLAIM"}
+                  </button>
+                )}
+              </div>
+              {isEnemy && (
+                <div className="planet-combat-section">
+                  <div
+                    style={{
+                      fontSize: 10,
+                      color: "#f44",
+                      textTransform: "uppercase",
+                      letterSpacing: 1,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Hostile Planet — {p.ownerName}
+                  </div>
                   <div
                     style={{
                       display: "flex",
-                      gap: 4,
+                      gap: 6,
                       alignItems: "center",
                       flexWrap: "wrap",
                     }}
@@ -1325,7 +1329,7 @@ export default function PlanetsPanel({
                         borderColor: "var(--cyan)",
                       }}
                     >
-                      {busy === p.id + "-defenses" ? "..." : "SCAN"}
+                      {busy === p.id + "-defenses" ? "..." : "SCAN DEFENSES"}
                     </button>
                     <input
                       type="number"
@@ -1355,28 +1359,35 @@ export default function PlanetsPanel({
                   {defenseData[p.id] && (
                     <div
                       style={{
-                        fontSize: 10,
-                        color: "var(--orange)",
-                        marginTop: 4,
-                        padding: "4px 6px",
-                        background: "var(--bg-tertiary)",
-                        borderRadius: 3,
+                        fontSize: 11,
+                        marginTop: 6,
+                        padding: "6px 8px",
+                        background: "rgba(0,0,0,0.3)",
+                        borderRadius: 4,
+                        border: "1px solid var(--border)",
                       }}
                     >
-                      Shield: {defenseData[p.id].shieldEnergy ?? 0} | Cannon:{" "}
-                      {defenseData[p.id].cannonEnergy ?? 0} | Drones:{" "}
-                      {defenseData[p.id].droneCount ?? 0}
+                      <div style={{ color: "var(--orange)" }}>
+                        Shield: {defenseData[p.id].shieldEnergy ?? 0}
+                      </div>
+                      <div style={{ color: "var(--orange)" }}>
+                        Cannon: {defenseData[p.id].cannonEnergy ?? 0}
+                      </div>
+                      <div style={{ color: "var(--orange)" }}>
+                        Drones: {defenseData[p.id].droneCount ?? 0}
+                      </div>
                     </div>
                   )}
                   {combatResult && busy === null && (
                     <div
                       style={{
-                        fontSize: 10,
+                        fontSize: 11,
                         color: "var(--green)",
-                        marginTop: 4,
-                        padding: "4px 6px",
-                        background: "var(--bg-tertiary)",
-                        borderRadius: 3,
+                        marginTop: 6,
+                        padding: "6px 8px",
+                        background: "rgba(0,255,136,0.05)",
+                        borderRadius: 4,
+                        border: "1px solid rgba(0,255,136,0.2)",
                       }}
                     >
                       {combatResult}

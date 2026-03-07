@@ -178,6 +178,11 @@ export const getBountiesOnMe = () => api.get("/social/bounties/on-me");
 export const getCombatLog = () => api.get("/social/combat-log");
 
 export const getAlliances = () => api.get("/social/alliances");
+export const getPendingAlliances = () => api.get("/social/alliance/pending");
+export const acceptAlliance = (playerId: string) =>
+  api.post(`/social/alliance/${playerId}/accept`);
+export const rejectAlliance = (playerId: string) =>
+  api.post(`/social/alliance/${playerId}/reject`);
 export const toggleSyndicateAlliance = (syndicateId: string) =>
   api.post(`/social/syndicate/alliance/${syndicateId}`);
 
@@ -365,8 +370,35 @@ export const collectPlanetResources = (planetId: string) =>
 export const collectAllRefinery = (planetId: string) =>
   api.post("/crafting/collect-all", { planetId });
 
+// Planet Trades
+export const offerPlanetTrade = (data: {
+  recipientName: string;
+  tradeType: "resource" | "planet";
+  planetId?: string;
+  resourceType?: string;
+  quantity?: number;
+  transferPlanetId?: string;
+  price?: number;
+}) => api.post("/planet-trades/offer", data);
+export const getIncomingTrades = () => api.get("/planet-trades/incoming");
+export const getOutgoingTrades = () => api.get("/planet-trades/outgoing");
+export const acceptTrade = (offerId: string) =>
+  api.post(`/planet-trades/${offerId}/accept`);
+export const rejectTrade = (offerId: string) =>
+  api.post(`/planet-trades/${offerId}/reject`);
+export const cancelTrade = (offerId: string) =>
+  api.post(`/planet-trades/${offerId}/cancel`);
+
 // AI Assistant
 export const askAI = (question: string) => api.post("/ai/ask", { question });
+
+// Planet Combat
+export const bombardPlanet = (planetId: string, energyToExpend: number) =>
+  api.post("/planet-combat/bombard", { planetId, energyToExpend });
+export const fortifyPlanet = (planetId: string, type: string, amount: number) =>
+  api.post("/planet-combat/fortify", { planetId, type, amount });
+export const getPlanetDefenses = (planetId: string) =>
+  api.get(`/planet-combat/defenses/${planetId}`);
 
 // Rare Spawns
 export const getResourceEvents = () => api.get("/events/resource-events");

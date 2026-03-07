@@ -12,7 +12,7 @@ import {
 
 const router = Router();
 
-// Form or cancel alliance
+// Send alliance request (pending) or cancel existing alliance
 router.post("/alliance/:playerId", requireAuth, async (req, res) => {
   try {
     const player = await db("players")
@@ -39,32 +39,148 @@ router.post("/alliance/:playerId", requireAuth, async (req, res) => {
       .first();
 
     if (existing) {
+      // Cancel active alliance or withdraw pending request
       await db("alliances").where({ id: existing.id }).del();
       const io = req.app.get("io");
       if (io) {
-        notifyPlayer(io, targetId, "notification", {
-          message: `${player.username} cancelled their alliance with you`,
-        });
+        const msg =
+          existing.status === "pending"
+            ? `${player.username} withdrew their alliance request`
+            : `${player.username} cancelled their alliance with you`;
+        notifyPlayer(io, targetId, "notification", { message: msg });
       }
       return res.json({ action: "cancelled", allyId: targetId });
     }
 
+    // Create pending alliance request
     await db("alliances").insert({
       id: crypto.randomUUID(),
       player_a_id: player.id,
       player_b_id: targetId,
+      status: "pending",
+      initiated_by: player.id,
     });
 
     const io = req.app.get("io");
     if (io) {
       notifyPlayer(io, targetId, "notification", {
-        message: `${player.username} has formed an alliance with you!`,
+        message: `${player.username} sent you an alliance request!`,
+      });
+      notifyPlayer(io, targetId, "alliance:request", {
+        fromId: player.id,
+        fromName: player.username,
       });
     }
 
-    res.json({ action: "formed", allyId: targetId });
+    res.json({ action: "requested", allyId: targetId });
   } catch (err) {
     console.error("Alliance error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Accept pending alliance request
+router.post("/alliance/:playerId/accept", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.session.playerId as string;
+    const fromId = req.params.playerId as string;
+
+    const pending = await db("alliances")
+      .where(function () {
+        this.where({ player_a_id: fromId, player_b_id: playerId }).orWhere({
+          player_a_id: playerId,
+          player_b_id: fromId,
+        });
+      })
+      .where({ status: "pending", initiated_by: fromId })
+      .first();
+
+    if (!pending)
+      return res
+        .status(404)
+        .json({ error: "No pending request from this player" });
+
+    await db("alliances")
+      .where({ id: pending.id })
+      .update({ status: "active" });
+
+    const player = await db("players").where({ id: playerId }).first();
+    const io = req.app.get("io");
+    if (io && player) {
+      notifyPlayer(io, fromId, "notification", {
+        message: `${player.username} accepted your alliance request!`,
+      });
+    }
+
+    res.json({ action: "accepted", allyId: fromId });
+  } catch (err) {
+    console.error("Alliance accept error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Reject pending alliance request
+router.post("/alliance/:playerId/reject", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.session.playerId as string;
+    const fromId = req.params.playerId as string;
+
+    const pending = await db("alliances")
+      .where(function () {
+        this.where({ player_a_id: fromId, player_b_id: playerId }).orWhere({
+          player_a_id: playerId,
+          player_b_id: fromId,
+        });
+      })
+      .where({ status: "pending", initiated_by: fromId })
+      .first();
+
+    if (!pending)
+      return res
+        .status(404)
+        .json({ error: "No pending request from this player" });
+
+    await db("alliances").where({ id: pending.id }).del();
+
+    const player = await db("players").where({ id: playerId }).first();
+    const io = req.app.get("io");
+    if (io && player) {
+      notifyPlayer(io, fromId, "notification", {
+        message: `${player.username} declined your alliance request`,
+      });
+    }
+
+    res.json({ action: "rejected", allyId: fromId });
+  } catch (err) {
+    console.error("Alliance reject error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get pending alliance requests (incoming)
+router.get("/alliance/pending", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.session.playerId as string;
+
+    const pending = await db("alliances")
+      .where(function () {
+        this.where({ player_b_id: playerId }).orWhere({
+          player_a_id: playerId,
+        });
+      })
+      .where({ status: "pending" })
+      .whereNot({ initiated_by: playerId })
+      .join("players", "alliances.initiated_by", "players.id")
+      .select(
+        "alliances.id",
+        "alliances.initiated_by as fromId",
+        "players.username as fromName",
+        "alliances.created_at as sentAt",
+      );
+
+    res.json({ pendingRequests: pending });
+  } catch (err) {
+    console.error("Pending alliances error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -964,7 +1080,7 @@ router.get("/alliances", requireAuth, async (req, res) => {
       .first();
     if (!player) return res.status(404).json({ error: "Player not found" });
 
-    // Personal alliances
+    // Personal alliances (active only)
     const playerAlliances = await db("alliances")
       .where(function () {
         this.where({ player_a_id: player.id }).orWhere({
@@ -972,6 +1088,7 @@ router.get("/alliances", requireAuth, async (req, res) => {
         });
       })
       .whereNotNull("player_a_id")
+      .where({ status: "active" })
       .join("players as a", "alliances.player_a_id", "a.id")
       .join("players as b", "alliances.player_b_id", "b.id")
       .select(

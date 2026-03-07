@@ -760,11 +760,12 @@ export function useGameState() {
         );
         addLine(`Landed on ${data.name} [${data.className}]`, "success");
         if (data.message) addLine(data.message, "npc");
+        advanceTutorial("land");
       } catch (err: any) {
         addLine(err.response?.data?.error || "Landing failed", "error");
       }
     },
-    [addLine],
+    [addLine, advanceTutorial],
   );
 
   const doLiftoff = useCallback(async () => {
@@ -773,10 +774,11 @@ export function useGameState() {
       setPlayer((prev) => (prev ? { ...prev, landedAtPlanetId: null } : null));
       addLine("Lifted off from planet", "info");
       if (data.message) addLine(data.message, "npc");
+      advanceTutorial("liftoff");
     } catch (err: any) {
       addLine(err.response?.data?.error || "Liftoff failed", "error");
     }
-  }, [addLine]);
+  }, [addLine, advanceTutorial]);
 
   const doFlee = useCallback(async () => {
     try {

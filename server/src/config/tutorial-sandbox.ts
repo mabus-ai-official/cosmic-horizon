@@ -9,9 +9,16 @@ export interface TutorialOutpost {
   id: string;
   name: string;
   treasury: number;
-  cyrillium: { stock: number; capacity: number; mode: 'buy' | 'sell' | 'none' };
-  food: { stock: number; capacity: number; mode: 'buy' | 'sell' | 'none' };
-  tech: { stock: number; capacity: number; mode: 'buy' | 'sell' | 'none' };
+  cyrillium: { stock: number; capacity: number; mode: "buy" | "sell" | "none" };
+  food: { stock: number; capacity: number; mode: "buy" | "sell" | "none" };
+  tech: { stock: number; capacity: number; mode: "buy" | "sell" | "none" };
+}
+
+export interface TutorialPlanet {
+  id: string;
+  name: string;
+  planetClass: string;
+  ownerId: string | null;
 }
 
 export interface TutorialSector {
@@ -21,6 +28,7 @@ export interface TutorialSector {
   hasStarMall: boolean;
   adjacentSectors: number[];
   outpost: TutorialOutpost | null;
+  planets?: TutorialPlanet[];
 }
 
 export interface TutorialVirtualState {
@@ -35,12 +43,14 @@ export interface TutorialVirtualState {
   cargoHolds: number;
   maxCargoHolds: number;
   exploredSectors: number[];
+  landedAtPlanetId?: string | null;
+  claimedPlanetIds?: string[];
 }
 
 export const TUTORIAL_SECTORS: Record<number, TutorialSector> = {
   90001: {
     id: 90001,
-    type: 'protected',
+    type: "protected",
     regionId: 9000,
     hasStarMall: false,
     adjacentSectors: [90002],
@@ -48,22 +58,22 @@ export const TUTORIAL_SECTORS: Record<number, TutorialSector> = {
   },
   90002: {
     id: 90002,
-    type: 'standard',
+    type: "standard",
     regionId: 9000,
     hasStarMall: false,
     adjacentSectors: [90001, 90003],
     outpost: {
-      id: 'tutorial-outpost-depot',
-      name: 'Training Depot',
+      id: "tutorial-outpost-depot",
+      name: "Training Depot",
       treasury: 100000,
-      cyrillium: { stock: 500, capacity: 1000, mode: 'sell' },
-      food: { stock: 300, capacity: 1000, mode: 'sell' },
-      tech: { stock: 100, capacity: 1000, mode: 'sell' },
+      cyrillium: { stock: 500, capacity: 1000, mode: "sell" },
+      food: { stock: 300, capacity: 1000, mode: "sell" },
+      tech: { stock: 100, capacity: 1000, mode: "sell" },
     },
   },
   90003: {
     id: 90003,
-    type: 'standard',
+    type: "standard",
     regionId: 9000,
     hasStarMall: false,
     adjacentSectors: [90002, 90004],
@@ -71,18 +81,34 @@ export const TUTORIAL_SECTORS: Record<number, TutorialSector> = {
   },
   90004: {
     id: 90004,
-    type: 'standard',
+    type: "standard",
     regionId: 9000,
     hasStarMall: false,
-    adjacentSectors: [90003],
+    adjacentSectors: [90003, 90005],
     outpost: {
-      id: 'tutorial-outpost-frontier',
-      name: 'Frontier Post',
+      id: "tutorial-outpost-frontier",
+      name: "Frontier Post",
       treasury: 100000,
-      cyrillium: { stock: 50, capacity: 1000, mode: 'buy' },
-      food: { stock: 50, capacity: 1000, mode: 'buy' },
-      tech: { stock: 50, capacity: 1000, mode: 'buy' },
+      cyrillium: { stock: 50, capacity: 1000, mode: "buy" },
+      food: { stock: 50, capacity: 1000, mode: "buy" },
+      tech: { stock: 50, capacity: 1000, mode: "buy" },
     },
+  },
+  90005: {
+    id: 90005,
+    type: "standard",
+    regionId: 9000,
+    hasStarMall: false,
+    adjacentSectors: [90004],
+    outpost: null,
+    planets: [
+      {
+        id: "tutorial-planet-1",
+        name: "Nova Prime",
+        planetClass: "H",
+        ownerId: null,
+      },
+    ],
   },
 };
 
@@ -94,7 +120,10 @@ export function isTutorialSector(id: number): boolean {
   return id in TUTORIAL_SECTORS;
 }
 
-export function getDefaultTutorialState(credits: number, maxEnergy: number): TutorialVirtualState {
+export function getDefaultTutorialState(
+  credits: number,
+  maxEnergy: number,
+): TutorialVirtualState {
   return {
     currentSectorId: 90001,
     credits,

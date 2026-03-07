@@ -36,6 +36,8 @@ import profileRouter from "./api/profile";
 import adminRouter from "./api/admin";
 import authMatrixRouter from "./api/auth-matrix";
 import aiAssistantRouter from "./api/ai-assistant";
+import planetTradesRouter from "./api/planet-trades";
+import planetCombatRouter from "./api/planet-combat";
 import { setupWebSocket } from "./ws/handlers";
 import { startGameTick } from "./engine/game-tick";
 import {
@@ -114,13 +116,7 @@ app.use(
   loadSPContext,
   shipsRouter,
 );
-app.use(
-  "/api/planets",
-  loadTutorialState,
-  blockDuringTutorial,
-  loadSPContext,
-  planetsRouter,
-);
+app.use("/api/planets", loadTutorialState, loadSPContext, planetsRouter);
 app.use(
   "/api/combat",
   loadTutorialState,
@@ -256,6 +252,20 @@ app.use(
 app.use("/api/profile", loadTutorialState, loadSPContext, profileRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/ai", loadTutorialState, blockDuringTutorial, aiAssistantRouter);
+app.use(
+  "/api/planet-trades",
+  loadTutorialState,
+  blockDuringTutorial,
+  loadSPContext,
+  planetTradesRouter,
+);
+app.use(
+  "/api/planet-combat",
+  loadTutorialState,
+  blockDuringTutorial,
+  loadSPContext,
+  planetCombatRouter,
+);
 
 // WebSocket
 setupWebSocket(io);

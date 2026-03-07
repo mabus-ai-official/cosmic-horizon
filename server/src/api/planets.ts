@@ -25,8 +25,23 @@ import {
 } from "../engine/profile-stats";
 import { pickFlavor } from "../config/flavor-text";
 import type { RaceId } from "../config/races";
+import {
+  handleTutorialPlanetInfo,
+  handleTutorialClaim,
+} from "../services/tutorial-sandbox";
 
 const router = Router();
+
+/** Inline tutorial block for routes that shouldn't work during tutorial */
+function tutorialBlock(req: any, res: any): boolean {
+  if (req.inTutorial) {
+    res
+      .status(400)
+      .json({ error: "Complete the tutorial first to access this feature." });
+    return true;
+  }
+  return false;
+}
 
 /** Helper to load race populations for a planet */
 async function loadRacePopulations(
@@ -49,6 +64,7 @@ async function loadRacePopulations(
 
 // List planets owned by the player
 router.get("/owned", requireAuth, async (req, res) => {
+  if (tutorialBlock(req, res)) return;
   try {
     const planets = await db("planets")
       .where({ owner_id: req.session.playerId })
@@ -181,6 +197,7 @@ router.get("/owned", requireAuth, async (req, res) => {
 
 // List all discovered planets (in explored sectors)
 router.get("/discovered", requireAuth, async (req, res) => {
+  if (tutorialBlock(req, res)) return;
   try {
     const player = await db("players")
       .where({ id: req.session.playerId })
@@ -240,6 +257,7 @@ router.get("/discovered", requireAuth, async (req, res) => {
 
 // Planet details
 router.get("/:id", requireAuth, async (req, res) => {
+  if (req.inTutorial) return handleTutorialPlanetInfo(req, res);
   try {
     const planet = await db("planets").where({ id: req.params.id }).first();
     if (!planet) return res.status(404).json({ error: "Planet not found" });
@@ -339,6 +357,7 @@ router.get("/:id", requireAuth, async (req, res) => {
 
 // Deposit food from ship to planet
 router.post("/:id/deposit-food", requireAuth, async (req, res) => {
+  if (tutorialBlock(req, res)) return;
   try {
     const { quantity } = req.body;
     if (!quantity || quantity < 1)
@@ -418,6 +437,7 @@ router.post("/:id/deposit-food", requireAuth, async (req, res) => {
 
 // Name a planet
 router.post("/:id/name", requireAuth, async (req, res) => {
+  if (tutorialBlock(req, res)) return;
   try {
     const { name } = req.body;
     if (
@@ -459,6 +479,7 @@ router.post("/:id/name", requireAuth, async (req, res) => {
 
 // Claim unclaimed planet
 router.post("/:id/claim", requireAuth, async (req, res) => {
+  if (req.inTutorial) return handleTutorialClaim(req, res);
   try {
     const player = await db("players")
       .where({ id: req.session.playerId })
@@ -512,6 +533,7 @@ router.post("/:id/claim", requireAuth, async (req, res) => {
 
 // Deposit colonists from ship to planet (race-aware)
 router.post("/:id/colonize", requireAuth, async (req, res) => {
+  if (tutorialBlock(req, res)) return;
   try {
     const { quantity, race } = req.body;
     if (!quantity || quantity < 1)
@@ -658,6 +680,7 @@ router.post("/:id/colonize", requireAuth, async (req, res) => {
 
 // Collect colonists from seed planet (race selection)
 router.post("/:id/collect-colonists", requireAuth, async (req, res) => {
+  if (tutorialBlock(req, res)) return;
   try {
     const { quantity, race } = req.body;
     if (!quantity || quantity < 1)
@@ -781,6 +804,7 @@ router.post("/:id/collect-colonists", requireAuth, async (req, res) => {
 
 // Deposit colonists into a seed planet
 router.post("/:id/deposit-colonists", requireAuth, async (req, res) => {
+  if (tutorialBlock(req, res)) return;
   try {
     const { quantity, race } = req.body;
     if (!quantity || quantity < 1)
@@ -869,6 +893,7 @@ router.post("/:id/deposit-colonists", requireAuth, async (req, res) => {
 
 // Production history
 router.get("/:id/production-history", requireAuth, async (req, res) => {
+  if (tutorialBlock(req, res)) return;
   try {
     const planet = await db("planets").where({ id: req.params.id }).first();
     if (!planet) return res.status(404).json({ error: "Planet not found" });
@@ -916,6 +941,7 @@ router.get("/:id/production-history", requireAuth, async (req, res) => {
 
 // Upgrade planet
 router.post("/:id/upgrade", requireAuth, async (req, res) => {
+  if (tutorialBlock(req, res)) return;
   try {
     const player = await db("players")
       .where({ id: req.session.playerId })

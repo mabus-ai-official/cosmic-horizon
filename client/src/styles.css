@@ -5295,6 +5295,18 @@ body {
   border-color: var(--red);
 }
 
+.btn-ally--accept {
+  background: #1a2a3a;
+  color: var(--cyan);
+  border-color: var(--cyan);
+}
+
+.btn-ally--accept:hover {
+  background: #1a3a2a;
+  color: var(--green);
+  border-color: var(--green);
+}
+
 /* Faction Reputation */
 .faction-rep-section {
   padding: 6px 0;

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import CollapsiblePanel from "./CollapsiblePanel";
 import PlanetAnalytics from "./PlanetAnalytics";
+import { getPlanetTypeInfo } from "../config/planet-tooltips";
 import {
   getOwnedPlanets,
   getDiscoveredPlanets,
@@ -166,6 +167,7 @@ export default function PlanetsPanel({
   const [scanResults, setScanResults] = useState<any[] | null>(null);
   const [scanning, setScanning] = useState(false);
   const [localRefreshKey, setLocalRefreshKey] = useState(0);
+  const [hoveredPlanetId, setHoveredPlanetId] = useState<string | null>(null);
 
   const refresh = () => setLocalRefreshKey((k) => k + 1);
 
@@ -434,8 +436,33 @@ export default function PlanetsPanel({
                 <span className="planet-panel-item__name">
                   {expanded ? "[-]" : "[+]"} {p.name}
                 </span>
-                <span className="planet-panel-item__class">
+                <span
+                  className="planet-panel-item__class"
+                  style={{ position: "relative", cursor: "help" }}
+                  onMouseEnter={() => setHoveredPlanetId(p.id)}
+                  onMouseLeave={() => setHoveredPlanetId(null)}
+                >
                   [{p.planetClass}] {CLASS_LABELS[p.planetClass] || ""}
+                  {hoveredPlanetId === p.id &&
+                    (() => {
+                      const ti = getPlanetTypeInfo(p.planetClass);
+                      return ti ? (
+                        <div className="planet-tooltip">
+                          <div className="planet-tooltip__name">{ti.name}</div>
+                          <div className="planet-tooltip__row">
+                            {ti.description}
+                          </div>
+                          <div className="planet-tooltip__row">
+                            Production: <span>{ti.production}</span>
+                          </div>
+                          {ti.uniqueResource && (
+                            <div className="planet-tooltip__row">
+                              Unique: <span>{ti.uniqueResource}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : null;
+                    })()}
                 </span>
               </div>
               <div className="planet-panel-item__details">
@@ -869,8 +896,35 @@ export default function PlanetsPanel({
               <div key={p.id} className="planet-panel-item">
                 <div className="planet-panel-item__header">
                   <span className="planet-panel-item__name">{p.name}</span>
-                  <span className="planet-panel-item__class">
+                  <span
+                    className="planet-panel-item__class"
+                    style={{ position: "relative", cursor: "help" }}
+                    onMouseEnter={() => setHoveredPlanetId(p.id)}
+                    onMouseLeave={() => setHoveredPlanetId(null)}
+                  >
                     [{p.planetClass}] {CLASS_LABELS[p.planetClass] || ""}
+                    {hoveredPlanetId === p.id &&
+                      (() => {
+                        const ti = getPlanetTypeInfo(p.planetClass);
+                        return ti ? (
+                          <div className="planet-tooltip">
+                            <div className="planet-tooltip__name">
+                              {ti.name}
+                            </div>
+                            <div className="planet-tooltip__row">
+                              {ti.description}
+                            </div>
+                            <div className="planet-tooltip__row">
+                              Production: <span>{ti.production}</span>
+                            </div>
+                            {ti.uniqueResource && (
+                              <div className="planet-tooltip__row">
+                                Unique: <span>{ti.uniqueResource}</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : null;
+                      })()}
                   </span>
                   <span
                     style={{
@@ -1052,8 +1106,38 @@ export default function PlanetsPanel({
               >
                 <div>
                   <span style={{ color: "var(--text-primary)" }}>{p.name}</span>{" "}
-                  <span style={{ color: "var(--cyan)" }}>
+                  <span
+                    style={{
+                      color: "var(--cyan)",
+                      position: "relative",
+                      cursor: "help",
+                    }}
+                    onMouseEnter={() => setHoveredPlanetId(p.id)}
+                    onMouseLeave={() => setHoveredPlanetId(null)}
+                  >
                     [{p.planetClass}]
+                    {hoveredPlanetId === p.id &&
+                      (() => {
+                        const ti = getPlanetTypeInfo(p.planetClass);
+                        return ti ? (
+                          <div className="planet-tooltip">
+                            <div className="planet-tooltip__name">
+                              {ti.name}
+                            </div>
+                            <div className="planet-tooltip__row">
+                              {ti.description}
+                            </div>
+                            <div className="planet-tooltip__row">
+                              Production: <span>{ti.production}</span>
+                            </div>
+                            {ti.uniqueResource && (
+                              <div className="planet-tooltip__row">
+                                Unique: <span>{ti.uniqueResource}</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : null;
+                      })()}
                   </span>{" "}
                   <span className="text-muted" style={{ fontSize: "11px" }}>
                     {classLabel}

@@ -49,7 +49,11 @@ import { useAudio } from "../hooks/useAudio";
 import { useActivePanel } from "../hooks/useActivePanel";
 import { handleCommand } from "../services/commands";
 import { PANELS } from "../types/panels";
-import { getAlliances, getSyndicate } from "../services/api";
+import {
+  getAlliances,
+  getSyndicate,
+  getPendingAlliances,
+} from "../services/api";
 
 let chatIdCounter = 0;
 
@@ -70,6 +74,9 @@ export default function Game({ onLogout }: GameProps) {
   const [combatFlash, setCombatFlash] = useState(false);
   const [showSPComplete, setShowSPComplete] = useState(false);
   const [alliedPlayerIds, setAlliedPlayerIds] = useState<string[]>([]);
+  const [pendingAllianceIds, setPendingAllianceIds] = useState<
+    { fromId: string; fromName: string }[]
+  >([]);
   const [hasSyndicate, setHasSyndicate] = useState(false);
   const [hasAlliance, setHasAlliance] = useState(false);
   const [crewInitialTab, setCrewInitialTab] = useState<
@@ -128,6 +135,16 @@ export default function Game({ onLogout }: GameProps) {
           (data.personalAllies || []).map((a: any) => a.allyId),
         );
         setHasAlliance((data.syndicateAllies || []).length > 0);
+      })
+      .catch(() => {});
+    getPendingAlliances()
+      .then(({ data }) => {
+        setPendingAllianceIds(
+          (data.pendingRequests || []).map((r: any) => ({
+            fromId: r.fromId,
+            fromName: r.fromName,
+          })),
+        );
       })
       .catch(() => {});
   }, []);
@@ -296,6 +313,9 @@ export default function Game({ onLogout }: GameProps) {
         game.addLine(data.message, "system");
         showToast(data.message, "system");
         if (activePanelRef.current !== "missions") incrementBadge("missions");
+      }),
+      on("alliance:request", () => {
+        refreshAlliances();
       }),
       on(
         "chat:syndicate",
@@ -548,6 +568,7 @@ export default function Game({ onLogout }: GameProps) {
             refreshKey={refreshKey}
             onCommand={handleActionButton}
             alliedPlayerIds={alliedPlayerIds}
+            pendingAllianceIds={pendingAllianceIds}
             onAllianceChange={refreshAlliances}
             initialTab={crewInitialTab}
             autoTalkNpcId={autoTalkNpcId}

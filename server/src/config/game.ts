@@ -43,14 +43,14 @@ export const GAME_CONFIG = {
 
   // Combat
   MIN_FLEE_CHANCE: 0.15,
-  MULTI_SHIP_FLEE_BONUS: 0.10, // per additional attacker
+  MULTI_SHIP_FLEE_BONUS: 0.1, // per additional attacker
   RACHE_DAMAGE_MULTIPLIER: 0.5,
 
   // Game tick interval
   TICK_INTERVAL_MS: 60000, // 60 seconds
 
   // New player
-  STARTER_SHIP_TYPE: 'scout',
+  STARTER_SHIP_TYPE: "scout",
 
   // Missions
   MAX_ACTIVE_MISSIONS: 5,
@@ -66,7 +66,15 @@ export const GAME_CONFIG = {
   // Leaderboards
   LEADERBOARD_TOP_N: 20,
   LEADERBOARD_CACHE_TTL_MS: 300000,
-  LEADERBOARD_CATEGORIES: ['credits', 'planets', 'combat', 'explored', 'trade', 'syndicate', 'level'] as readonly string[],
+  LEADERBOARD_CATEGORIES: [
+    "credits",
+    "planets",
+    "combat",
+    "explored",
+    "trade",
+    "syndicate",
+    "level",
+  ] as readonly string[],
 
   // Messages
   MAX_MESSAGES_PER_PLAYER: 50,
@@ -97,10 +105,13 @@ export const GAME_CONFIG = {
   } as Record<string, number>,
 
   // Mission Expansion
-  MISSION_TIER_LEVELS: { 1: 0, 2: 10, 3: 20, 4: 35, 5: 50 } as Record<number, number>,
+  MISSION_TIER_LEVELS: { 1: 0, 2: 10, 3: 20, 4: 35, 5: 50 } as Record<
+    number,
+    number
+  >,
   CANTINA_MISSION_CHANCE: 0.25,
-  CANTINA_GATE_MISSION_ID: 'b0000000-0000-0000-0000-000000000008',
-  NAMING_CONVENTION_MISSION_ID: 'b0000000-0000-0000-0000-000000000021',
+  CANTINA_GATE_MISSION_ID: "b0000000-0000-0000-0000-000000000008",
+  NAMING_CONVENTION_MISSION_ID: "b0000000-0000-0000-0000-000000000021",
   CANTINA_TALK_COST: 0,
 
   // NPCs
@@ -133,16 +144,28 @@ export const GAME_CONFIG = {
   TABLET_STORAGE_PER_5_LEVELS: 1,
   TABLET_COMBINE_COUNT: 3,
   TABLET_COMBINE_COSTS: {
-    common: 500, uncommon: 1500, rare: 5000,
-    epic: 15000, legendary: 50000,
+    common: 500,
+    uncommon: 1500,
+    rare: 5000,
+    epic: 15000,
+    legendary: 50000,
   } as Record<string, number>,
   TABLET_EQUIP_COSTS: {
-    common: 500, uncommon: 1000, rare: 1500,
-    epic: 2000, legendary: 2500, mythic: 3000,
+    common: 500,
+    uncommon: 1000,
+    rare: 1500,
+    epic: 2000,
+    legendary: 2500,
+    mythic: 3000,
   } as Record<string, number>,
   TABLET_EVENT_DROP_CHANCE: 0.15,
   TABLET_RARITY_WEIGHTS: {
-    common: 50, uncommon: 25, rare: 15, epic: 7, legendary: 2.5, mythic: 0.5,
+    common: 50,
+    uncommon: 25,
+    rare: 15,
+    epic: 7,
+    legendary: 2.5,
+    mythic: 0.5,
   } as Record<string, number>,
 
   // Crafting
@@ -166,7 +189,7 @@ export const GAME_CONFIG = {
   RARE_DERELICT_SPAWN_MAX: 3,
   RARE_ANOMALY_SPAWN_MIN: 3,
   RARE_ANOMALY_SPAWN_MAX: 5,
-  RARE_ALIEN_CACHE_CHANCE: 0.10,
+  RARE_ALIEN_CACHE_CHANCE: 0.1,
   RARE_ASTEROID_DURATION_HOURS_MIN: 4,
   RARE_ASTEROID_DURATION_HOURS_MAX: 8,
   RARE_DERELICT_DURATION_HOURS_MIN: 2,
@@ -194,7 +217,7 @@ export const GAME_CONFIG = {
   // Syndicate Economy
   SYNDICATE_FACTORY_MIN_LEVEL: 5,
   SYNDICATE_FACTORY_COST: 50000,
-  SYNDICATE_FACTORY_PRODUCTION_BONUS: 0.50,
+  SYNDICATE_FACTORY_PRODUCTION_BONUS: 0.5,
   SYNDICATE_FACTORY_BONUS_REFINERY_SLOTS: 2,
   SYNDICATE_MAX_FACTORIES: 1,
   SYNDICATE_MAX_ACTIVE_PROJECTS: 2,
@@ -204,7 +227,7 @@ export const GAME_CONFIG = {
   PROC_NPC_STAR_MALL_MIN: 3,
   PROC_NPC_STAR_MALL_MAX: 5,
   PROC_NPC_OUTPOST_CHANCE: 0.85,
-  PROC_NPC_PLANET_CHANCE: 0.30,
+  PROC_NPC_PLANET_CHANCE: 0.3,
   PROC_NPC_WILD_TARGET: 400,
   PROC_NPC_AMBASSADORS_PER_RACE: 15,
   PROC_NPC_NEUTRAL_AMBASSADORS_PER_RACE: 3,
@@ -213,10 +236,10 @@ export const GAME_CONFIG = {
   // Planet Economy: Happiness System
   HAPPINESS_TIERS: {
     miserable: { min: 0, max: 20, productionMultiplier: 0.25 },
-    unhappy:   { min: 21, max: 40, productionMultiplier: 0.50 },
-    content:   { min: 41, max: 60, productionMultiplier: 0.75 },
-    happy:     { min: 61, max: 80, productionMultiplier: 1.00 },
-    thriving:  { min: 81, max: 100, productionMultiplier: 1.25 },
+    unhappy: { min: 21, max: 40, productionMultiplier: 0.5 },
+    content: { min: 41, max: 60, productionMultiplier: 0.75 },
+    happy: { min: 61, max: 80, productionMultiplier: 1.0 },
+    thriving: { min: 81, max: 100, productionMultiplier: 1.25 },
   },
   FOOD_HAPPINESS_FULL_THRESHOLD: 10,
   FOOD_HAPPINESS_PENALTY: 8,
@@ -234,7 +257,10 @@ export const GAME_CONFIG = {
   TRADE_ROUTE_FOOD_PER_CYCLE: 20,
   TRADE_ROUTE_DISPATCH_INTERVAL_TICKS: 60, // 1 hour
   TRADE_ROUTE_MAX_PATH_LENGTH: 30,
-  TRADE_ROUTE_SLOT_LEVELS: { 1: 0, 2: 15, 3: 30, 4: 50, 5: 75 } as Record<number, number>,
+  TRADE_ROUTE_SLOT_LEVELS: { 1: 0, 2: 15, 3: 30, 4: 50, 5: 75 } as Record<
+    number,
+    number
+  >,
 
   CARAVAN_BASE_DEFENSE_HP: 20,
   CARAVAN_BASE_DEFENSE_RATIO: 0.5,
@@ -254,4 +280,17 @@ export const GAME_CONFIG = {
 
   SCOUT_CARAVAN_RANGE: 5,
   TARRI_SCOUT_BONUS_RANGE: 2,
+
+  // Planet Conquest
+  AP_COST_BOMBARD: 3,
+  BOMBARD_SHIELD_DAMAGE_RATIO: 1.0, // weapon energy → shield damage multiplier
+  BOMBARD_CANNON_DAMAGE_RATIO: 0.8, // weapon energy → cannon damage (cannons are tougher)
+  BOMBARD_DRONE_DAMAGE_RATIO: 0.5, // weapon energy → drones destroyed (each drone ~2 hp)
+  CANNON_RETURN_FIRE_RATIO: 0.3, // cannon fires back at attacker ship (% of cannon_shot_power)
+  CONQUEST_MIN_DRONES_TO_HOLD: 0, // drones + shield + cannons must all be 0 to conquer
+  FORTIFY_SHIELD_COST_PER_UNIT: 50, // credits per shield energy unit
+  FORTIFY_CANNON_COST_PER_UNIT: 75, // credits per cannon energy unit
+  FORTIFY_DRONE_COST_PER_UNIT: 100, // credits per drone
+  XP_BOMBARD_VOLLEY: 20,
+  XP_CONQUER_PLANET: 300,
 } as const;

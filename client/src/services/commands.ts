@@ -93,6 +93,9 @@ const ALIASES: Record<string, string> = {
   sp: "syndicatepool",
   sd: "syndicatedeposit",
   sw: "syndicatewithdraw",
+  b: "bombard",
+  fort: "fortify",
+  def: "defenses",
 };
 
 let activeNpcId: string | null = null;
@@ -376,6 +379,7 @@ export function handleCommand(input: string, ctx: CommandContext): void {
     }
 
     case "scan":
+      ctx.advanceTutorial("scan");
       ctx.enqueueScene?.(
         buildScanScene(
           ctx.player?.currentShip?.shipTypeId ?? "scout",
@@ -513,6 +517,7 @@ export function handleCommand(input: string, ctx: CommandContext): void {
       break;
 
     case "map":
+      ctx.advanceTutorial("map");
       ctx.addLine("Fetching explored map...", "info");
       api
         .getMap()
@@ -719,6 +724,7 @@ export function handleCommand(input: string, ctx: CommandContext): void {
           ctx.addLine(`Claimed ${result.name}!`, "success");
           if (data.message) ctx.addLine(data.message, "npc");
           ctx.refreshSector();
+          ctx.advanceTutorial("claim");
         })
         .catch((err: any) =>
           ctx.addLine(err.response?.data?.error || "Claim failed", "error"),
@@ -4751,6 +4757,7 @@ export function handleCommand(input: string, ctx: CommandContext): void {
     }
 
     case "help": {
+      ctx.advanceTutorial("help");
       if (args.length > 0) {
         const query = args[0].toLowerCase();
         // Check if it's a category first
@@ -4868,6 +4875,386 @@ export function handleCommand(input: string, ctx: CommandContext): void {
       break;
     }
 
+    case "offer": {
+      // offer <player> resource <planetName> <resourceType> <qty> [price]
+      // offer <player> planet <planetName> [price]
+      if (args.length < 3) {
+        ctx.addLine(
+          "Usage: offer <player> resource <planet> <type> <qty> [price]",
+          "info",
+        );
+        ctx.addLine("       offer <player> planet <planet> [price]", "info");
+        break;
+      }
+      const recipientName = args[0];
+      const offerType = args[1].toLowerCase();
+      if (offerType === "resource") {
+        if (args.length < 5) {
+          ctx.addLine(
+            "Usage: offer <player> resource <planet> <type> <qty> [price]",
+            "error",
+          );
+          break;
+        }
+        const planetName = args[2];
+        const resourceType = args[3].toLowerCase();
+        const qty = parseInt(args[4], 10);
+        const price = args[5] ? parseInt(args[5], 10) : 0;
+        if (isNaN(qty) || qty <= 0) {
+          ctx.addLine("Quantity must be a positive number", "error");
+          break;
+        }
+        // Resolve planet by name
+        api
+          .getOwnedPlanets()
+          .then(({ data }) => {
+            const planets = data.planets || data;
+            const planet = (Array.isArray(planets) ? planets : []).find(
+              (p: any) =>
+                p.name.toLowerCase() === planetName.toLowerCase() ||
+                p.id === planetName,
+            );
+            if (!planet) {
+              ctx.addLine(
+                `Planet "${planetName}" not found in owned planets`,
+                "error",
+              );
+              return;
+            }
+            return api
+              .offerPlanetTrade({
+                recipientName,
+                tradeType: "resource",
+                planetId: planet.id,
+                resourceType,
+                quantity: qty,
+                price,
+              })
+              .then(() => {
+                ctx.addLine(
+                  `Offered ${qty} ${resourceType} to ${recipientName}${price ? ` for ${price} credits` : " (gift)"}`,
+                  "success",
+                );
+              });
+          })
+          .catch((err: any) => {
+            ctx.addLine(
+              err?.response?.data?.error || "Failed to send offer",
+              "error",
+            );
+          });
+      } else if (offerType === "planet") {
+        const planetName = args[2];
+        const price = args[3] ? parseInt(args[3], 10) : 0;
+        api
+          .getOwnedPlanets()
+          .then(({ data }) => {
+            const planets = data.planets || data;
+            const planet = (Array.isArray(planets) ? planets : []).find(
+              (p: any) =>
+                p.name.toLowerCase() === planetName.toLowerCase() ||
+                p.id === planetName,
+            );
+            if (!planet) {
+              ctx.addLine(
+                `Planet "${planetName}" not found in owned planets`,
+                "error",
+              );
+              return;
+            }
+            return api
+              .offerPlanetTrade({
+                recipientName,
+                tradeType: "planet",
+                transferPlanetId: planet.id,
+                price,
+              })
+              .then(() => {
+                ctx.addLine(
+                  `Offered planet "${planet.name}" to ${recipientName}${price ? ` for ${price} credits` : " (gift)"}`,
+                  "success",
+                );
+              });
+          })
+          .catch((err: any) => {
+            ctx.addLine(
+              err?.response?.data?.error || "Failed to send offer",
+              "error",
+            );
+          });
+      } else {
+        ctx.addLine('Offer type must be "resource" or "planet"', "error");
+      }
+      break;
+    }
+
+    case "trades": {
+      ctx.addLine("Loading trade offers...", "system");
+      Promise.all([api.getIncomingTrades(), api.getOutgoingTrades()])
+        .then(([incoming, outgoing]) => {
+          const inc = incoming.data.offers || [];
+          const out = outgoing.data.offers || [];
+          if (inc.length === 0 && out.length === 0) {
+            ctx.addLine("No pending trade offers.", "info");
+            return;
+          }
+          if (inc.length > 0) {
+            ctx.addLine(`=== INCOMING OFFERS (${inc.length}) ===`, "system");
+            inc.forEach((o: any) => {
+              const desc =
+                o.tradeType === "resource"
+                  ? `${o.quantity} ${o.resourceType} from ${o.sourcePlanetName || "?"}`
+                  : `Planet "${o.transferPlanetName || "?"}" [${o.transferPlanetClass || "?"}]`;
+              const priceStr = o.price > 0 ? ` for ${o.price} cr` : " (gift)";
+              ctx.addLine(
+                `  ${o.senderName}: ${desc}${priceStr}  [ID: ${o.id.slice(0, 8)}]`,
+                "trade",
+              );
+            });
+            ctx.addLine(
+              'Accept: "accepttrade <id>" | Reject: "rejecttrade <id>"',
+              "info",
+            );
+          }
+          if (out.length > 0) {
+            ctx.addLine(`=== OUTGOING OFFERS (${out.length}) ===`, "system");
+            out.forEach((o: any) => {
+              const desc =
+                o.tradeType === "resource"
+                  ? `${o.quantity} ${o.resourceType}`
+                  : `Planet "${o.transferPlanetName || "?"}"`;
+              ctx.addLine(
+                `  To ${o.recipientName}: ${desc}  [ID: ${o.id.slice(0, 8)}]`,
+                "trade",
+              );
+            });
+            ctx.addLine('Cancel: "canceltrade <id>"', "info");
+          }
+        })
+        .catch(() => ctx.addLine("Failed to load trades", "error"));
+      break;
+    }
+
+    case "accepttrade": {
+      if (!args[0]) {
+        ctx.addLine("Usage: accepttrade <offer-id>", "error");
+        break;
+      }
+      api
+        .getIncomingTrades()
+        .then(({ data }) => {
+          const match = (data.offers || []).find((o: any) =>
+            o.id.startsWith(args[0]),
+          );
+          if (!match) {
+            ctx.addLine("Offer not found", "error");
+            return;
+          }
+          return api.acceptTrade(match.id).then(() => {
+            ctx.addLine("Trade accepted!", "success");
+          });
+        })
+        .catch((err: any) =>
+          ctx.addLine(
+            err?.response?.data?.error || "Failed to accept",
+            "error",
+          ),
+        );
+      break;
+    }
+
+    case "rejecttrade": {
+      if (!args[0]) {
+        ctx.addLine("Usage: rejecttrade <offer-id>", "error");
+        break;
+      }
+      api
+        .getIncomingTrades()
+        .then(({ data }) => {
+          const match = (data.offers || []).find((o: any) =>
+            o.id.startsWith(args[0]),
+          );
+          if (!match) {
+            ctx.addLine("Offer not found", "error");
+            return;
+          }
+          return api.rejectTrade(match.id).then(() => {
+            ctx.addLine("Trade rejected.", "info");
+          });
+        })
+        .catch((err: any) =>
+          ctx.addLine(
+            err?.response?.data?.error || "Failed to reject",
+            "error",
+          ),
+        );
+      break;
+    }
+
+    case "canceltrade": {
+      if (!args[0]) {
+        ctx.addLine("Usage: canceltrade <offer-id>", "error");
+        break;
+      }
+      api
+        .getOutgoingTrades()
+        .then(({ data }) => {
+          const match = (data.offers || []).find((o: any) =>
+            o.id.startsWith(args[0]),
+          );
+          if (!match) {
+            ctx.addLine("Offer not found", "error");
+            return;
+          }
+          return api.cancelTrade(match.id).then(() => {
+            ctx.addLine("Trade offer cancelled.", "info");
+          });
+        })
+        .catch((err: any) =>
+          ctx.addLine(
+            err?.response?.data?.error || "Failed to cancel",
+            "error",
+          ),
+        );
+      break;
+    }
+
+    // ── Planet Combat ──────────────────────────────────────────────
+    case "bombard": {
+      const planetNum = parseInt(args[0], 10);
+      const energy = parseInt(args[1], 10);
+      if (!planetNum || !energy || energy < 1) {
+        ctx.addLine("Usage: bombard <planet#> <energy>", "error");
+        break;
+      }
+      const planets = ctx.sector?.planets || [];
+      const target = planets[planetNum - 1];
+      if (!target) {
+        ctx.addLine(`No planet #${planetNum} in this sector.`, "error");
+        break;
+      }
+      api
+        .bombardPlanet(target.id, energy)
+        .then(({ data }) => {
+          ctx.addLine("=== BOMBARDMENT RESULTS ===", "combat");
+          if (data.shieldDamage > 0)
+            ctx.addLine(`  Shield damage: ${data.shieldDamage}`, "combat");
+          if (data.cannonDamage > 0)
+            ctx.addLine(`  Cannon damage: ${data.cannonDamage}`, "combat");
+          if (data.dronesDestroyed > 0)
+            ctx.addLine(
+              `  Drones destroyed: ${data.dronesDestroyed}`,
+              "combat",
+            );
+          if (data.returnFireDamage > 0)
+            ctx.addLine(
+              `  Return fire! Your ship took ${data.returnFireDamage} damage (hull: ${data.attackerHullRemaining})`,
+              "error",
+            );
+          if (data.attackerDestroyed)
+            ctx.addLine("  Your ship was destroyed by cannon fire!", "error");
+          ctx.addLine(
+            `  Defenses remaining: Shield ${data.planetDefenses.shieldEnergy} | Cannon ${data.planetDefenses.cannonEnergy} | Drones ${data.planetDefenses.droneCount}`,
+            "info",
+          );
+          if (data.conquered) {
+            ctx.addLine(
+              "  PLANET CONQUERED! You are the new owner!",
+              "success",
+            );
+          }
+          if (data.xp?.awarded)
+            ctx.addLine(`  +${data.xp.awarded} XP`, "success");
+          ctx.refreshStatus();
+        })
+        .catch((err: any) =>
+          ctx.addLine(
+            err?.response?.data?.error || "Bombardment failed",
+            "error",
+          ),
+        );
+      break;
+    }
+
+    case "fortify": {
+      const fPlanetNum = parseInt(args[0], 10);
+      const fType = args[1]?.toLowerCase();
+      const fAmount = parseInt(args[2], 10);
+      if (!fPlanetNum || !fType || !fAmount || fAmount < 1) {
+        ctx.addLine(
+          "Usage: fortify <planet#> <shield|cannon|drone> <amount>",
+          "error",
+        );
+        break;
+      }
+      if (!["shield", "cannon", "drone"].includes(fType)) {
+        ctx.addLine("Type must be shield, cannon, or drone", "error");
+        break;
+      }
+      const ownedPlanets = ctx.sector?.planets || [];
+      const fTarget = ownedPlanets[fPlanetNum - 1];
+      if (!fTarget) {
+        ctx.addLine(`No planet #${fPlanetNum} in this sector.`, "error");
+        break;
+      }
+      api
+        .fortifyPlanet(fTarget.id, fType, fAmount)
+        .then(({ data }) => {
+          ctx.addLine(
+            `Fortified ${data.added} ${fType}(s) on planet. Cost: ${data.creditsCost} credits, ${data.techCost} tech.`,
+            "success",
+          );
+          ctx.addLine(
+            `  Defenses: Shield ${data.planetDefenses.shieldEnergy} | Cannon ${data.planetDefenses.cannonEnergy} | Drones ${data.planetDefenses.droneCount}`,
+            "info",
+          );
+          ctx.refreshStatus();
+        })
+        .catch((err: any) =>
+          ctx.addLine(err?.response?.data?.error || "Fortify failed", "error"),
+        );
+      break;
+    }
+
+    case "defenses": {
+      const dPlanetNum = parseInt(args[0], 10);
+      if (!dPlanetNum) {
+        ctx.addLine("Usage: defenses <planet#>", "error");
+        break;
+      }
+      const dPlanets = ctx.sector?.planets || [];
+      const dTarget = dPlanets[dPlanetNum - 1];
+      if (!dTarget) {
+        ctx.addLine(`No planet #${dPlanetNum} in this sector.`, "error");
+        break;
+      }
+      api
+        .getPlanetDefenses(dTarget.id)
+        .then(({ data }) => {
+          ctx.addLine(`=== ${data.name} Defenses ===`, "info");
+          ctx.addLine(`  Owner: ${data.ownerName || "Unclaimed"}`, "info");
+          ctx.addLine(
+            `  Shield: ${data.defenses.shieldEnergy}/${data.defenses.shieldMaxEnergy}`,
+            "info",
+          );
+          ctx.addLine(
+            `  Cannon: ${data.defenses.cannonEnergy}/${data.defenses.cannonMaxEnergy} (power: ${data.defenses.cannonShotPower})`,
+            "info",
+          );
+          ctx.addLine(
+            `  Drones: ${data.defenses.droneCount}${data.defenses.droneMode ? ` (${data.defenses.droneMode})` : ""}`,
+            "info",
+          );
+        })
+        .catch((err: any) =>
+          ctx.addLine(
+            err?.response?.data?.error || "Failed to scan defenses",
+            "error",
+          ),
+        );
+      break;
+    }
+
     case "clear":
       ctx.clearLines();
       break;
@@ -4909,6 +5296,8 @@ function getHelpForCategory(
         "fire <name> <nrg> (f)  Attack a player in your sector",
         "flee                    Attempt to escape combat",
         "combatlog               View combat history",
+        "bombard <#> <nrg> (b)  Bombard an enemy planet",
+        "defenses <#>     (def) Scan a planet's defenses",
       ],
     },
     planets: {
@@ -4920,6 +5309,7 @@ function getHelpForCategory(
         "colonize <name or #> <qty> Deposit colonists on planet",
         "collect <name or #> <qty>  Collect colonists from seed planet",
         "upgrade <name or #>    Upgrade your planet",
+        "fortify <#> <type> <amt> Fortify planet defenses (shield/cannon/drone)",
       ],
     },
     ships: {
@@ -5145,6 +5535,25 @@ function getHelpForCommand(cmd: string): string[] {
       "flee",
       "  Attempt to escape when under attack.",
       "  Success chance depends on number of attackers.",
+    ],
+    bombard: [
+      "bombard <planet#> <energy>",
+      "  Bombard an enemy planet from orbit. Costs 3 AP.",
+      "  Damage hits shield -> cannon -> drones. Cannons fire back!",
+      "  When all defenses are destroyed, you conquer the planet.",
+      "  Aliases: b",
+    ],
+    fortify: [
+      "fortify <planet#> <shield|cannon|drone> <amount>",
+      "  Add defenses to your planet. Costs credits + tech stock.",
+      "  Shield: 50cr + 1 tech each. Cannon: 75cr + 1 tech. Drone: 100cr + 2 tech.",
+      "  Aliases: fort",
+    ],
+    defenses: [
+      "defenses <planet#>",
+      "  Scan a planet's defenses in your sector.",
+      "  Shows shield, cannon, and drone status.",
+      "  Aliases: def",
     ],
     planets: [
       "planets [all|discovered]",

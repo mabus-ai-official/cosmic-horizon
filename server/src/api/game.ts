@@ -24,6 +24,8 @@ import {
   handleTutorialMove,
   handleTutorialMap,
   handleTutorialScan,
+  handleTutorialLand,
+  handleTutorialLiftoff,
 } from "../services/tutorial-sandbox";
 import db from "../db/connection";
 import {
@@ -1453,6 +1455,7 @@ router.post("/transition-to-sp", requireAuth, async (req, res) => {
 
 // Land on a planet in the current sector
 router.post("/land", requireAuth, async (req, res) => {
+  if (req.inTutorial) return handleTutorialLand(req, res);
   try {
     const player = await db("players")
       .where({ id: req.session.playerId })
@@ -1513,6 +1516,7 @@ router.post("/land", requireAuth, async (req, res) => {
 
 // Liftoff from a planet
 router.post("/liftoff", requireAuth, async (req, res) => {
+  if (req.inTutorial) return handleTutorialLiftoff(req, res);
   try {
     const player = await db("players")
       .where({ id: req.session.playerId })

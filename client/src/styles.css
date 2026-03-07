@@ -576,7 +576,7 @@ body {
 
 /* === Activity Bar === */
 .activity-bar {
-  width: 44px;
+  width: 66px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -658,8 +658,8 @@ body {
 }
 
 .activity-bar__btn {
-  width: 36px;
-  height: 36px;
+  width: 54px;
+  height: 54px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5392,11 +5392,11 @@ body {
     width: 340px;
   }
   .activity-bar {
-    width: 52px;
+    width: 78px;
   }
   .activity-bar__btn {
-    width: 42px;
-    height: 42px;
+    width: 63px;
+    height: 63px;
   }
 }
 
@@ -5405,11 +5405,11 @@ body {
     width: 400px;
   }
   .activity-bar {
-    width: 60px;
+    width: 90px;
   }
   .activity-bar__btn {
-    width: 48px;
-    height: 48px;
+    width: 72px;
+    height: 72px;
   }
 }
 

@@ -37,6 +37,7 @@ import { syncPlayer } from "../ws/sync";
 import { handleSectorChange } from "../ws/handlers";
 import { pickFlavor, outpostNpcRace } from "../config/flavor-text";
 import type { RaceId } from "../config/races";
+import { updateDailyMissionProgress } from "./daily-missions";
 
 const router = Router();
 
@@ -137,6 +138,7 @@ router.get("/status", requireAuth, async (req, res) => {
       level: progress.level,
       rank: progress.rank,
       xp: progress.totalXp,
+      loginStreak: player.login_streak || 0,
       spMissions,
       currentShip: ship
         ? {
@@ -287,6 +289,7 @@ router.post("/move/:sectorId", requireAuth, async (req, res) => {
 
     // Mission progress: move
     checkAndUpdateMissions(player.id, "move", { sectorId: targetSectorId });
+    updateDailyMissionProgress(player.id, "visit_sectors").catch(() => {});
 
     // Award explore XP for new sector discovery
     let xpResult = null;
@@ -979,6 +982,7 @@ router.post("/scan", requireAuth, async (req, res) => {
 
     // Mission progress: scan
     checkAndUpdateMissions(player.id, "scan", {});
+    updateDailyMissionProgress(player.id, "scan_sectors").catch(() => {});
 
     // Resource events in scanned sectors (current + adjacent)
     let scannedResourceEvents: any[] = [];
@@ -1191,6 +1195,8 @@ router.post("/dock", requireAuth, async (req, res) => {
         mode: outpost.tech_mode,
       },
     };
+
+    updateDailyMissionProgress(player.id, "dock_outpost").catch(() => {});
 
     // Multi-session sync
     const io = req.app.get("io");
@@ -1484,6 +1490,8 @@ router.post("/land", requireAuth, async (req, res) => {
       landed_at_planet_id: planetId,
       docked_at_outpost_id: null,
     });
+
+    updateDailyMissionProgress(player.id, "land_planet").catch(() => {});
 
     const planetType = PLANET_TYPES[planet.planet_class];
 

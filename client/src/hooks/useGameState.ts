@@ -28,6 +28,10 @@ export interface PlayerState {
   walletAddress: string | null;
   dockedAtOutpostId: string | null;
   landedAtPlanetId: string | null;
+  level: number;
+  rank: string;
+  xp: number;
+  loginStreak: number;
   spMissions?: { completed: number; total: number };
   currentShip: {
     id: string;
@@ -350,8 +354,20 @@ export function useGameState() {
       setPlayer(data.player);
       setIsLoggedIn(true);
       addLine(`Welcome back, ${data.player.username}!`, "system");
+      if (data.loginStreak && data.loginStreak > 0) {
+        addLine(
+          `Login streak: ${data.loginStreak} day${data.loginStreak !== 1 ? "s" : ""}!`,
+          "success",
+        );
+      }
+      if (data.streakReward) {
+        addLine(
+          `Daily reward: +${data.streakReward.xp} XP, +${data.streakReward.credits} credits`,
+          "success",
+        );
+      }
       await refreshSector();
-      return data.player;
+      return data;
     },
     [addLine, refreshSector],
   );

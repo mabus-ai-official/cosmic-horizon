@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
-import PixelScene from './PixelScene';
-import type { SceneDefinition } from '../config/scene-types';
+import { useState, useEffect, useRef } from "react";
+import BridgeView3D from "./BridgeView3D";
+import PixelScene from "./PixelScene";
+import type { SceneDefinition } from "../config/scene-types";
 
 interface SceneViewportProps {
   actionScene: SceneDefinition | null;
@@ -8,9 +9,17 @@ interface SceneViewportProps {
   onActionComplete: () => void;
   sectorId?: number;
   shipType?: string;
+  shake?: boolean;
 }
 
-export default function SceneViewport({ actionScene, ambientScene, onActionComplete, sectorId, shipType }: SceneViewportProps) {
+export default function SceneViewport({
+  actionScene,
+  ambientScene,
+  onActionComplete,
+  sectorId,
+  shipType,
+  shake,
+}: SceneViewportProps) {
   const scene = actionScene ?? ambientScene;
   const [flash, setFlash] = useState(false);
   const prevSceneId = useRef<string | null>(null);
@@ -26,38 +35,76 @@ export default function SceneViewport({ actionScene, ambientScene, onActionCompl
   }, [scene?.id]);
 
   const label = actionScene
-    ? actionScene.id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace(/\d+$/, '').trim()
+    ? actionScene.id
+        .replace(/-/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+        .replace(/\d+$/, "")
+        .trim()
     : sectorId != null
       ? `Sector ${sectorId}`
-      : 'Idle';
+      : "Idle";
 
-  // Derive glow context from scene ID
-  const sceneId = scene?.id ?? '';
-  let glowClass = '';
+  // Derive context from scene ID
+  const sceneId = scene?.id ?? "";
+  let context: "ambient" | "combat" | "docked" | "danger" | "warp" = "ambient";
+  let glowClass = "";
   if (actionScene && /combat|fire|volley|destroyed/.test(sceneId)) {
-    glowClass = 'scene-viewport--combat';
+    context = "combat";
+    glowClass = "scene-viewport--combat";
   } else if (/docked/.test(sceneId)) {
-    glowClass = 'scene-viewport--docked';
+    context = "docked";
+    glowClass = "scene-viewport--docked";
   } else if (actionScene && /flee|danger/.test(sceneId)) {
-    glowClass = 'scene-viewport--danger';
+    context = "danger";
+    glowClass = "scene-viewport--danger";
+  } else if (/warp/.test(sceneId)) {
+    context = "warp";
   }
 
-  if (!scene) return <div className="scene-viewport scene-viewport--empty" />;
+  // Show pixel scene overlay during action scenes, 3D always runs behind
+  const showPixelOverlay = !!actionScene;
 
   return (
-    <div className={`scene-viewport ${glowClass}`}>
-      <div className="viewport-space-bg" />
-      <PixelScene
-        key={scene.id}
-        scene={scene}
-        renderMode="inline"
-        onComplete={actionScene ? onActionComplete : () => {}}
-      />
+    <div
+      className={`scene-viewport ${glowClass}${shake ? " scene-viewport--shake" : ""}`}
+    >
+      {/* 3D background — always running */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 0,
+        }}
+      >
+        <BridgeView3D context={context} shipType={shipType} />
+      </div>
+
+      {/* Pixel scene overlay for action sequences */}
+      {showPixelOverlay && scene && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 1,
+            background: "rgba(5, 5, 16, 0.7)",
+          }}
+        >
+          <PixelScene
+            key={scene.id}
+            scene={scene}
+            renderMode="inline"
+            onComplete={onActionComplete}
+          />
+        </div>
+      )}
+
       {/* HUD overlay */}
       <div className="viewport-hud">
         <span className="viewport-hud__tl">{label}</span>
-        <span className="viewport-hud__tr">{shipType ?? ''}</span>
-        <span className="viewport-hud__bl">{actionScene ? 'ACTION' : 'AMBIENT'}</span>
+        <span className="viewport-hud__tr">{shipType ?? ""}</span>
+        <span className="viewport-hud__bl">
+          {actionScene ? "ACTION" : "AMBIENT"}
+        </span>
       </div>
       {/* Vignette */}
       <div className="viewport-vignette" />

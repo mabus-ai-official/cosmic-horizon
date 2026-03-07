@@ -30,8 +30,12 @@ import ActivityBar from "../components/ActivityBar";
 import PixelSprite from "../components/PixelSprite";
 import ContextPanel from "../components/ContextPanel";
 import SectorMap from "../components/SectorMap";
+import SectorMap3D from "../components/SectorMap3D";
 import NotificationLog from "../components/NotificationLog";
 import ToastManager from "../components/ToastManager";
+import DailyMissions from "../components/DailyMissions";
+import FloatingNumbers from "../components/FloatingNumbers";
+import LevelUpOverlay from "../components/LevelUpOverlay";
 import { useToast } from "../hooks/useToast";
 import {
   type ChatMessage,
@@ -75,6 +79,8 @@ export default function Game({ onLogout }: GameProps) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [showPostTutorialScene, setShowPostTutorialScene] = useState(false);
   const [combatFlash, setCombatFlash] = useState(false);
+  const [combatShake, setCombatShake] = useState(false);
+  const [map3D, setMap3D] = useState(true);
   const [showSPComplete, setShowSPComplete] = useState(false);
   const [alliedPlayerIds, setAlliedPlayerIds] = useState<string[]>([]);
   const [pendingAllianceIds, setPendingAllianceIds] = useState<
@@ -276,7 +282,9 @@ export default function Game({ onLogout }: GameProps) {
           game.refreshStatus();
           if (activePanelRef.current !== "combat") incrementBadge("combat");
           setCombatFlash(true);
+          setCombatShake(true);
           setTimeout(() => setCombatFlash(false), 300);
+          setTimeout(() => setCombatShake(false), 400);
           game.enqueueScene(buildCombatScene("scout", data.damage));
         },
       ),
@@ -597,15 +605,24 @@ export default function Game({ onLogout }: GameProps) {
         );
       case "missions":
         return (
-          <ActiveMissionsPanel
-            refreshKey={refreshKey}
-            atStarMall={!!activeOutpost && !!game.sector?.hasStarMall}
-            onAction={() => {
-              game.refreshStatus();
-              setRefreshKey((k) => k + 1);
-            }}
-            bare
-          />
+          <>
+            <DailyMissions
+              refreshKey={refreshKey}
+              onClaim={() => {
+                game.refreshStatus();
+                setRefreshKey((k) => k + 1);
+              }}
+            />
+            <ActiveMissionsPanel
+              refreshKey={refreshKey}
+              atStarMall={!!activeOutpost && !!game.sector?.hasStarMall}
+              onAction={() => {
+                game.refreshStatus();
+                setRefreshKey((k) => k + 1);
+              }}
+              bare
+            />
+          </>
         );
       case "planets":
         return (
@@ -772,6 +789,10 @@ export default function Game({ onLogout }: GameProps) {
   return (
     <div className="game-layout">
       <ToastManager toasts={toasts} onDismiss={dismissToast} />
+      <LevelUpOverlay
+        level={game.player?.level ?? 0}
+        rank={game.player?.rank ?? ""}
+      />
       {showSPComplete && (
         <div
           className="sp-complete-modal"
@@ -865,14 +886,33 @@ export default function Game({ onLogout }: GameProps) {
           <div
             className={`game-map-area${combatFlash ? " terminal--combat-flash" : ""}`}
           >
-            <SectorMap
-              mapData={game.mapData}
-              currentSectorId={game.player?.currentSectorId ?? null}
-              adjacentSectorIds={
-                game.sector?.adjacentSectors?.map((a) => a.sectorId) || []
-              }
-              onMoveToSector={game.doMove}
-            />
+            {/* Map toggle */}
+            <button
+              className="map-toggle-btn"
+              onClick={() => setMap3D((v) => !v)}
+              title={map3D ? "Switch to 2D map" : "Switch to 3D map"}
+            >
+              {map3D ? "2D" : "3D"}
+            </button>
+            {map3D ? (
+              <SectorMap3D
+                mapData={game.mapData}
+                currentSectorId={game.player?.currentSectorId ?? null}
+                adjacentSectorIds={
+                  game.sector?.adjacentSectors?.map((a) => a.sectorId) || []
+                }
+                onMoveToSector={game.doMove}
+              />
+            ) : (
+              <SectorMap
+                mapData={game.mapData}
+                currentSectorId={game.player?.currentSectorId ?? null}
+                adjacentSectorIds={
+                  game.sector?.adjacentSectors?.map((a) => a.sectorId) || []
+                }
+                onMoveToSector={game.doMove}
+              />
+            )}
           </div>
           <div className="game-panel-area">
             <div className="game-panel-content">
@@ -889,13 +929,18 @@ export default function Game({ onLogout }: GameProps) {
               {renderActivePanel()}
             </div>
             <div className="game-viewport-wrapper">
-              <div className="panel-area-header">VIEWPORT</div>
+              <div className="panel-area-header">BRIDGE VIEW</div>
               <SceneViewport
                 actionScene={game.inlineScene}
                 ambientScene={ambientScene}
                 onActionComplete={game.dequeueScene}
                 sectorId={game.player?.currentSectorId}
                 shipType={game.player?.currentShip?.shipTypeId}
+                shake={combatShake}
+              />
+              <FloatingNumbers
+                xp={game.player?.xp ?? 0}
+                credits={game.player?.credits ?? 0}
               />
             </div>
           </div>

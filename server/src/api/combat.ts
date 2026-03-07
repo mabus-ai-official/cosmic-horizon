@@ -13,6 +13,7 @@ import { applyUpgradesToShip } from "../engine/upgrades";
 import { applyTabletBonuses, TabletBonuses } from "../engine/tablets";
 import { awardXP, getPlayerLevelBonuses } from "../engine/progression";
 import { checkAchievements } from "../engine/achievements";
+import { updateDailyMissionProgress } from "./daily-missions";
 import { GAME_CONFIG } from "../config/game";
 import { pickFlavor } from "../config/flavor-text";
 import { onCombatKill } from "../engine/npcs";
@@ -284,6 +285,7 @@ router.post("/fire", requireAuth, async (req, res) => {
       );
       await checkAchievements(player.id, "combat_destroy", {});
       checkAndUpdateMissions(player.id, "combat_destroy", {});
+      updateDailyMissionProgress(player.id, "win_combat").catch(() => {});
 
       // Profile stats: kill/death
       incrementStat(player.id, "combat_kills", 1);

@@ -9,6 +9,11 @@ import PixelSprite from "./PixelSprite";
 import { getInventory, getFactionReps } from "../services/api";
 import type { PlayerState } from "../hooks/useGameState";
 import type { ChatMessage, ChatChannel } from "./SectorChatPanel";
+import {
+  xpProgressPercent,
+  xpToNextLevel,
+  getNextMilestone,
+} from "../config/progression";
 
 interface ContextPanelProps {
   player: PlayerState | null;
@@ -188,6 +193,46 @@ export default function ContextPanel({
           </div>
         </div>
       </div>
+
+      {/* Level & XP Progress */}
+      {player && player.level > 0 && (
+        <div className="xp-section">
+          <div className="xp-section__header">
+            <span className="xp-section__level">LVL {player.level}</span>
+            {player.loginStreak > 0 && (
+              <span
+                className="xp-section__streak"
+                title={`${player.loginStreak} day login streak`}
+              >
+                {player.loginStreak}d
+              </span>
+            )}
+            <span className="xp-section__rank">{player.rank}</span>
+          </div>
+          <div className="ctx-bar">
+            <div
+              className="ctx-bar__fill ctx-bar__fill--xp"
+              style={{
+                width: `${xpProgressPercent(player.level, player.xp)}%`,
+              }}
+            />
+          </div>
+          <div className="xp-section__detail">
+            <span>
+              {xpToNextLevel(player.level, player.xp).toLocaleString()} XP to
+              next
+            </span>
+            {(() => {
+              const next = getNextMilestone(player.level);
+              return next ? (
+                <span className="xp-section__next">
+                  Lvl {next.level}: {next.reward}
+                </span>
+              ) : null;
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* Faction Standing */}
       {factionReps.length > 0 && (

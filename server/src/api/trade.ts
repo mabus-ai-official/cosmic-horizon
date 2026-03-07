@@ -12,6 +12,7 @@ import { checkAndUpdateMissions } from "../services/mission-tracker";
 import { applyUpgradesToShip } from "../engine/upgrades";
 import { awardXP } from "../engine/progression";
 import { checkAchievements } from "../engine/achievements";
+import { updateDailyMissionProgress } from "./daily-missions";
 import { onTradeComplete } from "../engine/npcs";
 import { GAME_CONFIG } from "../config/game";
 import { pickFlavor, outpostNpcRace } from "../config/flavor-text";
@@ -213,6 +214,9 @@ router.post("/buy", requireAuth, async (req, res) => {
       tradeType: "buy",
       commodity,
     });
+    updateDailyMissionProgress(player.id, "trade_value", adjustedCost).catch(
+      () => {},
+    );
 
     // Award trade XP for buying
     const xpResult = await awardXP(
@@ -396,6 +400,9 @@ router.post("/sell", requireAuth, async (req, res) => {
       tradeType: "sell",
       commodity,
     });
+    updateDailyMissionProgress(player.id, "trade_value", adjustedRevenue).catch(
+      () => {},
+    );
 
     // Award trade XP for selling
     const xpResult = await awardXP(

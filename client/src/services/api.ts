@@ -280,6 +280,11 @@ export const getProfile = () => api.get("/progression/profile");
 export const getAchievements = () => api.get("/progression/achievements");
 export const getRanks = () => api.get("/progression/ranks");
 
+// Daily Missions
+export const getDailyMissions = () => api.get("/daily-missions");
+export const claimDailyMission = (id: string) =>
+  api.post(`/daily-missions/${id}/claim`);
+
 // Messages
 export const getInbox = () => api.get("/messages/inbox");
 export const getSentMessages = () => api.get("/messages/sent");

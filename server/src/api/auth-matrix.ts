@@ -106,24 +106,27 @@ async function validateMatrixToken(
  */
 router.post("/", async (req, res) => {
   try {
-    const { openIdToken, matrixUserId, race: requestedRace } = req.body;
+    const {
+      openIdToken,
+      matrixUserId: claimedUserId,
+      race: requestedRace,
+    } = req.body;
     if (!openIdToken?.access_token || !openIdToken?.matrix_server_name) {
       return res.status(400).json({ error: "Missing OpenID token" });
     }
-    if (!matrixUserId) {
-      return res.status(400).json({ error: "Missing Matrix user ID" });
-    }
 
-    // 1. Validate the OpenID token with the homeserver
+    // 1. Validate the OpenID token with the homeserver — gives us the authoritative user ID
     const validatedUserId = await validateMatrixToken(openIdToken);
     if (!validatedUserId) {
       return res.status(401).json({ error: "Invalid Matrix OpenID token" });
     }
 
-    // Ensure the claimed user ID matches what the homeserver says
-    if (validatedUserId !== matrixUserId) {
+    // If client sent a userId, verify it matches; otherwise trust the token
+    if (claimedUserId && claimedUserId !== validatedUserId) {
       return res.status(401).json({ error: "Matrix user ID mismatch" });
     }
+
+    const matrixUserId = validatedUserId;
 
     // 2. Check if player already exists with this Matrix user ID
     const existing = await db("players")
@@ -324,11 +327,9 @@ router.post("/link", requireAuth, async (req, res) => {
     // Check if this player already has a Matrix account linked
     const player = await db("players").where({ id: playerId }).first();
     if (player?.matrix_user_id) {
-      return res
-        .status(400)
-        .json({
-          error: "Player already has a Matrix account linked. Unlink first.",
-        });
+      return res.status(400).json({
+        error: "Player already has a Matrix account linked. Unlink first.",
+      });
     }
 
     await db("players").where({ id: playerId }).update({
@@ -369,12 +370,10 @@ router.post("/unlink", requireAuth, async (req, res) => {
 
     // Prevent unlinking if this is a Matrix-only account (no real password)
     if (player.password_hash?.startsWith("matrix:")) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "Cannot unlink Matrix from a Matrix-only account. Set a password first.",
-        });
+      return res.status(400).json({
+        error:
+          "Cannot unlink Matrix from a Matrix-only account. Set a password first.",
+      });
     }
 
     await db("players").where({ id: playerId }).update({

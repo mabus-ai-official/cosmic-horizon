@@ -765,8 +765,8 @@ body {
   width: 280px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px;
+  gap: 8px;
+  padding: 10px;
   border-left: 1px solid var(--border);
   overflow-y: auto;
   flex-shrink: 0;
@@ -777,9 +777,11 @@ body {
 .profile-section {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 0 8px;
-  border-bottom: 1px solid var(--border);
+  gap: 10px;
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 
 .profile-portrait {
@@ -802,7 +804,7 @@ body {
 .profile-section__info {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 3px;
   min-width: 0;
 }
 
@@ -840,10 +842,10 @@ body {
 }
 
 .ctx-bar {
-  height: 6px;
+  height: 8px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: 4px;
   overflow: hidden;
 }
 
@@ -862,42 +864,46 @@ body {
 
 /* Ship Card in context panel */
 .ship-card {
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 
 .ship-card__header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
 }
 
 .ship-card__header-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .ship-card__type {
   font-size: 0.923rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   text-transform: capitalize;
 }
 
 .ship-card__stats-row {
   display: flex;
-  gap: 8px;
-  font-size: 0.769rem;
+  gap: 12px;
+  font-size: 0.8rem;
 }
 
 .ship-card__cargo-breakdown {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  font-size: 0.692rem;
-  margin-top: 2px;
+  gap: 6px;
+  font-size: 0.769rem;
+  margin-top: 4px;
 }
 
 /* Self-Destruct Button */
@@ -950,10 +956,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 0;
-  margin-bottom: 4px;
-  border-bottom: 1px solid var(--border);
-  background: linear-gradient(90deg, rgba(232, 71, 160, 0.06), transparent 50%);
+  padding: 0 0 4px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .ctx-section-header__label {
@@ -973,8 +978,10 @@ body {
 .mini-chat {
   display: flex;
   flex-direction: column;
-  padding: 0 0 6px;
-  border-bottom: 1px solid var(--border);
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
   flex: 1;
   min-height: 0;
 }
@@ -982,15 +989,15 @@ body {
 .mini-chat__messages {
   flex: 1;
   overflow-y: auto;
-  min-height: 100px;
-  max-height: 200px;
+  min-height: 80px;
+  max-height: 180px;
   scrollbar-width: thin;
   scrollbar-color: var(--border) var(--bg-primary);
 }
 
 .mini-chat__msg {
   font-size: 0.769rem;
-  padding: 1px 0;
+  padding: 2px 0;
   word-break: break-word;
   color: var(--text-primary);
 }
@@ -1009,18 +1016,18 @@ body {
 }
 
 .mini-chat__input {
-  margin-top: 3px;
+  margin-top: 6px;
 }
 
 .mini-chat__input input {
   width: 100%;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   border: 1px solid var(--border);
   color: var(--text-primary);
-  padding: 3px 6px;
+  padding: 5px 8px;
   font-size: 0.769rem;
   font-family: inherit;
-  border-radius: 3px;
+  border-radius: 4px;
   outline: none;
 }
 
@@ -1040,8 +1047,8 @@ body {
   align-items: center;
   background: var(--bg-primary);
   border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 0 6px;
+  border-radius: 4px;
+  padding: 0 8px;
   margin-top: 4px;
   box-shadow: 0 -1px 4px rgba(232, 71, 160, 0.06);
 }
@@ -1061,7 +1068,7 @@ body {
   color: var(--text-primary);
   font-family: inherit;
   font-size: 0.923rem;
-  padding: 4px 0;
+  padding: 6px 0;
   caret-color: var(--magenta);
 }
 
@@ -5333,24 +5340,32 @@ body {
 
 /* Faction Reputation */
 .faction-rep-section {
-  padding: 6px 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 
 .faction-rep-header {
   font-size: 0.692rem;
   color: var(--text-secondary);
   letter-spacing: 1px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
 }
 
 .faction-rep-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1px 0;
+  padding: 3px 0;
   font-size: 0.769rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.faction-rep-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .faction-rep-name {
@@ -5392,12 +5407,14 @@ body {
 
 /* Notes section in context panel */
 .ctx-notes-section {
-  border-bottom: 1px solid var(--border);
   max-height: 150px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--border) var(--bg-primary);
-  padding: 0 0 4px;
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 
 /* ===== Toast Notifications ===== */

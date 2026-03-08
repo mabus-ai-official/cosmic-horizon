@@ -476,14 +476,11 @@ router.delete("/account", requireAuth, async (req, res) => {
       return res.status(401).json({ error: "Incorrect password" });
     }
 
-    // Delete all player data (tables without CASCADE)
-    const tables = [
+    // Delete all player data — tables with player_id column
+    const playerIdTables = [
       "trade_logs",
-      "combat_logs",
       "game_events",
-      "bounties",
       "notes",
-      "messages",
       "player_npc_state",
       "npc_encounters",
       "leaderboard_entries",
@@ -496,24 +493,56 @@ router.delete("/account", requireAuth, async (req, res) => {
       "player_progression",
       "syndicate_pool_transactions",
       "syndicate_members",
-      "syndicate_proposals",
-      "syndicate_votes",
       "warp_gate_access",
       "recipe_discoveries",
       "crafting_queue",
-      "trade_routes",
-      "trade_offers",
+      "player_activities",
+      "daily_missions",
+      "player_tablets",
+      "ship_inventory",
+      "missions",
+      "syndicate_join_requests",
+      "syndicate_vote_ballots",
+      "leaderboard_cache",
+      "player_stats_daily",
     ];
 
-    for (const table of tables) {
-      try {
-        await db(table).where({ player_id: playerId }).del();
-      } catch {
-        // Table may not exist or column name differs — skip
-      }
+    for (const table of playerIdTables) {
+      await db(table)
+        .where({ player_id: playerId })
+        .del()
+        .catch(() => {});
     }
 
-    // Handle tables with different column names
+    // Tables with non-standard FK column names
+    await db("combat_logs")
+      .where({ attacker_id: playerId })
+      .del()
+      .catch(() => {});
+    await db("combat_logs")
+      .where({ defender_id: playerId })
+      .del()
+      .catch(() => {});
+    await db("bounties")
+      .where({ placed_by_id: playerId })
+      .del()
+      .catch(() => {});
+    await db("bounties")
+      .where({ target_player_id: playerId })
+      .update({ target_player_id: null })
+      .catch(() => {});
+    await db("bounties")
+      .where({ claimed_by_id: playerId })
+      .update({ claimed_by_id: null })
+      .catch(() => {});
+    await db("messages")
+      .where({ sender_id: playerId })
+      .del()
+      .catch(() => {});
+    await db("messages")
+      .where({ recipient_id: playerId })
+      .del()
+      .catch(() => {});
     await db("ships")
       .where({ owner_id: playerId })
       .del()
@@ -529,6 +558,42 @@ router.delete("/account", requireAuth, async (req, res) => {
     await db("alliances")
       .where({ player_a_id: playerId })
       .orWhere({ player_b_id: playerId })
+      .del()
+      .catch(() => {});
+    await db("trade_routes")
+      .where({ owner_id: playerId })
+      .del()
+      .catch(() => {});
+    await db("trade_offers")
+      .where({ owner_id: playerId })
+      .del()
+      .catch(() => {});
+    await db("sector_resource_events")
+      .where({ claimed_by: playerId })
+      .update({ claimed_by: null })
+      .catch(() => {});
+    await db("sector_events")
+      .where({ resolved_by_id: playerId })
+      .update({ resolved_by_id: null })
+      .catch(() => {});
+    await db("syndicate_invite_codes")
+      .where({ created_by: playerId })
+      .del()
+      .catch(() => {});
+    await db("syndicate_votes")
+      .where({ proposed_by: playerId })
+      .del()
+      .catch(() => {});
+    await db("syndicate_join_requests")
+      .where({ reviewed_by: playerId })
+      .update({ reviewed_by: null })
+      .catch(() => {});
+    await db("syndicates")
+      .where({ leader_id: playerId })
+      .del()
+      .catch(() => {});
+    await db("warp_gates")
+      .where({ built_by_id: playerId })
       .del()
       .catch(() => {});
 

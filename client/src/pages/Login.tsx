@@ -109,6 +109,10 @@ export default function Login({ onLogin }: LoginProps) {
           New pilot? <Link to="/register">Register here</Link>
         </p>
       </div>
+      <div className="analytics-banner">
+        This site uses cookies and analytics to improve your experience. By
+        continuing, you consent to data collection.
+      </div>
     </div>
   );
 }

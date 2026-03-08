@@ -13,6 +13,8 @@ export type PanelId =
   | "syndicate"
   | "wallet"
   | "actions"
+  | "intel"
+  | "trade-history"
   | "notes"
   | "profile";
 
@@ -50,4 +52,11 @@ export const PANELS: PanelDef[] = [
   { id: "wallet", label: "WALLET", spriteKey: "icon_wallet", hotkey: "W" },
   { id: "actions", label: "DATABANK", spriteKey: "icon_actions", hotkey: "D" },
   { id: "notes", label: "NOTES", spriteKey: "icon_notes", hotkey: "N" },
+  { id: "intel", label: "INTEL", spriteKey: "icon_intel", hotkey: "T" },
+  {
+    id: "trade-history",
+    label: "LEDGER",
+    spriteKey: "icon_trade_history",
+    hotkey: "J",
+  },
 ];

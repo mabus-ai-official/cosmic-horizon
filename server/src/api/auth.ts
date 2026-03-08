@@ -331,4 +331,216 @@ router.post("/logout", (req, res) => {
   });
 });
 
+// --- Settings endpoints ---
+
+router.post("/change-username", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.session.playerId!;
+    const { newUsername } = req.body;
+
+    if (!newUsername || newUsername.length < 3 || newUsername.length > 32) {
+      return res
+        .status(400)
+        .json({ error: "Username must be 3-32 characters" });
+    }
+
+    const player = await db("players").where({ id: playerId }).first();
+    if (!player) return res.status(404).json({ error: "Player not found" });
+
+    const usernameChanges = player.username_changes || 0;
+    if (usernameChanges >= 3) {
+      return res
+        .status(400)
+        .json({ error: "Maximum username changes reached (3)" });
+    }
+
+    // Check uniqueness
+    const existing = await db("players")
+      .where({ username: newUsername })
+      .whereNot({ id: playerId })
+      .first();
+    if (existing) {
+      return res.status(409).json({ error: "Username already taken" });
+    }
+
+    await db("players")
+      .where({ id: playerId })
+      .update({
+        username: newUsername,
+        username_changes: usernameChanges + 1,
+      });
+
+    res.json({
+      success: true,
+      username: newUsername,
+      changesRemaining: 2 - usernameChanges,
+    });
+  } catch (err) {
+    console.error("Change username error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/change-race", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.session.playerId!;
+    const { newRace, password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({ error: "Password required" });
+    }
+    if (!newRace || !VALID_RACE_IDS.includes(newRace)) {
+      return res
+        .status(400)
+        .json({ error: "Invalid race. Choose: " + VALID_RACE_IDS.join(", ") });
+    }
+
+    const player = await db("players").where({ id: playerId }).first();
+    if (!player) return res.status(404).json({ error: "Player not found" });
+
+    const valid = await bcrypt.compare(password, player.password_hash);
+    if (!valid) {
+      return res.status(401).json({ error: "Incorrect password" });
+    }
+
+    if (player.race === newRace) {
+      return res.status(400).json({ error: "Already that race" });
+    }
+
+    // Reset all faction reputation
+    await db("player_faction_rep").where({ player_id: playerId }).del();
+    // Reset NPC reputation
+    await db("player_npc_state")
+      .where({ player_id: playerId })
+      .update({ reputation: 0 });
+
+    await db("players").where({ id: playerId }).update({ race: newRace });
+
+    res.json({ success: true, race: newRace });
+  } catch (err) {
+    console.error("Change race error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/change-password", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.session.playerId!;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: "Both passwords required" });
+    }
+    if (newPassword.length < 8) {
+      return res
+        .status(400)
+        .json({ error: "Password must be at least 8 characters" });
+    }
+
+    const player = await db("players").where({ id: playerId }).first();
+    if (!player) return res.status(404).json({ error: "Player not found" });
+
+    const valid = await bcrypt.compare(currentPassword, player.password_hash);
+    if (!valid) {
+      return res.status(401).json({ error: "Incorrect current password" });
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 12);
+    await db("players")
+      .where({ id: playerId })
+      .update({ password_hash: newHash });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Change password error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/account", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.session.playerId!;
+    const { password } = req.body;
+
+    if (!password) {
+      return res
+        .status(400)
+        .json({ error: "Password required to delete account" });
+    }
+
+    const player = await db("players").where({ id: playerId }).first();
+    if (!player) return res.status(404).json({ error: "Player not found" });
+
+    const valid = await bcrypt.compare(password, player.password_hash);
+    if (!valid) {
+      return res.status(401).json({ error: "Incorrect password" });
+    }
+
+    // Delete all player data (tables without CASCADE)
+    const tables = [
+      "trade_logs",
+      "combat_logs",
+      "game_events",
+      "bounties",
+      "notes",
+      "messages",
+      "player_npc_state",
+      "npc_encounters",
+      "leaderboard_entries",
+      "player_faction_rep",
+      "player_devices",
+      "player_achievements",
+      "player_milestones",
+      "player_personal_bests",
+      "player_stats",
+      "player_progression",
+      "syndicate_pool_transactions",
+      "syndicate_members",
+      "syndicate_proposals",
+      "syndicate_votes",
+      "warp_gate_access",
+      "recipe_discoveries",
+      "crafting_queue",
+      "trade_routes",
+      "trade_offers",
+    ];
+
+    for (const table of tables) {
+      try {
+        await db(table).where({ player_id: playerId }).del();
+      } catch {
+        // Table may not exist or column name differs — skip
+      }
+    }
+
+    // Handle tables with different column names
+    await db("ships")
+      .where({ owner_id: playerId })
+      .del()
+      .catch(() => {});
+    await db("deployables")
+      .where({ owner_id: playerId })
+      .del()
+      .catch(() => {});
+    await db("planets")
+      .where({ owner_id: playerId })
+      .update({ owner_id: null })
+      .catch(() => {});
+    await db("alliances")
+      .where({ player_a_id: playerId })
+      .orWhere({ player_b_id: playerId })
+      .del()
+      .catch(() => {});
+
+    // Delete the player
+    await db("players").where({ id: playerId }).del();
+
+    req.session.destroy(() => {});
+    res.json({ success: true, message: "Account deleted" });
+  } catch (err) {
+    console.error("Account deletion error:", err);
+    res.status(500).json({ error: "Failed to delete account" });
+  }
+});
+
 export default router;

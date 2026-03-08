@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import CollapsiblePanel from "./CollapsiblePanel";
 import PixelSprite from "./PixelSprite";
 import NPCDialogueView from "./NPCDialogueView";
-import { getContacts, getFactionReps } from "../services/api";
+import { getContacts, getFactionReps, talkToNPC } from "../services/api";
 import type { SectorState } from "../hooks/useGameState";
 
 interface NPC {
@@ -18,8 +18,12 @@ interface NPC {
 interface Contact {
   npcId: string;
   name: string;
+  title?: string | null;
   race: string;
+  factionId?: string | null;
+  factionName?: string | null;
   sectorId: number;
+  reputation?: number;
   lastVisited: string | null;
 }
 
@@ -160,6 +164,22 @@ export function NPCList({
 
 export function ContactsList({ refreshKey }: { refreshKey?: number }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [search, setSearch] = useState("");
+  const [talkingTo, setTalkingTo] = useState<Contact | null>(null);
+  const [locatedNpcId, setLocatedNpcId] = useState<string | null>(null);
+  const [inlineDialogue, setInlineDialogue] = useState<{
+    npcId: string;
+    text: string;
+    options: Array<{
+      label: string;
+      index: number;
+      locked: boolean;
+      lockReason?: string;
+    }>;
+    ended: boolean;
+  } | null>(null);
+  const [inlineError, setInlineError] = useState<string | null>(null);
+  const [inlineLoading, setInlineLoading] = useState(false);
 
   useEffect(() => {
     getContacts()
@@ -174,13 +194,142 @@ export function ContactsList({ refreshKey }: { refreshKey?: number }) {
       .catch(() => setContacts([]));
   }, [refreshKey]);
 
+  const filtered = useMemo(() => {
+    if (!search.trim()) return contacts;
+    const q = search.toLowerCase();
+    return contacts.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.race && c.race.toLowerCase().includes(q)) ||
+        (c.factionName && c.factionName.toLowerCase().includes(q)) ||
+        String(c.sectorId).includes(q),
+    );
+  }, [contacts, search]);
+
+  const handleTalk = async (contact: Contact, choiceIndex?: number) => {
+    setInlineLoading(true);
+    setInlineError(null);
+    try {
+      const { data } = await talkToNPC(contact.npcId, choiceIndex);
+      setTalkingTo(contact);
+      setInlineDialogue({
+        npcId: contact.npcId,
+        text: data.text || data.dialogue || data.message || "",
+        options: (data.options || data.choices || []).map(
+          (opt: any, i: number) => ({
+            label: typeof opt === "string" ? opt : opt.label || opt.text,
+            index: typeof opt === "string" ? i : (opt.index ?? i),
+            locked: opt.locked || false,
+            lockReason: opt.lockReason,
+          }),
+        ),
+        ended: data.isEnd || data.ended || false,
+      });
+    } catch (err: any) {
+      const msg = err.response?.data?.error || "Failed to contact NPC";
+      setInlineError(msg);
+      setTalkingTo(contact);
+      setInlineDialogue(null);
+    } finally {
+      setInlineLoading(false);
+    }
+  };
+
+  const handleEndConversation = () => {
+    setTalkingTo(null);
+    setInlineDialogue(null);
+    setInlineError(null);
+  };
+
+  // If actively talking to a contact, show inline dialogue
+  if (talkingTo) {
+    return (
+      <div className="contact-dialogue">
+        <div className="npc-dialogue__header">
+          <div className="npc-dialogue__name">{talkingTo.name}</div>
+          {talkingTo.title && (
+            <div className="npc-dialogue__title">{talkingTo.title}</div>
+          )}
+          <div className="text-muted" style={{ fontSize: "10px" }}>
+            Sector {talkingTo.sectorId}
+            {talkingTo.factionName ? ` - ${talkingTo.factionName}` : ""}
+          </div>
+        </div>
+
+        {inlineError && (
+          <div className="mall-error" style={{ marginTop: 4 }}>
+            {inlineError}
+          </div>
+        )}
+
+        {inlineLoading && <div className="text-muted">...</div>}
+
+        {inlineDialogue && !inlineLoading && (
+          <>
+            <div className="npc-dialogue__text">{inlineDialogue.text}</div>
+            <div className="npc-dialogue__options">
+              {inlineDialogue.options.map((opt) => (
+                <button
+                  key={opt.index}
+                  className="npc-dialogue__option"
+                  disabled={opt.locked}
+                  title={opt.locked ? opt.lockReason : undefined}
+                  onClick={() => handleTalk(talkingTo, opt.index)}
+                  style={opt.locked ? { opacity: 0.5 } : undefined}
+                >
+                  {opt.label}
+                  {opt.locked && opt.lockReason ? ` (${opt.lockReason})` : ""}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        <button
+          className="btn-sm"
+          onClick={handleEndConversation}
+          style={{
+            marginTop: "8px",
+            color: "var(--text-secondary)",
+            borderColor: "var(--text-secondary)",
+          }}
+        >
+          {inlineDialogue?.ended || inlineError
+            ? "[End conversation]"
+            : "[Leave]"}
+        </button>
+      </div>
+    );
+  }
+
   if (contacts.length === 0) {
     return <div className="text-muted">No contacts recorded.</div>;
   }
 
   return (
     <>
-      {contacts.map((c) => {
+      <div style={{ marginBottom: 6 }}>
+        <input
+          type="text"
+          className="chat-input"
+          placeholder="Filter contacts..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "4px 6px",
+            fontSize: "11px",
+            background: "var(--bg-secondary, #1a1a2e)",
+            border: "1px solid var(--border, #333)",
+            color: "var(--text-primary, #ccc)",
+            borderRadius: "3px",
+          }}
+        />
+      </div>
+      {filtered.length === 0 && (
+        <div className="text-muted">No contacts match "{search}".</div>
+      )}
+      {filtered.map((c) => {
         let timeStr = "";
         if (c.lastVisited) {
           const ago = Date.now() - new Date(c.lastVisited).getTime();
@@ -194,14 +343,64 @@ export function ContactsList({ refreshKey }: { refreshKey?: number }) {
                 ? `${hrs}h ago`
                 : `${mins}m ago`;
         }
+        const isLocated = locatedNpcId === c.npcId;
+        const spriteKey = RACE_SPRITE_MAP[c.race] || "npc_generic_a";
         return (
-          <div key={c.npcId} className="contact-item">
-            <span className="contact-item__name">{c.name}</span>
-            <span className="contact-item__detail">
-              {" "}
-              ({c.race}) - Sector {c.sectorId}
-              {timeStr ? ` - ${timeStr}` : ""}
-            </span>
+          <div
+            key={c.npcId}
+            className="contact-item"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "4px 0",
+            }}
+          >
+            <PixelSprite spriteKey={spriteKey} size={16} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span className="contact-item__name">{c.name}</span>
+              <span className="contact-item__detail">
+                {" "}
+                ({c.race}){c.factionName ? ` - ${c.factionName}` : ""}
+                {timeStr ? ` - ${timeStr}` : ""}
+              </span>
+              {isLocated && (
+                <div
+                  style={{
+                    fontSize: "10px",
+                    color: "var(--green, #0f0)",
+                    marginTop: 1,
+                  }}
+                >
+                  Located in Sector {c.sectorId}
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
+              <button
+                className="btn-sm btn-buy"
+                onClick={() => handleTalk(c)}
+                style={{ fontSize: "10px", padding: "2px 6px" }}
+              >
+                TALK
+              </button>
+              <button
+                className="btn-sm"
+                onClick={() => setLocatedNpcId(isLocated ? null : c.npcId)}
+                style={{
+                  fontSize: "10px",
+                  padding: "2px 6px",
+                  color: isLocated
+                    ? "var(--green, #0f0)"
+                    : "var(--text-secondary, #888)",
+                  borderColor: isLocated
+                    ? "var(--green, #0f0)"
+                    : "var(--text-secondary, #888)",
+                }}
+              >
+                LOCATE
+              </button>
+            </div>
           </div>
         );
       })}

@@ -341,6 +341,7 @@ export const getNPCDetail = (npcId: string) => api.get(`/npcs/${npcId}`);
 export const markNPCEncountered = (npcId: string) =>
   api.post(`/npcs/${npcId}/encountered`);
 export const getFactionReps = () => api.get("/npcs/factions");
+export const getIntelLog = () => api.get("/npcs/intel");
 export const getNPCVendor = (npcId: string) => api.get(`/npcs/${npcId}/vendor`);
 export const buyFromNPCVendor = (npcId: string, itemId: string) =>
   api.post(`/npcs/${npcId}/vendor/buy`, { itemId });
@@ -582,6 +583,14 @@ export const governanceKick = (syndicateId: string, playerId: string) =>
     player_id: playerId,
   });
 
+// Trade History
+export const getTradeHistory = (params?: {
+  commodity?: string;
+  direction?: string;
+  limit?: number;
+  offset?: number;
+}) => api.get("/trade-history", { params });
+
 // ── Trade Routes & Caravans ───────────────────────────────
 export const getTradeRoutes = () => api.get("/trade-routes");
 export const createTradeRoute = (
@@ -616,5 +625,15 @@ export const getProfileActivity = (limit?: number, before?: string) => {
   return api.get(`/profile/activity${qs ? "?" + qs : ""}`);
 };
 export const getProfileMilestones = () => api.get("/profile/milestones");
+
+// ── Account Settings ──────────────────────────────────────
+export const changeUsername = (newUsername: string) =>
+  api.post("/auth/change-username", { newUsername });
+export const changeRace = (newRace: string, password: string) =>
+  api.post("/auth/change-race", { newRace, password });
+export const changePassword = (currentPassword: string, newPassword: string) =>
+  api.post("/auth/change-password", { currentPassword, newPassword });
+export const deleteAccount = (password: string) =>
+  api.delete("/auth/account", { data: { password } });
 
 export default api;

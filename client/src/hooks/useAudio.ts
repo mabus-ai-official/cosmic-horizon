@@ -11,6 +11,11 @@ const FADE_STEPS = 20;
 const STORAGE_KEY_MUTED = "cosmic-horizon-muted";
 const STORAGE_KEY_VOLUME = "cosmic-horizon-volume";
 
+// External mood-based track filter — when set, gameplay next-track picks from this subset
+let moodTrackFilter: AudioTrack[] | null = null;
+// External volume multiplier (e.g., silence/bliss state)
+let externalVolumeMultiplier = 1.0;
+
 // Track whether user has interacted with the page (for autoplay policy)
 let userHasInteracted = false;
 let interactionCallback: (() => void) | null = null;
@@ -193,13 +198,20 @@ export function useAudio() {
       setCurrentTrackId(track.id);
       setPaused(false);
 
-      const targetVolume = track.volume * volumeVal;
+      const targetVolume = track.volume * volumeVal * externalVolumeMultiplier;
 
       // For playlist tracks, listen for 'ended' to crossfade to next
       // Read current muted/volume from refs to avoid stale closure values
       if (isPlaylist && playlist) {
         const onEnded = () => {
-          const next = pickRandom(playlist, track.id);
+          // Use mood-filtered subset for gameplay, full playlist otherwise
+          const pickFrom =
+            moodTrackFilter &&
+            moodTrackFilter.length > 0 &&
+            playlist === GAMEPLAY_TRACKS
+              ? moodTrackFilter
+              : playlist;
+          const next = pickRandom(pickFrom, track.id);
           startTrack(next, true, mutedRef.current, volumeRef.current, playlist);
         };
         onEndedRef.current = onEnded;
@@ -312,7 +324,8 @@ export function useAudio() {
         GAMEPLAY_TRACKS.find((t) => t.id === currentTrackIdRef.current) ||
         STARMALL_TRACKS.find((t) => t.id === currentTrackIdRef.current);
       if (track) {
-        audioRef.current.volume = track.volume * clamped;
+        audioRef.current.volume =
+          track.volume * clamped * externalVolumeMultiplier;
       }
     }
   }, []);
@@ -384,6 +397,25 @@ export function useAudio() {
     }
   }, []);
 
+  const setMoodTracks = useCallback((tracks: AudioTrack[] | null) => {
+    moodTrackFilter = tracks;
+  }, []);
+
+  const setVolumeMultiplier = useCallback((multiplier: number) => {
+    externalVolumeMultiplier = Math.max(0, Math.min(1, multiplier));
+    // Apply immediately to current audio
+    if (audioRef.current && currentTrackIdRef.current) {
+      const track =
+        AUDIO_TRACKS.find((t) => t.id === currentTrackIdRef.current) ||
+        GAMEPLAY_TRACKS.find((t) => t.id === currentTrackIdRef.current) ||
+        STARMALL_TRACKS.find((t) => t.id === currentTrackIdRef.current);
+      if (track) {
+        audioRef.current.volume =
+          track.volume * volumeRef.current * externalVolumeMultiplier;
+      }
+    }
+  }, []);
+
   const activePlaylist = getPlaylistForContext(currentContext || "");
   const canSkip = !!activePlaylist && activePlaylist.length > 1;
   const canPrevious = !!activePlaylist && trackHistoryRef.current.length > 0;
@@ -403,5 +435,7 @@ export function useAudio() {
     toggleMute,
     volume,
     currentTrackId,
+    setMoodTracks,
+    setVolumeMultiplier,
   };
 }

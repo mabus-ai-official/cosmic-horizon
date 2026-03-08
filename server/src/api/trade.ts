@@ -208,6 +208,17 @@ router.post("/buy", requireAuth, async (req, res) => {
         treasury: result.newTreasury,
       });
 
+    // Log trade
+    await db("trade_logs").insert({
+      player_id: player.id,
+      outpost_id: outpost.id,
+      commodity,
+      quantity: result.quantity,
+      price_per_unit: result.pricePerUnit,
+      total_price: adjustedCost,
+      direction: "buy",
+    });
+
     // Mission progress: trade (buy)
     checkAndUpdateMissions(player.id, "trade", {
       quantity: result.quantity,
@@ -393,6 +404,17 @@ router.post("/sell", requireAuth, async (req, res) => {
         [stockField]: result.newStock,
         treasury: result.newTreasury,
       });
+
+    // Log trade
+    await db("trade_logs").insert({
+      player_id: player.id,
+      outpost_id: outpost.id,
+      commodity,
+      quantity: result.quantity,
+      price_per_unit: result.pricePerUnit,
+      total_price: adjustedRevenue,
+      direction: "sell",
+    });
 
     // Mission progress: trade (sell) + deliver_cargo
     checkAndUpdateMissions(player.id, "trade", {

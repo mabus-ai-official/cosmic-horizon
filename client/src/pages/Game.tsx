@@ -18,6 +18,8 @@ import SyndicateGroupPanel from "../components/SyndicateGroupPanel";
 import WalletPanel from "../components/WalletPanel";
 import ActionsPanel from "../components/ActionsPanel";
 import NotesPanel from "../components/NotesPanel";
+import IntelLogPanel from "../components/IntelLogPanel";
+import TradeHistoryPanel from "../components/TradeHistoryPanel";
 import ProfilePanel from "../components/ProfilePanel";
 import TutorialOverlay from "../components/TutorialOverlay";
 import TutorialWelcomeOverlay from "../components/TutorialWelcomeOverlay";
@@ -38,6 +40,7 @@ import DailyMissions from "../components/DailyMissions";
 import DailyMissionsOverlay from "../components/DailyMissionsOverlay";
 import FloatingNumbers from "../components/FloatingNumbers";
 import LevelUpOverlay from "../components/LevelUpOverlay";
+import ResourceEventOverlay from "../components/ResourceEventOverlay";
 import { useToast } from "../hooks/useToast";
 import {
   type ChatMessage,
@@ -55,9 +58,13 @@ import { buildMallInteriorScene } from "../config/scenes/mall-interior-scene";
 import { useGameState } from "../hooks/useGameState";
 import { useSocket } from "../hooks/useSocket";
 import { useAudio } from "../hooks/useAudio";
+import { useAria } from "../hooks/useAria";
 import { useActivePanel } from "../hooks/useActivePanel";
+import { useMusicMood } from "../config/music-moods";
 import { handleCommand } from "../services/commands";
 import { PANELS } from "../types/panels";
+import AriaComment from "../components/AriaComment";
+import SettingsPanel from "../components/SettingsPanel";
 import {
   getAlliances,
   getSyndicate,
@@ -74,6 +81,8 @@ export default function Game({ onLogout }: GameProps) {
   const game = useGameState();
   const { on, emit } = useSocket(game.player?.id ?? null);
   const audio = useAudio();
+  const aria = useAria();
+  const mood = useMusicMood();
   const { activePanel, selectPanel, badges, incrementBadge } =
     useActivePanel("nav");
   const { toasts, showToast, dismissToast } = useToast();
@@ -83,6 +92,7 @@ export default function Game({ onLogout }: GameProps) {
   const [combatFlash, setCombatFlash] = useState(false);
   const [combatShake, setCombatShake] = useState(false);
   const [map3D, setMap3D] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
   const [showSPComplete, setShowSPComplete] = useState(false);
   const [alliedPlayerIds, setAlliedPlayerIds] = useState<string[]>([]);
   const [pendingAllianceIds, setPendingAllianceIds] = useState<
@@ -94,6 +104,9 @@ export default function Game({ onLogout }: GameProps) {
     "players" | "npcs" | "contacts" | undefined
   >(undefined);
   const [autoTalkNpcId, setAutoTalkNpcId] = useState<string | null>(null);
+  const [resourceEventNotification, setResourceEventNotification] = useState<{
+    events: Array<{ type: string; id?: string }>;
+  } | null>(null);
   const lastSectorRef = useRef<number | null>(null);
   const lastListingRef = useRef<{ id: string; label: string }[] | null>(null);
   const activePanelRef = useRef(activePanel);
@@ -136,8 +149,29 @@ export default function Game({ onLogout }: GameProps) {
     ) {
       lastSectorRef.current = game.player.currentSectorId;
       setChatMessages([]);
+      aria.triggerMove();
     }
   }, [game.player?.currentSectorId]);
+
+  // Show resource event overlay when entering a new sector with events
+  const prevResourceSectorRef = useRef<number | null>(null);
+  useEffect(() => {
+    const sectorId = game.sector?.sectorId ?? null;
+    const events = game.sector?.events ?? [];
+    if (
+      sectorId &&
+      prevResourceSectorRef.current !== null &&
+      sectorId !== prevResourceSectorRef.current &&
+      events.length > 0
+    ) {
+      setResourceEventNotification({
+        events: events.map((e) => ({ type: e.eventType, id: e.id })),
+      });
+    }
+    if (sectorId) {
+      prevResourceSectorRef.current = sectorId;
+    }
+  }, [game.sector?.sectorId, game.sector?.events]);
 
   const refreshAlliances = useCallback(() => {
     getAlliances()
@@ -203,6 +237,16 @@ export default function Game({ onLogout }: GameProps) {
     game.player?.tutorialCompleted,
     game.sector?.sectorId,
   ]);
+
+  // Sync mood engine → audio system (track filtering + silence volume)
+  useEffect(() => {
+    const moodTracks = mood.getMoodTracks();
+    audio.setMoodTracks(moodTracks.length > 0 ? moodTracks : null);
+  }, [mood.currentMood]);
+
+  useEffect(() => {
+    audio.setVolumeMultiplier(mood.silenceState.volumeMultiplier);
+  }, [mood.silenceState.volumeMultiplier]);
 
   // Multi-session sync: debounced refresh on sync:* events
   const syncTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -287,7 +331,10 @@ export default function Game({ onLogout }: GameProps) {
           setCombatShake(true);
           setTimeout(() => setCombatFlash(false), 300);
           setTimeout(() => setCombatShake(false), 400);
+          mood.onCombatStart();
+          aria.triggerCombat();
           game.enqueueScene(buildCombatScene("scout", data.damage));
+          aria.triggerCombat();
         },
       ),
       on("combat:destroyed", (data: { destroyerName: string }) => {
@@ -408,6 +455,7 @@ export default function Game({ onLogout }: GameProps) {
 
   const onCommand = useCallback(
     (input: string) => {
+      aria.resetIdleTimer();
       handleCommand(input, {
         addLine: game.addLine,
         clearLines: game.clearLines,
@@ -465,6 +513,27 @@ export default function Game({ onLogout }: GameProps) {
     }
   }, [game.sector]);
 
+  // --- Music mood + ARIA triggers based on game state changes ---
+  const prevSectorRef = useRef(game.player?.currentSectorId);
+  const prevDockedRef = useRef(game.player?.dockedAtOutpostId);
+
+  useEffect(() => {
+    const curSector = game.player?.currentSectorId;
+    if (curSector && curSector !== prevSectorRef.current) {
+      prevSectorRef.current = curSector;
+      mood.onMove();
+      aria.triggerMove();
+    }
+  }, [game.player?.currentSectorId]);
+
+  useEffect(() => {
+    const curDocked = game.player?.dockedAtOutpostId;
+    if (curDocked && !prevDockedRef.current) {
+      mood.onDock();
+    }
+    prevDockedRef.current = curDocked;
+  }, [game.player?.dockedAtOutpostId]);
+
   const activeOutpost = game.player?.dockedAtOutpostId ?? null;
 
   const handleActionButton = useCallback(
@@ -477,7 +546,8 @@ export default function Game({ onLogout }: GameProps) {
   const handleDock = useCallback(async () => {
     await game.doDock();
     selectPanel("trade");
-  }, [game.doDock, selectPanel]);
+    aria.triggerDock();
+  }, [game.doDock, selectPanel, aria.triggerDock]);
 
   const handleNPCClick = useCallback(
     (npcId: string) => {
@@ -547,6 +617,7 @@ export default function Game({ onLogout }: GameProps) {
               onAction={() => {
                 game.refreshStatus();
                 setRefreshKey((k) => k + 1);
+                aria.triggerTrade();
               }}
               bare
             />
@@ -570,6 +641,7 @@ export default function Game({ onLogout }: GameProps) {
               onAction={() => {
                 game.refreshStatus();
                 setRefreshKey((k) => k + 1);
+                aria.triggerTrade();
               }}
               bare
             />
@@ -702,6 +774,10 @@ export default function Game({ onLogout }: GameProps) {
         );
       case "notes":
         return <NotesPanel refreshKey={refreshKey} bare />;
+      case "intel":
+        return <IntelLogPanel refreshKey={refreshKey} bare />;
+      case "trade-history":
+        return <TradeHistoryPanel refreshKey={refreshKey} bare />;
       case "profile":
         return <ProfilePanel refreshKey={refreshKey} bare />;
     }
@@ -791,6 +867,11 @@ export default function Game({ onLogout }: GameProps) {
 
   return (
     <div className="game-layout">
+      <AriaComment
+        comment={aria.comment}
+        visible={aria.showComment}
+        onDismiss={aria.dismissComment}
+      />
       <ToastManager toasts={toasts} onDismiss={dismissToast} />
       <LevelUpOverlay
         level={game.player?.level ?? 0}
@@ -801,8 +882,19 @@ export default function Game({ onLogout }: GameProps) {
             "success",
           );
           showToast(`Level ${lvl} — ${rnk}!`, "success", 8000);
+          aria.triggerMilestone();
         }}
       />
+      {resourceEventNotification && (
+        <ResourceEventOverlay
+          events={resourceEventNotification.events}
+          onInvestigate={() => {
+            setResourceEventNotification(null);
+            selectPanel("explore");
+          }}
+          onDismiss={() => setResourceEventNotification(null)}
+        />
+      )}
       <DailyMissionsOverlay
         onOpenMissions={() => selectPanel("missions")}
         onToastReminder={(msg) => showToast(msg, "system", 6000)}
@@ -872,6 +964,38 @@ export default function Game({ onLogout }: GameProps) {
           </div>
         </div>
       )}
+      {showSettings && (
+        <div
+          className="settings-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowSettings(false);
+          }}
+        >
+          <div className="settings-overlay__content">
+            <button
+              className="settings-overlay__close"
+              onClick={() => setShowSettings(false)}
+            >
+              X
+            </button>
+            <SettingsPanel
+              playerRace={game.player?.race ?? undefined}
+              playerUsername={game.player?.username ?? undefined}
+              gameMode={game.player?.gameMode ?? undefined}
+              volume={audio.volume}
+              onVolumeChange={audio.setVolume}
+              map3D={map3D}
+              onToggleMap3D={() => setMap3D((v) => !v)}
+              onLogout={onLogout ?? (() => {})}
+              onRefresh={() => {
+                game.refreshStatus();
+                game.refreshSector();
+                game.refreshMap();
+              }}
+            />
+          </div>
+        </div>
+      )}
       <TutorialWelcomeOverlay
         tutorialCompleted={game.player?.tutorialCompleted ?? true}
         onPlay={() => {}}
@@ -896,6 +1020,7 @@ export default function Game({ onLogout }: GameProps) {
         canSkipTrack={audio.canSkip}
         canPrevTrack={audio.canPrevious}
         currentTrackId={audio.currentTrackId}
+        onSettings={() => setShowSettings((v) => !v)}
         onLogout={onLogout}
       />
       <div className="game-main">

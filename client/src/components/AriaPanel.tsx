@@ -10,6 +10,35 @@ interface Props {
   bare?: boolean;
 }
 
+const STORAGE_KEY = "aria-chat-history";
+const MAX_MESSAGES = 50;
+
+const WELCOME_MESSAGE: Message = {
+  role: "aria",
+  text: "I'm ARIA, your ship's AI assistant. Ask me anything about the galaxy — trading, combat, planets, missions, or just what to do next.",
+};
+
+function loadMessages(): Message[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0)
+        return parsed.slice(-MAX_MESSAGES);
+    }
+  } catch {}
+  return [WELCOME_MESSAGE];
+}
+
+function saveMessages(msgs: Message[]) {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(msgs.slice(-MAX_MESSAGES)),
+    );
+  } catch {}
+}
+
 const QUICK_QUESTIONS = [
   "How do I make money?",
   "What are planet classes?",
@@ -19,18 +48,23 @@ const QUICK_QUESTIONS = [
 ];
 
 export default function AriaPanel({ bare }: Props) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "aria",
-      text: "I'm ARIA, your ship's AI assistant. Ask me anything about the galaxy — trading, combat, planets, missions, or just what to do next.",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>(loadMessages);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus the input when the panel mounts
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
+  }, [messages]);
+
+  useEffect(() => {
+    saveMessages(messages);
   }, [messages]);
 
   const sendMessage = async (question: string) => {
@@ -86,6 +120,7 @@ export default function AriaPanel({ bare }: Props) {
 
       <div className="aria-input-row">
         <input
+          ref={inputRef}
           className="aria-input"
           type="text"
           value={input}

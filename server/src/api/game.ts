@@ -962,8 +962,12 @@ router.post("/scan", requireAuth, async (req, res) => {
     if (!shipType?.hasPlanetaryScanner) {
       return res
         .status(400)
-        .json({ error: "Ship does not have a planetary scanner" });
+        .json({
+          error:
+            "Your ship needs a Planetary Scanner. Buy one at a Star Mall (8,000 cr) or pick up a single-use Scanner Probe (2,500 cr).",
+        });
     }
+    const hasScanner = true;
 
     const edges = await db("sector_edges").where({
       from_sector_id: player.current_sector_id,
@@ -996,12 +1000,14 @@ router.post("/scan", requireAuth, async (req, res) => {
     }
 
     res.json({
+      hasDetailedScan: hasScanner,
       scannedSectors: adjacentSectors.map((s) => ({
         id: s.id,
         type: s.type,
         planets: adjacentPlanets
           .filter((p) => p.sector_id === s.id)
           .map((p) => {
+            // Basic info always included
             const base: any = {
               id: p.id,
               name: p.name,
@@ -1013,6 +1019,19 @@ router.post("/scan", requireAuth, async (req, res) => {
               base.variant = p.variant;
               base.variantName =
                 planetType?.rareVariant?.variantName || p.variant;
+            }
+            // Detailed stats only with planetary scanner
+            if (hasScanner) {
+              base.colonists = p.colonists;
+              base.upgradeLevel = p.upgrade_level;
+              base.cyrilliumStock = p.cyrillium_stock || 0;
+              base.foodStock = p.food_stock || 0;
+              base.techStock = p.tech_stock || 0;
+              base.droneCount = p.drone_count || 0;
+              base.cannonEnergy = p.cannon_energy || 0;
+              base.shieldEnergy = p.shield_energy || 0;
+              base.psdActive = p.psd_active || false;
+              base.aatbActive = p.aatb_active || false;
             }
             return base;
           }),

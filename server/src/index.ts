@@ -39,6 +39,7 @@ import aiAssistantRouter from "./api/ai-assistant";
 import planetTradesRouter from "./api/planet-trades";
 import planetCombatRouter from "./api/planet-combat";
 import dailyMissionsRouter from "./api/daily-missions";
+import tradeHistoryRouter from "./api/trade-history";
 import { setupWebSocket } from "./ws/handlers";
 import { startGameTick } from "./engine/game-tick";
 import {
@@ -290,6 +291,14 @@ app.use(
   loadTutorialState,
   blockDuringTutorial,
   dailyMissionsRouter,
+);
+
+app.use(
+  "/api/trade-history",
+  loadTutorialState,
+  blockDuringTutorial,
+  loadSPContext,
+  tradeHistoryRouter,
 );
 
 // WebSocket

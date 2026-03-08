@@ -2142,6 +2142,22 @@ export const SPRITES: Record<string, SpriteDefinition> = {
     ],
   },
 
+  icon_intel: {
+    cols: 8,
+    rows: 8,
+    palette: ["", ORANGE, YELLOW, WHITE, GREY],
+    grid: [
+      [0, 0, 0, 3, 3, 0, 0, 0],
+      [0, 0, 3, 2, 2, 3, 0, 0],
+      [0, 0, 0, 3, 3, 0, 0, 0],
+      [0, 4, 4, 1, 1, 4, 4, 0],
+      [0, 4, 1, 2, 2, 1, 4, 0],
+      [0, 4, 1, 2, 2, 1, 4, 0],
+      [0, 4, 4, 1, 1, 4, 4, 0],
+      [0, 0, 0, 4, 4, 0, 0, 0],
+    ],
+  },
+
   icon_planets: {
     cols: 8,
     rows: 8,
@@ -2155,6 +2171,22 @@ export const SPRITES: Record<string, SpriteDefinition> = {
       [0, 3, 1, 1, 1, 1, 3, 0],
       [0, 0, 3, 1, 1, 3, 0, 0],
       [0, 0, 0, 3, 3, 0, 0, 0],
+    ],
+  },
+
+  icon_trade_history: {
+    cols: 8,
+    rows: 8,
+    palette: ["", CYAN, GREEN, YELLOW, WHITE],
+    grid: [
+      [0, 1, 1, 1, 1, 1, 1, 0],
+      [1, 4, 4, 4, 4, 4, 4, 1],
+      [1, 2, 0, 3, 0, 2, 0, 1],
+      [1, 0, 0, 0, 0, 0, 0, 1],
+      [1, 3, 0, 2, 0, 3, 0, 1],
+      [1, 0, 0, 0, 0, 0, 0, 1],
+      [1, 2, 0, 3, 0, 2, 0, 1],
+      [0, 1, 1, 1, 1, 1, 1, 0],
     ],
   },
 };

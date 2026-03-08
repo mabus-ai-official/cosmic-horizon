@@ -70,6 +70,7 @@ interface Props {
   colonistsByRace?: { race: string; count: number }[];
   onAction?: () => void;
   onCommand?: (cmd: string) => void;
+  onAdvanceTutorial?: (action: string) => void;
   onLand?: (planetId: string) => void;
   onLiftoff?: () => void;
   onWarpTo?: (sectorId: number) => void;
@@ -136,6 +137,7 @@ export default function PlanetsPanel({
   colonistsByRace,
   onAction,
   onCommand: _onCommand,
+  onAdvanceTutorial,
   onLand,
   onLiftoff,
   onWarpTo,
@@ -261,6 +263,7 @@ export default function PlanetsPanel({
       await claimPlanet(planetId);
       refresh();
       onAction?.();
+      onAdvanceTutorial?.("claim");
     } catch (err: any) {
       setError(err.response?.data?.error || "Claim failed");
     } finally {

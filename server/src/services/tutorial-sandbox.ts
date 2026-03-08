@@ -85,13 +85,17 @@ export async function handleTutorialStatus(req: Request, res: Response) {
       maxEnergy: state.maxEnergy,
       credits: state.credits,
       currentSectorId: state.currentSectorId,
+      dockedAtOutpostId: state.dockedAtOutpostId || null,
+      landedAtPlanetId: state.landedAtPlanetId || null,
       tutorialStep: player.tutorial_step || 0,
       tutorialCompleted: false,
       hasSeenIntro: !!player.has_seen_intro,
       hasSeenPostTutorial: false,
       currentShip: {
         id: "tutorial-ship",
-        shipTypeId: "tutorial",
+        shipTypeId: "scout",
+        hullHp: 100,
+        maxHullHp: 100,
         weaponEnergy: 0,
         engineEnergy: 0,
         cargoHolds: state.cargoHolds,
@@ -165,6 +169,7 @@ export async function handleTutorialMove(req: Request, res: Response) {
 
     // No energy cost during tutorial
     state.currentSectorId = targetSectorId;
+    state.dockedAtOutpostId = null;
     if (!state.exploredSectors.includes(targetSectorId)) {
       state.exploredSectors.push(targetSectorId);
     }
@@ -247,6 +252,47 @@ export async function handleTutorialOutpost(req: Request, res: Response) {
     });
   } catch (err) {
     console.error("Tutorial outpost error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function handleTutorialDock(req: Request, res: Response) {
+  try {
+    const state = parseTutorialState(req);
+    const sector = getTutorialSector(state.currentSectorId);
+    if (!sector?.outpost) {
+      return res.status(400).json({ error: "No outpost in this sector" });
+    }
+
+    state.dockedAtOutpostId = sector.outpost.id;
+    await persistState(req.session.playerId!, state);
+
+    res.json({
+      docked: true,
+      outpostId: sector.outpost.id,
+      name: sector.outpost.name,
+      treasury: sector.outpost.treasury,
+      prices: outpostPrices(sector.outpost),
+    });
+  } catch (err) {
+    console.error("Tutorial dock error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function handleTutorialUndock(req: Request, res: Response) {
+  try {
+    const state = parseTutorialState(req);
+    if (!state.dockedAtOutpostId) {
+      return res.status(400).json({ error: "Not currently docked" });
+    }
+
+    state.dockedAtOutpostId = null;
+    await persistState(req.session.playerId!, state);
+
+    res.json({ undocked: true });
+  } catch (err) {
+    console.error("Tutorial undock error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 }
@@ -480,13 +526,22 @@ export async function handleTutorialClaim(req: Request, res: Response) {
     const sector = getTutorialSector(state.currentSectorId);
     const planet = (sector?.planets || []).find((p) => p.id === planetId);
     if (!planet) return res.status(404).json({ error: "Planet not found" });
-    if (planet.ownerId)
+
+    if (state.landedAtPlanetId !== planetId) {
+      return res
+        .status(400)
+        .json({ error: "You must land on the planet first" });
+    }
+
+    // Check virtual state, not the shared config object
+    const alreadyClaimed =
+      state.claimedPlanetIds?.includes(planetId) || planet.ownerId;
+    if (alreadyClaimed)
       return res.status(400).json({ error: "Planet is already claimed" });
 
-    // Mark as claimed in virtual state
+    // Mark as claimed in virtual state only (don't mutate shared config)
     if (!state.claimedPlanetIds) state.claimedPlanetIds = [];
     state.claimedPlanetIds.push(planetId);
-    planet.ownerId = req.session.playerId!;
     await persistState(req.session.playerId!, state);
 
     res.json({ claimed: true, planetId: planet.id, name: planet.name });
@@ -530,6 +585,70 @@ export async function handleTutorialPlanetInfo(req: Request, res: Response) {
     });
   } catch (err) {
     console.error("Tutorial planet info error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function handleTutorialOwnedPlanets(req: Request, res: Response) {
+  try {
+    const state = parseTutorialState(req);
+    const owned: any[] = [];
+    for (const s of Object.values(TUTORIAL_SECTORS)) {
+      for (const p of s.planets || []) {
+        if (state.claimedPlanetIds?.includes(p.id)) {
+          owned.push({
+            id: p.id,
+            name: p.name,
+            planetClass: p.planetClass,
+            sectorId: s.id,
+            upgradeLevel: 0,
+            colonists: 0,
+            cyrilliumStock: 0,
+            foodStock: 0,
+            techStock: 0,
+            droneCount: 0,
+            happiness: 100,
+            happinessTier: "content",
+            foodConsumption: 0,
+            racePopulations: [],
+            production: { cyrillium: 0, tech: 0, drones: 0 },
+          });
+        }
+      }
+    }
+    res.json({ planets: owned });
+  } catch (err) {
+    console.error("Tutorial owned planets error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function handleTutorialDiscoveredPlanets(
+  req: Request,
+  res: Response,
+) {
+  try {
+    const state = parseTutorialState(req);
+    const planets: any[] = [];
+    for (const s of Object.values(TUTORIAL_SECTORS)) {
+      if (!state.exploredSectors.includes(s.id)) continue;
+      for (const p of s.planets || []) {
+        const isClaimed = state.claimedPlanetIds?.includes(p.id);
+        planets.push({
+          id: p.id,
+          name: p.name,
+          planetClass: p.planetClass,
+          sectorId: s.id,
+          owned: isClaimed,
+          ownerName: isClaimed ? "You" : null,
+          upgradeLevel: 0,
+          colonists: 0,
+        });
+      }
+    }
+    res.json({ planets });
+  } catch (err) {
+    console.error("Tutorial discovered planets error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 }

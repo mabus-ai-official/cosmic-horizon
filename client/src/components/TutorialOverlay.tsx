@@ -24,6 +24,8 @@ interface StepGuide {
   autoPanel?: string;
   /** If set, auto-advance tutorial with this action when the target panel is opened */
   advanceOnPanel?: { panel: string; action: string };
+  /** If set, auto-advance tutorial with this action after a delay (for "look at this" steps) */
+  autoAdvanceAction?: string;
 }
 
 const STEPS: StepGuide[] = [
@@ -43,7 +45,6 @@ const STEPS: StepGuide[] = [
     hint: "Click the PILOT icon in the sidebar",
     target: "[data-tutorial='panel-profile']",
     arrow: "right",
-    autoPanel: "profile",
     advanceOnPanel: { panel: "profile", action: "status" },
   },
   // tutorialStep=2: server expects "move" action to advance to step 3
@@ -59,10 +60,9 @@ const STEPS: StepGuide[] = [
   {
     title: "SCAN THE AREA",
     desc: "Open the SCANNER panel to detect what's in nearby sectors before you fly there.",
-    hint: "Click the SCANNER icon, then click SCAN",
+    hint: "Click the SCANNER icon in the sidebar",
     target: "[data-tutorial='panel-explore']",
     arrow: "right",
-    autoPanel: "explore",
     advanceOnPanel: { panel: "explore", action: "scan" },
   },
   // tutorialStep=4: server expects 2 "move" actions to advance to step 5
@@ -95,18 +95,15 @@ const STEPS: StepGuide[] = [
   // tutorialStep=7: server expects "sell" action to advance to step 8
   {
     title: "SELL FOR PROFIT",
-    desc: "Undock and fly to sector 90004 (Frontier Post). Dock there and sell your Cyrillium for a profit!",
-    hint: "Fly to 90004, dock, sell cargo",
-    target: "[data-tutorial='panel-trade']",
-    arrow: "right",
+    desc: "Undock and fly to sector 90004 (Frontier Post) via 90003. Dock there and sell your Cyrillium for a profit!",
+    hint: "Undock → fly 90003 → 90004 → dock → sell",
+    autoPanel: "nav",
   },
   // tutorialStep=8: server expects "move" action (to 90005) to advance to step 9
   {
     title: "FIND A PLANET",
-    desc: "Fly to sector 90005. There's a planet called Nova Prime waiting to be discovered!",
-    hint: "Navigate to sector 90005",
-    target: "[data-tutorial='move-btn']",
-    arrow: "left",
+    desc: "Fly to sector 90005 — click it in the adjacent sectors list below. That's where Nova Prime is!",
+    hint: "Click sector 90005 in the Helm panel",
     autoPanel: "nav",
   },
   // tutorialStep=9: server expects "land" action to advance to step 10
@@ -143,7 +140,7 @@ const STEPS: StepGuide[] = [
     hint: "Check out the galaxy map",
     target: ".game-map-area",
     arrow: "bottom",
-    advanceOnPanel: { panel: "nav", action: "map" },
+    autoAdvanceAction: "map",
   },
   // tutorialStep=13: server expects "help" action to advance to step 14
   {
@@ -152,7 +149,6 @@ const STEPS: StepGuide[] = [
     hint: "Click DATABANK in the sidebar",
     target: "[data-tutorial='panel-actions']",
     arrow: "right",
-    autoPanel: "actions",
     advanceOnPanel: { panel: "actions", action: "help" },
   },
   // tutorialStep=14: auto-complete
@@ -175,6 +171,7 @@ export default function TutorialOverlay({
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
   const animFrame = useRef(0);
   const advancedRef = useRef<number>(-1);
+  const panelAtStepStart = useRef<string | undefined>(activePanel);
 
   const step = STEPS[Math.min(tutorialStep, STEPS.length - 1)];
 
@@ -184,20 +181,39 @@ export default function TutorialOverlay({
     onSelectPanel(step.autoPanel);
   }, [tutorialStep, tutorialCompleted]);
 
+  // Record which panel was active when the step started
+  useEffect(() => {
+    panelAtStepStart.current = activePanel;
+  }, [tutorialStep]);
+
   // Auto-advance when the correct panel is opened for panel-based steps
+  // Only fires when the panel CHANGES to the target (not if already active)
   useEffect(() => {
     if (tutorialCompleted || !step.advanceOnPanel || !onAdvanceTutorial) return;
     if (!activePanel) return;
-    // Only advance once per step
     if (advancedRef.current === tutorialStep) return;
+    // Don't fire if the panel was already the target when the step started
+    if (activePanel === panelAtStepStart.current) return;
     if (activePanel === step.advanceOnPanel.panel) {
       advancedRef.current = tutorialStep;
-      // Small delay so the panel renders first
       setTimeout(() => {
         onAdvanceTutorial(step.advanceOnPanel!.action);
       }, 500);
     }
   }, [activePanel, tutorialStep, tutorialCompleted]);
+
+  // Auto-advance after a delay for "look at this" steps (e.g. galaxy map)
+  useEffect(() => {
+    if (tutorialCompleted || !step.autoAdvanceAction || !onAdvanceTutorial)
+      return;
+    if (advancedRef.current === tutorialStep) return;
+    const timer = setTimeout(() => {
+      if (advancedRef.current === tutorialStep) return;
+      advancedRef.current = tutorialStep;
+      onAdvanceTutorial(step.autoAdvanceAction!);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [tutorialStep, tutorialCompleted]);
 
   // Track target element position
   const updateSpotlight = useCallback(() => {

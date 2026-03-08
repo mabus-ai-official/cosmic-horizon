@@ -8,101 +8,189 @@ interface BridgeView3DProps {
   shipType?: string;
 }
 
-/** Simple geometric spaceship */
+/** Geometric spaceship with visible hull lines and glowing accents */
 function Ship({ shipType }: { shipType?: string }) {
   const group = useRef<THREE.Group>(null);
-  const engineGlow = useRef<THREE.PointLight>(null);
+  const engineGlowL = useRef<THREE.Mesh>(null);
+  const engineGlowR = useRef<THREE.Mesh>(null);
+  const engineLight = useRef<THREE.PointLight>(null);
+  const hullAccent = useRef<THREE.Mesh>(null);
   const time = useRef(0);
 
-  // Subtle idle float
   useFrame((_, delta) => {
     time.current += delta;
     if (group.current) {
       group.current.rotation.z = Math.sin(time.current * 0.3) * 0.02;
       group.current.position.y = Math.sin(time.current * 0.5) * 0.08;
     }
-    if (engineGlow.current) {
-      engineGlow.current.intensity = 1.2 + Math.sin(time.current * 4) * 0.3;
+    if (engineLight.current) {
+      engineLight.current.intensity = 2.5 + Math.sin(time.current * 4) * 0.8;
+    }
+    // Pulse engine glows
+    const enginePulse = 0.7 + Math.sin(time.current * 3) * 0.3;
+    if (engineGlowL.current) {
+      (engineGlowL.current.material as THREE.MeshBasicMaterial).opacity =
+        enginePulse;
+      engineGlowL.current.scale.setScalar(
+        1 + Math.sin(time.current * 5) * 0.15,
+      );
+    }
+    if (engineGlowR.current) {
+      (engineGlowR.current.material as THREE.MeshBasicMaterial).opacity =
+        enginePulse;
+      engineGlowR.current.scale.setScalar(
+        1 + Math.sin(time.current * 5 + 0.5) * 0.15,
+      );
+    }
+    // Hull accent stripe pulse
+    if (hullAccent.current) {
+      (hullAccent.current.material as THREE.MeshBasicMaterial).opacity =
+        0.4 + Math.sin(time.current * 1.5) * 0.15;
     }
   });
 
-  // Scale based on ship type
   const scale = shipType?.includes("dreadnought")
-    ? 2.0
+    ? 2.2
     : shipType?.includes("frigate")
-      ? 1.6
+      ? 1.8
       : shipType?.includes("fighter")
-        ? 1.1
-        : 1.4;
+        ? 1.3
+        : 1.6;
 
   return (
-    <group ref={group} scale={scale} rotation={[0.15, 0, 0]}>
+    <group ref={group} scale={scale} rotation={[0.3, 0, 0]}>
       {/* Main hull */}
       <mesh position={[0, 0, 0]}>
-        <cylinderGeometry args={[0.15, 0.4, 2.2, 6]} />
-        <meshStandardMaterial color="#4a5568" metalness={0.7} roughness={0.3} />
-      </mesh>
-
-      {/* Nose cone */}
-      <mesh position={[0, 1.3, 0]}>
-        <coneGeometry args={[0.15, 0.5, 6]} />
-        <meshStandardMaterial color="#718096" metalness={0.8} roughness={0.2} />
-      </mesh>
-
-      {/* Cockpit */}
-      <mesh position={[0, 0.6, 0.12]}>
-        <sphereGeometry args={[0.12, 8, 8]} />
+        <cylinderGeometry args={[0.18, 0.45, 2.4, 8]} />
         <meshStandardMaterial
-          color="#56d4dd"
-          emissive="#56d4dd"
-          emissiveIntensity={0.4}
-          metalness={0.9}
-          roughness={0.1}
+          color="#607080"
+          emissive="#1a2a3a"
+          emissiveIntensity={0.3}
+          metalness={0.8}
+          roughness={0.25}
         />
       </mesh>
 
+      {/* Hull accent stripe */}
+      <mesh ref={hullAccent} position={[0, 0, 0.2]}>
+        <cylinderGeometry args={[0.19, 0.46, 0.12, 8]} />
+        <meshBasicMaterial color="#56d4dd" transparent opacity={0.4} />
+      </mesh>
+
+      {/* Nose cone */}
+      <mesh position={[0, 1.4, 0]}>
+        <coneGeometry args={[0.18, 0.6, 8]} />
+        <meshStandardMaterial
+          color="#8090a0"
+          emissive="#202830"
+          emissiveIntensity={0.2}
+          metalness={0.9}
+          roughness={0.15}
+        />
+      </mesh>
+
+      {/* Cockpit dome */}
+      <mesh position={[0, 0.7, 0.16]}>
+        <sphereGeometry args={[0.14, 12, 12]} />
+        <meshStandardMaterial
+          color="#56d4dd"
+          emissive="#56d4dd"
+          emissiveIntensity={0.8}
+          metalness={0.95}
+          roughness={0.05}
+        />
+      </mesh>
+      {/* Cockpit glow */}
+      <pointLight
+        position={[0, 0.7, 0.3]}
+        color="#56d4dd"
+        intensity={0.8}
+        distance={2}
+      />
+
       {/* Left wing */}
-      <mesh position={[-0.7, -0.2, 0]} rotation={[0, 0, -0.3]}>
-        <boxGeometry args={[1.0, 0.08, 0.3]} />
-        <meshStandardMaterial color="#4a5568" metalness={0.6} roughness={0.4} />
+      <mesh position={[-0.8, -0.2, 0]} rotation={[0, 0, -0.25]}>
+        <boxGeometry args={[1.2, 0.06, 0.35]} />
+        <meshStandardMaterial
+          color="#506070"
+          emissive="#151f28"
+          emissiveIntensity={0.2}
+          metalness={0.7}
+          roughness={0.3}
+        />
+      </mesh>
+      {/* Left wingtip light */}
+      <mesh position={[-1.35, -0.45, 0]}>
+        <sphereGeometry args={[0.04, 6, 6]} />
+        <meshBasicMaterial color="#f85149" />
       </mesh>
 
       {/* Right wing */}
-      <mesh position={[0.7, -0.2, 0]} rotation={[0, 0, 0.3]}>
-        <boxGeometry args={[1.0, 0.08, 0.3]} />
-        <meshStandardMaterial color="#4a5568" metalness={0.6} roughness={0.4} />
+      <mesh position={[0.8, -0.2, 0]} rotation={[0, 0, 0.25]}>
+        <boxGeometry args={[1.2, 0.06, 0.35]} />
+        <meshStandardMaterial
+          color="#506070"
+          emissive="#151f28"
+          emissiveIntensity={0.2}
+          metalness={0.7}
+          roughness={0.3}
+        />
+      </mesh>
+      {/* Right wingtip light */}
+      <mesh position={[1.35, -0.45, 0]}>
+        <sphereGeometry args={[0.04, 6, 6]} />
+        <meshBasicMaterial color="#3fb950" />
       </mesh>
 
-      {/* Left engine */}
-      <mesh position={[-0.45, -1.0, 0]}>
-        <cylinderGeometry args={[0.12, 0.15, 0.5, 8]} />
-        <meshStandardMaterial color="#2d3748" metalness={0.8} roughness={0.2} />
+      {/* Left engine nacelle */}
+      <mesh position={[-0.5, -1.0, 0]}>
+        <cylinderGeometry args={[0.14, 0.18, 0.6, 8]} />
+        <meshStandardMaterial
+          color="#3a4858"
+          metalness={0.85}
+          roughness={0.15}
+        />
       </mesh>
-      {/* Left engine glow */}
-      <mesh position={[-0.45, -1.3, 0]}>
-        <circleGeometry args={[0.13, 8]} />
-        <meshBasicMaterial color="#e847a0" transparent opacity={0.9} />
-      </mesh>
-
-      {/* Right engine */}
-      <mesh position={[0.45, -1.0, 0]}>
-        <cylinderGeometry args={[0.12, 0.15, 0.5, 8]} />
-        <meshStandardMaterial color="#2d3748" metalness={0.8} roughness={0.2} />
-      </mesh>
-      {/* Right engine glow */}
-      <mesh position={[0.45, -1.3, 0]}>
-        <circleGeometry args={[0.13, 8]} />
-        <meshBasicMaterial color="#e847a0" transparent opacity={0.9} />
+      {/* Left engine exhaust */}
+      <mesh ref={engineGlowL} position={[-0.5, -1.35, 0]}>
+        <sphereGeometry args={[0.16, 8, 8]} />
+        <meshBasicMaterial color="#e847a0" transparent opacity={0.8} />
       </mesh>
 
-      {/* Engine point light */}
+      {/* Right engine nacelle */}
+      <mesh position={[0.5, -1.0, 0]}>
+        <cylinderGeometry args={[0.14, 0.18, 0.6, 8]} />
+        <meshStandardMaterial
+          color="#3a4858"
+          metalness={0.85}
+          roughness={0.15}
+        />
+      </mesh>
+      {/* Right engine exhaust */}
+      <mesh ref={engineGlowR} position={[0.5, -1.35, 0]}>
+        <sphereGeometry args={[0.16, 8, 8]} />
+        <meshBasicMaterial color="#e847a0" transparent opacity={0.8} />
+      </mesh>
+
+      {/* Engine exhaust light */}
       <pointLight
-        ref={engineGlow}
-        position={[0, -1.4, 0]}
+        ref={engineLight}
+        position={[0, -1.5, 0]}
         color="#e847a0"
-        intensity={1.2}
-        distance={3}
+        intensity={2.5}
+        distance={5}
       />
+
+      {/* Rear engine glow haze */}
+      <mesh position={[0, -1.6, 0]}>
+        <sphereGeometry args={[0.5, 8, 8]} />
+        <meshBasicMaterial
+          color="#e847a0"
+          transparent
+          opacity={0.06}
+          depthWrite={false}
+        />
+      </mesh>
     </group>
   );
 }

@@ -26,6 +26,8 @@ import {
   handleTutorialScan,
   handleTutorialLand,
   handleTutorialLiftoff,
+  handleTutorialDock,
+  handleTutorialUndock,
 } from "../services/tutorial-sandbox";
 import db from "../db/connection";
 import {
@@ -1131,6 +1133,7 @@ router.post("/use-scanner", requireAuth, async (req, res) => {
 
 // Dock at outpost
 router.post("/dock", requireAuth, async (req, res) => {
+  if (req.inTutorial) return handleTutorialDock(req, res);
   try {
     const player = await db("players")
       .where({ id: req.session.playerId })
@@ -1226,6 +1229,7 @@ router.post("/dock", requireAuth, async (req, res) => {
 
 // Undock from outpost
 router.post("/undock", requireAuth, async (req, res) => {
+  if (req.inTutorial) return handleTutorialUndock(req, res);
   try {
     const player = await db("players")
       .where({ id: req.session.playerId })

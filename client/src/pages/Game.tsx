@@ -642,6 +642,7 @@ export default function Game({ onLogout }: GameProps) {
               setRefreshKey((k) => k + 1);
             }}
             onCommand={handleActionButton}
+            onAdvanceTutorial={game.advanceTutorial}
             onLand={game.doLand}
             onLiftoff={game.doLiftoff}
             onWarpTo={game.doWarpTo}

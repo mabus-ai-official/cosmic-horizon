@@ -2908,7 +2908,7 @@ body {
 
 /* === Sector Chat Panel === */
 .chat-messages {
-  max-height: 120px;
+  max-height: 240px;
   overflow-y: auto;
   margin-bottom: 6px;
   font-size: 0.923rem;

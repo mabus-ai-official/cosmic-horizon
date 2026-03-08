@@ -158,12 +158,15 @@ function getSectorNodeSize(
 // Sub-components
 // ═══════════════════════════════════════════════════════════════
 
-/** Galaxy dust — all 5000 sectors as dim points forming the spiral */
+/** Galaxy dust — all 5000 sectors as dim points forming the spiral, with twinkling */
 function GalaxyDust({ exploredSet }: { exploredSet: Set<number> }) {
-  const geometry = useMemo(() => {
+  const matRef = useRef<THREE.ShaderMaterial>(null);
+
+  const { geometry } = useMemo(() => {
     const positions = getGalaxyPositions();
     const posArray = new Float32Array(TOTAL_SECTORS * 3);
     const colorArray = new Float32Array(TOTAL_SECTORS * 3);
+    const phases = new Float32Array(TOTAL_SECTORS);
 
     for (let id = 1; id <= TOTAL_SECTORS; id++) {
       const pos = positions.get(id)!;
@@ -172,18 +175,19 @@ function GalaxyDust({ exploredSet }: { exploredSet: Set<number> }) {
       posArray[i * 3 + 1] = pos.y;
       posArray[i * 3 + 2] = pos.z;
 
+      // Random phase offset for twinkle timing
+      phases[i] = seededRng(id * 1571 + 4219)() * Math.PI * 2;
+
       const isExplored = exploredSet.has(id);
       const spectral = getSpectralClass(id);
       const sc = new THREE.Color(spectral.color);
 
       if (isExplored) {
-        // Explored: brighter version of spectral color
         colorArray[i * 3] = sc.r * 0.7 + 0.15;
         colorArray[i * 3 + 1] = sc.g * 0.7 + 0.15;
         colorArray[i * 3 + 2] = sc.b * 0.7 + 0.15;
       } else {
-        // Unexplored: dim spectral tint
-        const dimFactor = 0.2 + seededRng(id * 31 + 997)() * 0.15;
+        const dimFactor = 0.35 + seededRng(id * 31 + 997)() * 0.25;
         colorArray[i * 3] = sc.r * dimFactor;
         colorArray[i * 3 + 1] = sc.g * dimFactor;
         colorArray[i * 3 + 2] = sc.b * dimFactor;
@@ -193,62 +197,130 @@ function GalaxyDust({ exploredSet }: { exploredSet: Set<number> }) {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.Float32BufferAttribute(posArray, 3));
     geo.setAttribute("color", new THREE.Float32BufferAttribute(colorArray, 3));
-    return geo;
+    geo.setAttribute("phase", new THREE.Float32BufferAttribute(phases, 1));
+    return { geometry: geo, phaseArray: phases };
   }, [exploredSet]);
+
+  const uniforms = useMemo(
+    () => ({
+      uTime: { value: 0 },
+      uBaseSize: { value: 1.2 },
+    }),
+    [],
+  );
+
+  useFrame((_, delta) => {
+    if (matRef.current) {
+      matRef.current.uniforms.uTime.value += delta;
+    }
+  });
 
   return (
     <points geometry={geometry}>
-      <pointsMaterial
+      <shaderMaterial
+        ref={matRef}
+        uniforms={uniforms}
         vertexColors
-        size={0.5}
         transparent
-        opacity={0.55}
-        sizeAttenuation
         depthWrite={false}
+        vertexShader={`
+          attribute float phase;
+          uniform float uTime;
+          uniform float uBaseSize;
+          varying vec3 vColor;
+          varying float vTwinkle;
+          void main() {
+            vColor = color;
+            // Each star twinkles at its own rate and phase
+            float speed = 0.6 + phase * 0.5;
+            float twinkle = sin(uTime * speed + phase) * 0.5 + 0.5;
+            // ~30% of stars twinkle noticeably
+            float twinkleStrength = step(0.7, fract(phase * 3.17));
+            vTwinkle = mix(1.0, 0.3 + twinkle * 0.7, twinkleStrength);
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            gl_PointSize = max(1.5, uBaseSize * (200.0 / -mvPosition.z));
+            gl_Position = projectionMatrix * mvPosition;
+          }
+        `}
+        fragmentShader={`
+          varying vec3 vColor;
+          varying float vTwinkle;
+          void main() {
+            float dist = length(gl_PointCoord - vec2(0.5));
+            if (dist > 0.5) discard;
+            float alpha = smoothstep(0.5, 0.0, dist) * vTwinkle;
+            gl_FragColor = vec4(vColor * 1.4, alpha);
+          }
+        `}
       />
     </points>
   );
 }
 
-/** Nebula clouds — large transparent spheres for atmosphere */
+/** Nebula clouds — soft billboard sprites with radial gradient (no hard edges) */
 function NebulaClouds() {
+  const nebulaTexture = useMemo(() => {
+    const size = 128;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d")!;
+    const gradient = ctx.createRadialGradient(
+      size / 2,
+      size / 2,
+      0,
+      size / 2,
+      size / 2,
+      size / 2,
+    );
+    gradient.addColorStop(0, "rgba(255,255,255,0.6)");
+    gradient.addColorStop(0.3, "rgba(255,255,255,0.2)");
+    gradient.addColorStop(0.7, "rgba(255,255,255,0.04)");
+    gradient.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    return tex;
+  }, []);
+
   const clouds = useMemo(
     () => [
       {
         pos: [30, 20, -5] as [number, number, number],
         color: "#e847a0",
-        scale: 25,
-        opacity: 0.025,
+        scale: 50,
+        opacity: 0.06,
       },
       {
         pos: [-40, -15, -3] as [number, number, number],
         color: "#4060c0",
-        scale: 30,
-        opacity: 0.02,
+        scale: 60,
+        opacity: 0.05,
       },
       {
         pos: [15, -35, -4] as [number, number, number],
         color: "#8040a0",
-        scale: 22,
-        opacity: 0.025,
+        scale: 45,
+        opacity: 0.06,
       },
       {
         pos: [-25, 30, -2] as [number, number, number],
         color: "#c05040",
-        scale: 18,
-        opacity: 0.02,
+        scale: 40,
+        opacity: 0.04,
       },
       {
         pos: [55, -30, -6] as [number, number, number],
         color: "#3080a0",
-        scale: 26,
-        opacity: 0.02,
+        scale: 55,
+        opacity: 0.04,
       },
       {
         pos: [-10, -5, -1] as [number, number, number],
         color: "#9060d0",
-        scale: 15,
-        opacity: 0.03,
+        scale: 35,
+        opacity: 0.07,
       },
     ],
     [],
@@ -257,15 +329,16 @@ function NebulaClouds() {
   return (
     <group>
       {clouds.map((c, i) => (
-        <mesh key={i} position={c.pos}>
-          <sphereGeometry args={[c.scale, 12, 12]} />
-          <meshBasicMaterial
+        <sprite key={i} position={c.pos} scale={[c.scale, c.scale, 1]}>
+          <spriteMaterial
+            map={nebulaTexture}
             color={c.color}
             transparent
             opacity={c.opacity}
             depthWrite={false}
+            blending={THREE.AdditiveBlending}
           />
-        </mesh>
+        </sprite>
       ))}
     </group>
   );
@@ -1037,7 +1110,7 @@ export default function SectorMap3D({
         style={{ background: "#020206" }}
         gl={{ antialias: true }}
       >
-        <fog attach="fog" args={["#020206", 100, 400]} />
+        <fog attach="fog" args={["#020206", 150, 500]} />
         <ambientLight color="#0a0a2e" intensity={0.4} />
         <pointLight position={[40, 30, 20]} color="#56d4dd" intensity={0.3} />
         <pointLight position={[-40, -20, 10]} color="#e847a0" intensity={0.2} />

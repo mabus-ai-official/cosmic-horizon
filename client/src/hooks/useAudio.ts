@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import {
   AUDIO_TRACKS,
   GAMEPLAY_TRACKS,
+  STARMALL_TRACKS,
   type AudioTrack,
 } from "../config/audio-tracks";
 
@@ -49,16 +50,23 @@ function pickRandom(tracks: AudioTrack[], lastId: string | null): AudioTrack {
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
+function getPlaylistForContext(contextId: string): AudioTrack[] | null {
+  if (contextId === "gameplay") return GAMEPLAY_TRACKS;
+  if (contextId === "starmall") return STARMALL_TRACKS;
+  return null;
+}
+
 function resolveTrack(
   trackId: string,
 ):
   | { track: AudioTrack; isPlaylist: false }
-  | { track: AudioTrack; isPlaylist: true }
+  | { track: AudioTrack; isPlaylist: true; playlist: AudioTrack[] }
   | null {
-  if (trackId === "gameplay") {
-    if (GAMEPLAY_TRACKS.length === 0) return null;
-    const picked = pickRandom(GAMEPLAY_TRACKS, null);
-    return { track: picked, isPlaylist: true };
+  const playlist = getPlaylistForContext(trackId);
+  if (playlist) {
+    if (playlist.length === 0) return null;
+    const picked = pickRandom(playlist, null);
+    return { track: picked, isPlaylist: true, playlist };
   }
   const found = AUDIO_TRACKS.find((t) => t.id === trackId);
   return found ? { track: found, isPlaylist: false } : null;
@@ -156,6 +164,7 @@ export function useAudio() {
       isPlaylist: boolean,
       mutedVal: boolean,
       volumeVal: number,
+      playlist?: AudioTrack[],
     ) => {
       // Clean up previous audio element completely
       if (audioRef.current) {
@@ -188,10 +197,10 @@ export function useAudio() {
 
       // For playlist tracks, listen for 'ended' to crossfade to next
       // Read current muted/volume from refs to avoid stale closure values
-      if (isPlaylist) {
+      if (isPlaylist && playlist) {
         const onEnded = () => {
-          const next = pickRandom(GAMEPLAY_TRACKS, track.id);
-          startTrack(next, true, mutedRef.current, volumeRef.current);
+          const next = pickRandom(playlist, track.id);
+          startTrack(next, true, mutedRef.current, volumeRef.current, playlist);
         };
         onEndedRef.current = onEnded;
         audio.addEventListener("ended", onEnded);
@@ -235,6 +244,7 @@ export function useAudio() {
         resolved.isPlaylist,
         mutedRef.current,
         volumeRef.current,
+        resolved.isPlaylist ? resolved.playlist : undefined,
       );
     },
     [fadeOut, startTrack],
@@ -260,10 +270,11 @@ export function useAudio() {
     const trackId = currentTrackIdRef.current;
     if (!audio || !trackId) return;
 
-    // Find the track in either list
+    // Find the track in any list
     const track =
       AUDIO_TRACKS.find((t) => t.id === trackId) ||
-      GAMEPLAY_TRACKS.find((t) => t.id === trackId);
+      GAMEPLAY_TRACKS.find((t) => t.id === trackId) ||
+      STARMALL_TRACKS.find((t) => t.id === trackId);
     if (!track) return;
 
     try {
@@ -298,7 +309,8 @@ export function useAudio() {
     if (audioRef.current && currentTrackIdRef.current) {
       const track =
         AUDIO_TRACKS.find((t) => t.id === currentTrackIdRef.current) ||
-        GAMEPLAY_TRACKS.find((t) => t.id === currentTrackIdRef.current);
+        GAMEPLAY_TRACKS.find((t) => t.id === currentTrackIdRef.current) ||
+        STARMALL_TRACKS.find((t) => t.id === currentTrackIdRef.current);
       if (track) {
         audioRef.current.volume = track.volume * clamped;
       }
@@ -319,8 +331,8 @@ export function useAudio() {
   }, []);
 
   const skip = useCallback(async () => {
-    if (currentContextRef.current !== "gameplay") return;
-    if (GAMEPLAY_TRACKS.length < 2) return;
+    const playlist = getPlaylistForContext(currentContextRef.current || "");
+    if (!playlist || playlist.length < 2) return;
 
     if (audioRef.current && onEndedRef.current) {
       audioRef.current.removeEventListener("ended", onEndedRef.current);
@@ -329,18 +341,19 @@ export function useAudio() {
 
     await fadeOut();
 
-    const next = pickRandom(GAMEPLAY_TRACKS, currentTrackIdRef.current);
-    await startTrack(next, true, mutedRef.current, volumeRef.current);
+    const next = pickRandom(playlist, currentTrackIdRef.current);
+    await startTrack(next, true, mutedRef.current, volumeRef.current, playlist);
   }, [fadeOut, startTrack]);
 
   const previous = useCallback(async () => {
-    if (currentContextRef.current !== "gameplay") return;
+    const playlist = getPlaylistForContext(currentContextRef.current || "");
+    if (!playlist) return;
     if (trackHistoryRef.current.length === 0) return;
 
     const prevId = trackHistoryRef.current[trackHistoryRef.current.length - 1];
     trackHistoryRef.current = trackHistoryRef.current.slice(0, -1);
 
-    const prevTrack = GAMEPLAY_TRACKS.find((t) => t.id === prevId);
+    const prevTrack = playlist.find((t) => t.id === prevId);
     if (!prevTrack) return;
 
     if (audioRef.current && onEndedRef.current) {
@@ -349,7 +362,13 @@ export function useAudio() {
     }
 
     await fadeOut();
-    await startTrack(prevTrack, true, mutedRef.current, volumeRef.current);
+    await startTrack(
+      prevTrack,
+      true,
+      mutedRef.current,
+      volumeRef.current,
+      playlist,
+    );
   }, [fadeOut, startTrack]);
 
   const togglePause = useCallback(() => {
@@ -365,9 +384,9 @@ export function useAudio() {
     }
   }, []);
 
-  const canSkip = currentContext === "gameplay" && GAMEPLAY_TRACKS.length > 1;
-  const canPrevious =
-    currentContext === "gameplay" && trackHistoryRef.current.length > 0;
+  const activePlaylist = getPlaylistForContext(currentContext || "");
+  const canSkip = !!activePlaylist && activePlaylist.length > 1;
+  const canPrevious = !!activePlaylist && trackHistoryRef.current.length > 0;
 
   return {
     play,

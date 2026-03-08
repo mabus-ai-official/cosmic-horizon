@@ -28,6 +28,8 @@ import type { RaceId } from "../config/races";
 import {
   handleTutorialPlanetInfo,
   handleTutorialClaim,
+  handleTutorialOwnedPlanets,
+  handleTutorialDiscoveredPlanets,
 } from "../services/tutorial-sandbox";
 
 const router = Router();
@@ -64,7 +66,7 @@ async function loadRacePopulations(
 
 // List planets owned by the player
 router.get("/owned", requireAuth, async (req, res) => {
-  if (tutorialBlock(req, res)) return;
+  if (req.inTutorial) return handleTutorialOwnedPlanets(req, res);
   try {
     const planets = await db("planets")
       .where({ owner_id: req.session.playerId })
@@ -197,7 +199,7 @@ router.get("/owned", requireAuth, async (req, res) => {
 
 // List all discovered planets (in explored sectors)
 router.get("/discovered", requireAuth, async (req, res) => {
-  if (tutorialBlock(req, res)) return;
+  if (req.inTutorial) return handleTutorialDiscoveredPlanets(req, res);
   try {
     const player = await db("players")
       .where({ id: req.session.playerId })

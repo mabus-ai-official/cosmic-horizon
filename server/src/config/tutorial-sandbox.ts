@@ -43,6 +43,7 @@ export interface TutorialVirtualState {
   cargoHolds: number;
   maxCargoHolds: number;
   exploredSectors: number[];
+  dockedAtOutpostId?: string | null;
   landedAtPlanetId?: string | null;
   claimedPlanetIds?: string[];
 }

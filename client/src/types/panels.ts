@@ -16,6 +16,7 @@ export type PanelId =
   | "intel"
   | "trade-history"
   | "notes"
+  | "codex"
   | "profile";
 
 export interface PanelDef {
@@ -26,22 +27,20 @@ export interface PanelDef {
 }
 
 export const PANELS: PanelDef[] = [
+  // You
   { id: "profile", label: "PILOT", spriteKey: "icon_profile", hotkey: "P" },
   { id: "nav", label: "HELM", spriteKey: "icon_nav", hotkey: "H" },
-  { id: "aria", label: "ARIA", spriteKey: "icon_aria", hotkey: "R" },
-  { id: "explore", label: "SCANNER", spriteKey: "icon_explore", hotkey: "S" },
-  { id: "trade", label: "MARKET", spriteKey: "icon_trade", hotkey: "M" },
+  // Action
   { id: "combat", label: "COMBAT", spriteKey: "icon_combat", hotkey: "C" },
-  { id: "crew", label: "CONTACTS", spriteKey: "icon_crew", hotkey: "O" },
+  { id: "explore", label: "SCANNER", spriteKey: "icon_explore", hotkey: "S" },
   {
     id: "missions",
     label: "MISSIONS",
     spriteKey: "icon_missions",
     hotkey: "I",
   },
-  { id: "planets", label: "PLANETS", spriteKey: "icon_planets", hotkey: "L" },
-  { id: "gear", label: "LOADOUT", spriteKey: "icon_gear", hotkey: "G" },
-  { id: "inventory", label: "CARGO", spriteKey: "icon_inventory", hotkey: "A" },
+  // Social
+  { id: "crew", label: "CONTACTS", spriteKey: "icon_crew", hotkey: "O" },
   { id: "comms", label: "COMMS", spriteKey: "icon_comms", hotkey: "K" },
   {
     id: "syndicate",
@@ -49,10 +48,17 @@ export const PANELS: PanelDef[] = [
     spriteKey: "icon_syndicate",
     hotkey: "Y",
   },
+  // Ship & Economy
+  { id: "gear", label: "LOADOUT", spriteKey: "icon_gear", hotkey: "G" },
+  { id: "inventory", label: "CARGO", spriteKey: "icon_inventory", hotkey: "A" },
+  { id: "trade", label: "MARKET", spriteKey: "icon_trade", hotkey: "M" },
+  { id: "planets", label: "PLANETS", spriteKey: "icon_planets", hotkey: "L" },
   { id: "wallet", label: "WALLET", spriteKey: "icon_wallet", hotkey: "W" },
+  // Reference
   { id: "actions", label: "DATABANK", spriteKey: "icon_actions", hotkey: "D" },
-  { id: "notes", label: "NOTES", spriteKey: "icon_notes", hotkey: "N" },
   { id: "intel", label: "INTEL", spriteKey: "icon_intel", hotkey: "T" },
+  { id: "codex", label: "CODEX", spriteKey: "icon_codex", hotkey: "X" },
+  { id: "notes", label: "NOTES", spriteKey: "icon_notes", hotkey: "N" },
   {
     id: "trade-history",
     label: "LEDGER",

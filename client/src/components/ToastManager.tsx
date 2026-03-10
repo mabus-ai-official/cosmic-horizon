@@ -7,6 +7,7 @@ const ICON_MAP: Record<string, string> = {
   error: "[!]",
   combat: "[⚔]",
   system: "[★]",
+  achievement: "[🏆]",
 };
 
 interface ToastManagerProps {

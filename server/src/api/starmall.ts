@@ -543,6 +543,23 @@ router.post("/cantina/talk", requireAuth, async (req, res) => {
       });
     }
 
+    // Block cantina missions during active story mission
+    try {
+      const { hasActiveStoryMission } =
+        await import("../engine/story-missions");
+      const storyActive = await hasActiveStoryMission(player!.id);
+      if (storyActive) {
+        return res.json({
+          hasMission: false,
+          dialogue:
+            "The bartender leans back and studies you. 'I can see you're on an important quest, spacer. Come back when you need more work.'",
+          cantinaUnlocked: true,
+        });
+      }
+    } catch {
+      /* story tables may not exist yet */
+    }
+
     // Check random chance
     if (Math.random() > GAME_CONFIG.CANTINA_MISSION_CHANCE) {
       const noMissionDialogues = [

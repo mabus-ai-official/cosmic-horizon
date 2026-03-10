@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import CollapsiblePanel from "./CollapsiblePanel";
 import PixelSprite from "./PixelSprite";
 import NPCDialogueView from "./NPCDialogueView";
-import { getContacts, getFactionReps, talkToNPC } from "../services/api";
+import { getContacts, getFactionReps } from "../services/api";
 import type { SectorState } from "../hooks/useGameState";
 
 interface NPC {
@@ -13,6 +13,12 @@ interface NPC {
   encountered: boolean;
   disposition?: number;
   faction?: string;
+  factionId?: string | null;
+  factionName?: string | null;
+  locationType?: string;
+  isKeyNpc?: boolean;
+  reputation?: number;
+  services?: string[];
 }
 
 interface Contact {
@@ -52,6 +58,23 @@ const RACE_SPRITE_MAP: Record<string, string> = {
   vedic: "npc_vedic",
   kalin: "npc_kalin",
   tarri: "npc_tarri",
+};
+
+const SERVICE_LABELS: Record<string, { label: string; color: string }> = {
+  trade: { label: "TRADE", color: "#d29922" },
+  vendor: { label: "VENDOR", color: "#d29922" },
+  quest: { label: "QUEST", color: "#58a6ff" },
+  intel: { label: "INTEL", color: "#a371f7" },
+  repair: { label: "REPAIR", color: "#3fb950" },
+  bounty: { label: "BOUNTY", color: "#f85149" },
+  transport: { label: "TRANSPORT", color: "#56d4dd" },
+  hire: { label: "HIRE", color: "#f0883e" },
+};
+
+const LOCATION_LABELS: Record<string, string> = {
+  outpost: "At Outpost",
+  planet: "On Planet",
+  sector: "In Space",
 };
 
 function getDispositionDots(level: number) {
@@ -120,41 +143,126 @@ export function NPCList({
     <>
       {npcs.map((npc) => {
         const spriteKey = RACE_SPRITE_MAP[npc.race] || "npc_generic_a";
+        const factionDisplay = npc.factionName || npc.faction;
+        const factionTier = factionDisplay
+          ? factionTiers[factionDisplay]
+          : null;
+        const services = npc.services || [];
+        const locationLabel =
+          LOCATION_LABELS[npc.locationType || "sector"] || "In Space";
+
         return (
-          <div key={npc.id} className="npc-list-item">
-            <div className="npc-list-item__info">
-              <PixelSprite spriteKey={spriteKey} size={20} />
-              <div className="npc-list-item__text">
-                <span className="npc-list-item__name">{npc.name}</span>
-                <span className="npc-list-item__title">
-                  {npc.title}
-                  {npc.faction ? ` - ${npc.faction}` : ""}
-                  {npc.faction &&
-                    factionTiers[npc.faction] &&
-                    factionTiers[npc.faction] !== "Neutral" && (
-                      <span
-                        className="faction-rep-tier"
-                        style={{
-                          color:
-                            TIER_COLORS[factionTiers[npc.faction]] || "#484f58",
-                          marginLeft: 4,
-                        }}
-                      >
-                        [{factionTiers[npc.faction]}]
-                      </span>
-                    )}
-                </span>
-                <div className="npc-disposition">
-                  {getDispositionDots(npc.disposition ?? 3)}
+          <div
+            key={npc.id}
+            className="npc-list-item"
+            style={{ flexDirection: "column", alignItems: "stretch", gap: 4 }}
+          >
+            {/* Top row: sprite + name + talk button */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <PixelSprite spriteKey={spriteKey} size={24} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span className="npc-list-item__name">{npc.name}</span>
+                  {npc.isKeyNpc && (
+                    <span
+                      style={{
+                        color: "#d29922",
+                        fontSize: "9px",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      KEY
+                    </span>
+                  )}
                 </div>
+                {npc.title && (
+                  <div style={{ fontSize: "10px", color: "#8899bb" }}>
+                    {npc.title}
+                  </div>
+                )}
               </div>
+              <button
+                className="btn-sm btn-buy"
+                onClick={() => setActiveNpcId(npc.id)}
+              >
+                TALK
+              </button>
             </div>
-            <button
-              className="btn-sm btn-buy"
-              onClick={() => setActiveNpcId(npc.id)}
+
+            {/* Details row */}
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "4px 10px",
+                fontSize: "10px",
+                paddingLeft: 30,
+              }}
             >
-              TALK
-            </button>
+              {/* Race */}
+              <span style={{ color: "#6e7681" }}>{npc.race}</span>
+
+              {/* Location */}
+              <span style={{ color: "#6e7681" }}>{locationLabel}</span>
+
+              {/* Faction + standing */}
+              {factionDisplay && (
+                <span
+                  style={{
+                    color:
+                      factionTier && factionTier !== "Neutral"
+                        ? TIER_COLORS[factionTier] || "#6e7681"
+                        : "#6e7681",
+                  }}
+                >
+                  {factionDisplay}
+                  {factionTier && factionTier !== "Neutral" && (
+                    <span style={{ marginLeft: 3 }}>[{factionTier}]</span>
+                  )}
+                </span>
+              )}
+
+              {/* Disposition */}
+              <span
+                style={{ display: "inline-flex", alignItems: "center", gap: 1 }}
+              >
+                {getDispositionDots(npc.disposition ?? 3)}
+              </span>
+            </div>
+
+            {/* Services tags */}
+            {services.length > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 3,
+                  paddingLeft: 30,
+                }}
+              >
+                {services.map((svc) => {
+                  const info = SERVICE_LABELS[svc] || {
+                    label: svc.toUpperCase(),
+                    color: "#6e7681",
+                  };
+                  return (
+                    <span
+                      key={svc}
+                      style={{
+                        fontSize: "8px",
+                        padding: "1px 4px",
+                        border: `1px solid ${info.color}44`,
+                        color: info.color,
+                        borderRadius: 2,
+                        letterSpacing: "0.5px",
+                      }}
+                    >
+                      {info.label}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })}
@@ -165,21 +273,7 @@ export function NPCList({
 export function ContactsList({ refreshKey }: { refreshKey?: number }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [search, setSearch] = useState("");
-  const [talkingTo, setTalkingTo] = useState<Contact | null>(null);
   const [locatedNpcId, setLocatedNpcId] = useState<string | null>(null);
-  const [inlineDialogue, setInlineDialogue] = useState<{
-    npcId: string;
-    text: string;
-    options: Array<{
-      label: string;
-      index: number;
-      locked: boolean;
-      lockReason?: string;
-    }>;
-    ended: boolean;
-  } | null>(null);
-  const [inlineError, setInlineError] = useState<string | null>(null);
-  const [inlineLoading, setInlineLoading] = useState(false);
 
   useEffect(() => {
     getContacts()
@@ -205,102 +299,6 @@ export function ContactsList({ refreshKey }: { refreshKey?: number }) {
         String(c.sectorId).includes(q),
     );
   }, [contacts, search]);
-
-  const handleTalk = async (contact: Contact, choiceIndex?: number) => {
-    setInlineLoading(true);
-    setInlineError(null);
-    try {
-      const { data } = await talkToNPC(contact.npcId, choiceIndex);
-      setTalkingTo(contact);
-      setInlineDialogue({
-        npcId: contact.npcId,
-        text: data.text || data.dialogue || data.message || "",
-        options: (data.options || data.choices || []).map(
-          (opt: any, i: number) => ({
-            label: typeof opt === "string" ? opt : opt.label || opt.text,
-            index: typeof opt === "string" ? i : (opt.index ?? i),
-            locked: opt.locked || false,
-            lockReason: opt.lockReason,
-          }),
-        ),
-        ended: data.isEnd || data.ended || false,
-      });
-    } catch (err: any) {
-      const msg = err.response?.data?.error || "Failed to contact NPC";
-      setInlineError(msg);
-      setTalkingTo(contact);
-      setInlineDialogue(null);
-    } finally {
-      setInlineLoading(false);
-    }
-  };
-
-  const handleEndConversation = () => {
-    setTalkingTo(null);
-    setInlineDialogue(null);
-    setInlineError(null);
-  };
-
-  // If actively talking to a contact, show inline dialogue
-  if (talkingTo) {
-    return (
-      <div className="contact-dialogue">
-        <div className="npc-dialogue__header">
-          <div className="npc-dialogue__name">{talkingTo.name}</div>
-          {talkingTo.title && (
-            <div className="npc-dialogue__title">{talkingTo.title}</div>
-          )}
-          <div className="text-muted" style={{ fontSize: "10px" }}>
-            Sector {talkingTo.sectorId}
-            {talkingTo.factionName ? ` - ${talkingTo.factionName}` : ""}
-          </div>
-        </div>
-
-        {inlineError && (
-          <div className="mall-error" style={{ marginTop: 4 }}>
-            {inlineError}
-          </div>
-        )}
-
-        {inlineLoading && <div className="text-muted">...</div>}
-
-        {inlineDialogue && !inlineLoading && (
-          <>
-            <div className="npc-dialogue__text">{inlineDialogue.text}</div>
-            <div className="npc-dialogue__options">
-              {inlineDialogue.options.map((opt) => (
-                <button
-                  key={opt.index}
-                  className="npc-dialogue__option"
-                  disabled={opt.locked}
-                  title={opt.locked ? opt.lockReason : undefined}
-                  onClick={() => handleTalk(talkingTo, opt.index)}
-                  style={opt.locked ? { opacity: 0.5 } : undefined}
-                >
-                  {opt.label}
-                  {opt.locked && opt.lockReason ? ` (${opt.lockReason})` : ""}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        <button
-          className="btn-sm"
-          onClick={handleEndConversation}
-          style={{
-            marginTop: "8px",
-            color: "var(--text-secondary)",
-            borderColor: "var(--text-secondary)",
-          }}
-        >
-          {inlineDialogue?.ended || inlineError
-            ? "[End conversation]"
-            : "[Leave]"}
-        </button>
-      </div>
-    );
-  }
 
   if (contacts.length === 0) {
     return <div className="text-muted">No contacts recorded.</div>;
@@ -377,13 +375,6 @@ export function ContactsList({ refreshKey }: { refreshKey?: number }) {
               )}
             </div>
             <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
-              <button
-                className="btn-sm btn-buy"
-                onClick={() => handleTalk(c)}
-                style={{ fontSize: "10px", padding: "2px 6px" }}
-              >
-                TALK
-              </button>
               <button
                 className="btn-sm"
                 onClick={() => setLocatedNpcId(isLocated ? null : c.npcId)}

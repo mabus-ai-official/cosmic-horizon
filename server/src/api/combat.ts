@@ -26,7 +26,8 @@ import {
   checkMilestones,
 } from "../engine/profile-stats";
 import { syncPlayer } from "../ws/sync";
-import { handleSectorChange } from "../ws/handlers";
+import { handleSectorChange, notifyPlayer } from "../ws/handlers";
+import { isStoryNPC, cleanupDestroyedNPC } from "../engine/story-npcs";
 
 const router = Router();
 
@@ -206,45 +207,57 @@ router.post("/fire", requireAuth, async (req, res) => {
     );
 
     let bountiesClaimed: { bountyId: string; reward: number }[] = [];
+    const targetIsStoryNPC = result.defenderDestroyed
+      ? await isStoryNPC(target.id)
+      : false;
 
     if (result.defenderDestroyed) {
-      // Spawn dodge pod for defender
-      const crypto = require("crypto");
-      const podId = crypto.randomUUID();
-      await db("ships").insert({
-        id: podId,
-        ship_type_id: "dodge_pod",
-        owner_id: target.id,
-        sector_id: target.current_sector_id,
-        weapon_energy: 0,
-        max_weapon_energy: 0,
-        engine_energy: 20,
-        max_engine_energy: 20,
-        cargo_holds: 0,
-        max_cargo_holds: 0,
-        hull_hp: 10,
-        max_hull_hp: 10,
-      });
-      await db("players")
-        .where({ id: target.id })
-        .update({ current_ship_id: podId });
+      if (!targetIsStoryNPC) {
+        // Spawn dodge pod for defender
+        const crypto = require("crypto");
+        const podId = crypto.randomUUID();
+        await db("ships").insert({
+          id: podId,
+          ship_type_id: "dodge_pod",
+          owner_id: target.id,
+          sector_id: target.current_sector_id,
+          weapon_energy: 0,
+          max_weapon_energy: 0,
+          engine_energy: 20,
+          max_engine_energy: 20,
+          cargo_holds: 0,
+          max_cargo_holds: 0,
+          hull_hp: 10,
+          max_hull_hp: 10,
+        });
+        await db("players")
+          .where({ id: target.id })
+          .update({ current_ship_id: podId });
 
-      // Log combat
-      await db("combat_logs").insert({
-        id: crypto.randomUUID(),
-        attacker_id: player.id,
-        defender_id: target.id,
-        sector_id: player.current_sector_id,
-        energy_expended: result.attackerEnergySpent,
-        damage_dealt: result.damageDealt,
-        outcome: "ship_destroyed",
-      });
+        // Log combat
+        await db("combat_logs").insert({
+          id: crypto.randomUUID(),
+          attacker_id: player.id,
+          defender_id: target.id,
+          sector_id: player.current_sector_id,
+          energy_expended: result.attackerEnergySpent,
+          damage_dealt: result.damageDealt,
+          outcome: "ship_destroyed",
+        });
+      }
 
-      // Check and claim bounties on the destroyed player
-      const activeBounties = await db("bounties").where({
-        target_player_id: target.id,
-        active: true,
-      });
+      // Story NPC cleanup — delete after all references are done
+      if (targetIsStoryNPC) {
+        await cleanupDestroyedNPC(target.id);
+      }
+
+      // Check and claim bounties on the destroyed player (skip for NPCs)
+      const activeBounties = targetIsStoryNPC
+        ? []
+        : await db("bounties").where({
+            target_player_id: target.id,
+            active: true,
+          });
 
       if (activeBounties.length > 0) {
         let totalBountyReward = 0;
@@ -283,25 +296,38 @@ router.post("/fire", requireAuth, async (req, res) => {
         GAME_CONFIG.XP_COMBAT_DESTROY,
         "combat",
       );
-      await checkAchievements(player.id, "combat_destroy", {});
-      checkAndUpdateMissions(player.id, "combat_destroy", {});
+      const unlocked = await checkAchievements(player.id, "combat_destroy", {});
+      const io = req.app.get("io");
+      if (io) {
+        for (const a of unlocked) {
+          notifyPlayer(io, player.id, "achievement:unlocked", {
+            name: a.name,
+            description: a.description,
+            xpReward: a.xpReward,
+            creditReward: a.creditReward,
+          });
+        }
+      }
+      checkAndUpdateMissions(player.id, "combat_destroy", {}, io);
       updateDailyMissionProgress(player.id, "win_combat").catch(() => {});
 
-      // Profile stats: kill/death
+      // Profile stats: kill/death (skip NPC-side stats — NPC is already deleted)
       incrementStat(player.id, "combat_kills", 1);
-      incrementStat(target.id, "combat_deaths", 1);
-      incrementStat(target.id, "dodge_pod_uses", 1);
+      if (!targetIsStoryNPC) {
+        incrementStat(target.id, "combat_deaths", 1);
+        incrementStat(target.id, "dodge_pod_uses", 1);
+        logActivity(
+          target.id,
+          "combat_death",
+          `Ship destroyed by ${player.username} in sector ${player.current_sector_id}`,
+          { attackerId: player.id, sectorId: player.current_sector_id },
+        );
+      }
       logActivity(
         player.id,
         "combat_kill",
         `Destroyed ${target.username}'s ship in sector ${player.current_sector_id}`,
         { targetId: target.id, sectorId: player.current_sector_id },
-      );
-      logActivity(
-        target.id,
-        "combat_death",
-        `Ship destroyed by ${player.username} in sector ${player.current_sector_id}`,
-        { attackerId: player.id, sectorId: player.current_sector_id },
       );
       checkMilestones(player.id);
 

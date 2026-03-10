@@ -380,12 +380,6 @@ export function handleCommand(input: string, ctx: CommandContext): void {
 
     case "scan":
       ctx.advanceTutorial("scan");
-      ctx.enqueueScene?.(
-        buildScanScene(
-          ctx.player?.currentShip?.shipTypeId ?? "scout",
-          ctx.sector?.adjacentSectors?.length ?? 3,
-        ),
-      );
       ctx.addLine("Scanning adjacent sectors...", "info");
       api
         .scan()
@@ -394,6 +388,12 @@ export function handleCommand(input: string, ctx: CommandContext): void {
             ctx.addLine("No scanner data returned", "warning");
             return;
           }
+          ctx.enqueueScene?.(
+            buildScanScene(
+              ctx.player?.currentShip?.shipTypeId ?? "scout",
+              ctx.sector?.adjacentSectors?.length ?? 3,
+            ),
+          );
 
           // Collect scan summary stats
           let totalPlanets = 0;

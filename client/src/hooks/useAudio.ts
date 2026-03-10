@@ -5,11 +5,13 @@ import {
   STARMALL_TRACKS,
   type AudioTrack,
 } from "../config/audio-tracks";
+import { SFX, type SfxId } from "../config/sfx";
 
 const FADE_DURATION = 1000; // ms
 const FADE_STEPS = 20;
 const STORAGE_KEY_MUTED = "cosmic-horizon-muted";
 const STORAGE_KEY_VOLUME = "cosmic-horizon-volume";
+const STORAGE_KEY_SFX_VOLUME = "cosmic-horizon-sfx-volume";
 
 // External mood-based track filter — when set, gameplay next-track picks from this subset
 let moodTrackFilter: AudioTrack[] | null = null;
@@ -46,6 +48,15 @@ function getStoredVolume(): number {
     return v ? parseFloat(v) : 1;
   } catch {
     return 1;
+  }
+}
+
+function getStoredSfxVolume(): number {
+  try {
+    const v = localStorage.getItem(STORAGE_KEY_SFX_VOLUME);
+    return v ? parseFloat(v) : 0.7;
+  } catch {
+    return 0.7;
   }
 }
 
@@ -86,12 +97,14 @@ export function useAudio() {
   const onEndedRef = useRef<(() => void) | null>(null);
   const [muted, setMuted] = useState(getStoredMuted);
   const [volume, setVolumeState] = useState(getStoredVolume);
+  const [sfxVolume, setSfxVolumeState] = useState(getStoredSfxVolume);
   const [currentTrackId, setCurrentTrackId] = useState<string | null>(null);
   const [currentContext, setCurrentContext] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const trackHistoryRef = useRef<string[]>([]);
   const mutedRef = useRef(muted);
   const volumeRef = useRef(volume);
+  const sfxVolumeRef = useRef(sfxVolume);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -100,6 +113,9 @@ export function useAudio() {
   useEffect(() => {
     volumeRef.current = volume;
   }, [volume]);
+  useEffect(() => {
+    sfxVolumeRef.current = sfxVolume;
+  }, [sfxVolume]);
 
   // Clean up on unmount
   useEffect(() => {
@@ -416,6 +432,38 @@ export function useAudio() {
     }
   }, []);
 
+  // Play a short one-shot sound effect (does not interrupt music)
+  const playSfx = useCallback((src: string, baseVolume = 0.5) => {
+    if (mutedRef.current) return;
+    try {
+      const audio = new Audio(src);
+      audio.volume =
+        baseVolume * sfxVolumeRef.current * externalVolumeMultiplier;
+      audio.play().catch(() => {});
+    } catch {
+      // SFX failure is non-critical
+    }
+  }, []);
+
+  // Play a typed SFX by key (picks random variant)
+  const sfx = useCallback(
+    (id: SfxId) => {
+      const def = SFX[id];
+      if (!def) return;
+      const src = def.src[Math.floor(Math.random() * def.src.length)];
+      playSfx(src, def.volume);
+    },
+    [playSfx],
+  );
+
+  const setSfxVolume = useCallback((v: number) => {
+    const clamped = Math.max(0, Math.min(1, v));
+    setSfxVolumeState(clamped);
+    try {
+      localStorage.setItem(STORAGE_KEY_SFX_VOLUME, String(clamped));
+    } catch {}
+  }, []);
+
   const activePlaylist = getPlaylistForContext(currentContext || "");
   const canSkip = !!activePlaylist && activePlaylist.length > 1;
   const canPrevious = !!activePlaylist && trackHistoryRef.current.length > 0;
@@ -437,5 +485,9 @@ export function useAudio() {
     currentTrackId,
     setMoodTracks,
     setVolumeMultiplier,
+    playSfx,
+    sfx,
+    sfxVolume,
+    setSfxVolume,
   };
 }

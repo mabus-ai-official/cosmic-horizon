@@ -103,6 +103,7 @@ export const sellToOutpost = (
   commodity: string,
   quantity: number,
 ) => api.post("/trade/sell", { outpostId, commodity, quantity });
+export const getTradeDirectory = () => api.get("/trade/directory");
 
 // Ships
 export const getDealer = () => api.get("/ships/dealer");
@@ -264,6 +265,17 @@ export const abandonMission = (missionId: string) =>
 export const getClaimableMissions = () => api.get("/missions/claimable");
 export const claimMission = (missionId: string) =>
   api.post(`/missions/claim/${missionId}`);
+
+// Story Missions
+export const getStoryProgress = () => api.get("/story/progress");
+export const getStoryCurrent = () => api.get("/story/current");
+export const acceptStoryMission = () => api.post("/story/accept");
+export const claimStoryMission = (missionId: string) =>
+  api.post(`/story/claim/${missionId}`);
+export const abandonStoryMission = (missionId: string) =>
+  api.post(`/story/abandon/${missionId}`);
+export const getStoryCodex = () => api.get("/story/codex");
+export const getStoryRecap = () => api.get("/story/recap");
 
 // Sector Events
 export const getSectorEvents = () => api.get("/events/sector");

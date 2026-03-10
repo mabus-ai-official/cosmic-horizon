@@ -13,6 +13,7 @@ import { checkPrerequisite } from "../engine/missions";
 import { applyUpgradesToShip } from "../engine/upgrades";
 import { awardXP } from "../engine/progression";
 import { checkAchievements } from "../engine/achievements";
+import { notifyPlayer } from "../ws/handlers";
 import { GAME_CONFIG } from "../config/game";
 import { PLANET_TYPES } from "../config/planet-types";
 import { VALID_RACE_IDS } from "../config/races";
@@ -512,7 +513,18 @@ router.post("/:id/claim", requireAuth, async (req, res) => {
       GAME_CONFIG.XP_CLAIM_PLANET,
       "explore",
     );
-    await checkAchievements(player.id, "claim_planet", {});
+    const achUnlocked = await checkAchievements(player.id, "claim_planet", {});
+    const io = req.app.get("io");
+    if (io) {
+      for (const a of achUnlocked) {
+        notifyPlayer(io, player.id, "achievement:unlocked", {
+          name: a.name,
+          description: a.description,
+          xpReward: a.xpReward,
+          creditReward: a.creditReward,
+        });
+      }
+    }
 
     const claimRace = (player.race as RaceId) || "generic";
     res.json({
@@ -637,7 +649,8 @@ router.post("/:id/colonize", requireAuth, async (req, res) => {
       });
 
     // Mission progress: colonize
-    checkAndUpdateMissions(player.id, "colonize", { quantity: toDeposit });
+    const io = req.app.get("io");
+    checkAndUpdateMissions(player.id, "colonize", { quantity: toDeposit }, io);
 
     // Award XP for colonizing
     const xpResult = await awardXP(

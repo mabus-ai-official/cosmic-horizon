@@ -6,7 +6,9 @@ export type ToastType =
   | "warning"
   | "error"
   | "combat"
-  | "system";
+  | "system"
+  | "achievement"
+  | "story";
 
 export interface Toast {
   id: number;

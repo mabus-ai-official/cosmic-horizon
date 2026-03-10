@@ -1,10 +1,10 @@
 import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import StatusBar from "../components/StatusBar";
 import MapPanel from "../components/MapPanel";
-import AriaPanel from "../components/AriaPanel";
 import TradeTable from "../components/TradeTable";
 import TradeRoutesPanel from "../components/TradeRoutesPanel";
 import TradeOffersPanel from "../components/TradeOffersPanel";
+import TradeComputerPanel from "../components/TradeComputerPanel";
 import MallPanel from "../components/MallPanel";
 import CombatGroupPanel from "../components/CombatGroupPanel";
 import ActiveMissionsPanel from "../components/ActiveMissionsPanel";
@@ -21,6 +21,7 @@ import NotesPanel from "../components/NotesPanel";
 import IntelLogPanel from "../components/IntelLogPanel";
 import TradeHistoryPanel from "../components/TradeHistoryPanel";
 import ProfilePanel from "../components/ProfilePanel";
+import CodexPanel from "../components/CodexPanel";
 import TutorialOverlay from "../components/TutorialOverlay";
 import TutorialWelcomeOverlay from "../components/TutorialWelcomeOverlay";
 import IntroSequence, {
@@ -28,20 +29,29 @@ import IntroSequence, {
   POST_TUTORIAL_BEATS,
 } from "../components/IntroSequence";
 import PixelScene from "../components/PixelScene";
-import SceneViewport from "../components/SceneViewport";
+import SectorViewport from "../components/viewport/SectorViewport";
 import ActivityBar from "../components/ActivityBar";
 import PixelSprite from "../components/PixelSprite";
 import ContextPanel from "../components/ContextPanel";
-import SectorMap from "../components/SectorMap";
+import SectorMap, { type CommodityFilter } from "../components/SectorMap";
 import SectorMap3D from "../components/SectorMap3D";
 import NotificationLog from "../components/NotificationLog";
 import ToastManager from "../components/ToastManager";
-import DailyMissions from "../components/DailyMissions";
-import DailyMissionsOverlay from "../components/DailyMissionsOverlay";
 import FloatingNumbers from "../components/FloatingNumbers";
-import LevelUpOverlay from "../components/LevelUpOverlay";
-import ResourceEventOverlay from "../components/ResourceEventOverlay";
+import EventOverlay from "../components/EventOverlay";
 import { useToast } from "../hooks/useToast";
+import { useEventOverlay } from "../hooks/useEventOverlay";
+import { getDailyMissions, getStoryRecap } from "../services/api";
+import {
+  FIRST_TIME_EVENTS,
+  hasSeenFirstTime,
+  markFirstTimeSeen,
+} from "../config/first-time-events";
+import {
+  STORY_NUDGES,
+  ACT_OPENINGS,
+  ACT_COMPLETIONS,
+} from "../config/story-interstitials";
 import {
   type ChatMessage,
   type ChatChannel,
@@ -86,12 +96,14 @@ export default function Game({ onLogout }: GameProps) {
   const { activePanel, selectPanel, badges, incrementBadge } =
     useActivePanel("nav");
   const { toasts, showToast, dismissToast } = useToast();
+  const eventOverlay = useEventOverlay(showToast as any);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showPostTutorialScene, setShowPostTutorialScene] = useState(false);
   const [combatFlash, setCombatFlash] = useState(false);
   const [combatShake, setCombatShake] = useState(false);
   const [map3D, setMap3D] = useState(true);
+  const [commodityFilter, setCommodityFilter] = useState<CommodityFilter>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showSPComplete, setShowSPComplete] = useState(false);
   const [alliedPlayerIds, setAlliedPlayerIds] = useState<string[]>([]);
@@ -104,13 +116,27 @@ export default function Game({ onLogout }: GameProps) {
     "players" | "npcs" | "contacts" | undefined
   >(undefined);
   const [autoTalkNpcId, setAutoTalkNpcId] = useState<string | null>(null);
-  const [resourceEventNotification, setResourceEventNotification] = useState<{
-    events: Array<{ type: string; id?: string }>;
-  } | null>(null);
   const lastSectorRef = useRef<number | null>(null);
   const lastListingRef = useRef<{ id: string; label: string }[] | null>(null);
   const activePanelRef = useRef(activePanel);
   activePanelRef.current = activePanel;
+
+  // ARIA integration: trigger milestone comment when significant overlays appear
+  const ARIA_MILESTONE_CATEGORIES = new Set([
+    "level_up",
+    "story_act",
+    "faction_rankup",
+    "first_time",
+    "mission_complete",
+  ]);
+  useEffect(() => {
+    if (
+      eventOverlay.currentEvent &&
+      ARIA_MILESTONE_CATEGORIES.has(eventOverlay.currentEvent.category)
+    ) {
+      aria.triggerMilestone();
+    }
+  }, [eventOverlay.currentEvent?.id]);
 
   const ambientScene = useMemo(() => {
     const ctx = {
@@ -147,13 +173,26 @@ export default function Game({ onLogout }: GameProps) {
       game.player?.currentSectorId &&
       game.player.currentSectorId !== lastSectorRef.current
     ) {
+      const isFirstMove = lastSectorRef.current !== null;
       lastSectorRef.current = game.player.currentSectorId;
       setChatMessages([]);
       aria.triggerMove();
+      if (isFirstMove && !hasSeenFirstTime("first_explore")) {
+        markFirstTimeSeen("first_explore");
+        const ft = FIRST_TIME_EVENTS.explore;
+        eventOverlay.enqueueEvent({
+          category: "first_time",
+          title: ft.title,
+          subtitle: ft.subtitle,
+          body: ft.body,
+          colorScheme: ft.colorScheme,
+          duration: ft.duration,
+        });
+      }
     }
   }, [game.player?.currentSectorId]);
 
-  // Show resource event overlay when entering a new sector with events
+  // Resource event overlay when entering a new sector with events
   const prevResourceSectorRef = useRef<number | null>(null);
   useEffect(() => {
     const sectorId = game.sector?.sectorId ?? null;
@@ -164,14 +203,264 @@ export default function Game({ onLogout }: GameProps) {
       sectorId !== prevResourceSectorRef.current &&
       events.length > 0
     ) {
-      setResourceEventNotification({
-        events: events.map((e) => ({ type: e.eventType, id: e.id })),
+      const EVENT_INFO: Record<string, { label: string; description: string }> =
+        {
+          asteroid_field: {
+            label: "Asteroid Field Detected",
+            description: "Rich mineral deposits drift through this sector.",
+          },
+          derelict: {
+            label: "Derelict Vessel Found",
+            description: "An abandoned ship floats silently nearby.",
+          },
+          anomaly: {
+            label: "Spatial Anomaly Detected",
+            description:
+              "Strange energy readings emanate from an unstable region of space.",
+          },
+          alien_cache: {
+            label: "Alien Cache Located",
+            description: "A guarded alien structure has been detected.",
+          },
+        };
+      const evList = events.map((e) => {
+        const info = EVENT_INFO[e.eventType] ?? {
+          label: e.eventType.replace(/_/g, " ").toUpperCase(),
+          description: "Something unusual has been detected.",
+        };
+        return info.label;
+      });
+      eventOverlay.enqueueEvent({
+        category: "resource_discovery",
+        title: "DISCOVERY",
+        subtitle: evList.join(", "),
+        body: events
+          .map(
+            (e) =>
+              EVENT_INFO[e.eventType]?.description ??
+              "Something unusual has been detected.",
+          )
+          .join(" "),
+        actions: [
+          { id: "investigate", label: "INVESTIGATE", variant: "primary" },
+        ],
+        onAction: (actionId) => {
+          if (actionId === "investigate") selectPanel("explore");
+        },
       });
     }
     if (sectorId) {
       prevResourceSectorRef.current = sectorId;
     }
   }, [game.sector?.sectorId, game.sector?.events]);
+
+  // Level-up detection → event overlay
+  const prevLevelRef = useRef(game.player?.level ?? 0);
+  useEffect(() => {
+    const level = game.player?.level ?? 0;
+    const rank = game.player?.rank ?? "";
+    if (prevLevelRef.current > 0 && level > prevLevelRef.current) {
+      audio.sfx("level_up");
+      eventOverlay.enqueueEvent({
+        category: "level_up",
+        title: "LEVEL UP!",
+        subtitle: `${level}`,
+        body: rank,
+        colorScheme: "cyan",
+      });
+      game.addLine(`LEVEL UP! You are now level ${level} — ${rank}`, "success");
+      showToast(`Level ${level} — ${rank}!`, "success", 8000);
+      aria.triggerMilestone();
+    }
+    prevLevelRef.current = level;
+  }, [game.player?.level, game.player?.rank]);
+
+  // Daily missions overlay (first visit per day) / toast reminder
+  const dailyFetched = useRef(false);
+  useEffect(() => {
+    if (dailyFetched.current || !game.player) return;
+    dailyFetched.current = true;
+    const STORAGE_KEY = "coho_daily_missions_date";
+    const REMINDER_LINES = [
+      "Your daily orders are standing by, Commander.",
+      "Unclaimed missions expire at midnight UTC. Don't leave credits on the table.",
+      "The galaxy doesn't wait — daily objectives await your attention.",
+      "Incoming transmission: daily missions ready for review, pilot.",
+      "Fuel up, suit up — daily missions won't complete themselves.",
+      "HQ reminds you: outstanding daily missions remain unclaimed.",
+    ];
+    const today = new Date().toISOString().slice(0, 10);
+    const alreadyShownToday = localStorage.getItem(STORAGE_KEY) === today;
+
+    getDailyMissions()
+      .then(({ data }) => {
+        const missions = data.missions || [];
+        const hasUnclaimed = missions.some((m: any) => !m.claimed);
+        if (missions.length === 0 || !hasUnclaimed) return;
+
+        if (!alreadyShownToday) {
+          localStorage.setItem(STORAGE_KEY, today);
+          const completed = missions.filter(
+            (m: any) => m.completed && !m.claimed,
+          ).length;
+          const totalXp = missions.reduce(
+            (s: number, m: any) => s + m.xpReward,
+            0,
+          );
+          const totalCredits = missions.reduce(
+            (s: number, m: any) => s + m.creditReward,
+            0,
+          );
+          eventOverlay.enqueueEvent({
+            category: "daily_missions",
+            title: "DAILY MISSIONS",
+            subtitle:
+              completed > 0
+                ? `${completed} ready to claim!`
+                : "New objectives available",
+            body: (
+              <div style={{ textAlign: "left" }}>
+                {missions.map((m: any) => {
+                  const pct = Math.min(
+                    100,
+                    Math.round((m.progress / m.target) * 100),
+                  );
+                  return (
+                    <div
+                      key={m.id}
+                      style={{ marginBottom: 8, opacity: m.claimed ? 0.4 : 1 }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "0.78rem",
+                          color: "var(--text-primary)",
+                          marginBottom: 4,
+                        }}
+                      >
+                        {m.claimed ? "\u2713 " : m.completed ? "\u2605 " : ""}
+                        {m.description}
+                      </div>
+                      <div
+                        style={{
+                          height: 4,
+                          background: "var(--bg-tertiary)",
+                          borderRadius: 2,
+                          overflow: "hidden",
+                          marginBottom: 4,
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${pct}%`,
+                            background:
+                              "linear-gradient(90deg, var(--cyan), var(--purple))",
+                            borderRadius: 2,
+                          }}
+                        />
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          fontSize: "0.65rem",
+                          color: "var(--text-secondary)",
+                        }}
+                      >
+                        <span>
+                          {m.progress}/{m.target}
+                        </span>
+                        <span>
+                          +{m.xpReward} XP, +{m.creditReward} cr
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "var(--yellow)",
+                    marginTop: 8,
+                    textAlign: "center",
+                  }}
+                >
+                  Total: +{totalXp} XP, +{totalCredits} cr
+                </div>
+              </div>
+            ),
+            actions: [
+              { id: "view", label: "VIEW MISSIONS [I]", variant: "primary" },
+            ],
+            onAction: (actionId) => {
+              if (actionId === "view") selectPanel("missions");
+            },
+          });
+        } else {
+          const line =
+            REMINDER_LINES[Math.floor(Math.random() * REMINDER_LINES.length)];
+          showToast(line, "system", 6000);
+        }
+      })
+      .catch(() => {});
+  }, [game.player?.id]);
+
+  // Idle story nudge system — toast story hints after 30min without story progress
+  const storyNudgeTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastStoryAction = useRef(Date.now());
+  const lastNudge = useRef(0);
+  useEffect(() => {
+    if (!game.player) return;
+    // Reset story action timestamp when missions panel is visited
+    lastStoryAction.current = Date.now();
+
+    const IDLE_THRESHOLD = 30 * 60 * 1000; // 30 minutes
+    const NUDGE_COOLDOWN = 15 * 60 * 1000; // 15 minutes between nudges
+
+    storyNudgeTimer.current = setInterval(() => {
+      const now = Date.now();
+      const idle = now - lastStoryAction.current;
+      const sinceLast = now - lastNudge.current;
+      if (idle < IDLE_THRESHOLD || sinceLast < NUDGE_COOLDOWN) return;
+      // Don't nudge during combat (tension mood = combat active)
+      if (mood.currentMood === "tension") return;
+
+      // Derive act from mission progress
+      const isSP = game.player?.gameMode === "singleplayer";
+      const completed = isSP
+        ? (game.player?.spMissions?.completed ?? 0)
+        : (game.player?.missionsCompleted ?? 0);
+      let act = 0;
+      if (isSP) {
+        if (completed >= 16) act = 4;
+        else if (completed >= 11) act = 3;
+        else if (completed >= 6) act = 2;
+        else if (completed >= 1) act = 1;
+      } else {
+        if (completed >= 61) act = 4;
+        else if (completed >= 41) act = 3;
+        else if (completed >= 21) act = 2;
+        else if (completed >= 1) act = 1;
+      }
+
+      const pool = STORY_NUDGES[act] ?? STORY_NUDGES[0];
+      if (!pool || pool.length === 0) return;
+      const msg = pool[Math.floor(Math.random() * pool.length)];
+      showToast(msg, "system", 8000);
+      lastNudge.current = now;
+    }, 60_000); // Check every minute
+
+    return () => {
+      if (storyNudgeTimer.current) clearInterval(storyNudgeTimer.current);
+    };
+  }, [game.player?.id]);
+
+  // Reset story idle timer when player visits missions panel or completes a mission
+  useEffect(() => {
+    if (activePanel === "missions" || activePanel === "crew") {
+      lastStoryAction.current = Date.now();
+    }
+  }, [activePanel]);
 
   const refreshAlliances = useCallback(() => {
     getAlliances()
@@ -207,6 +496,18 @@ export default function Game({ onLogout }: GameProps) {
     game.refreshMap();
     refreshAlliances();
     refreshSyndicateStatus();
+    // Story recap toast on login
+    getStoryRecap()
+      .then(({ data }) => {
+        if (data?.recap) {
+          showToast(
+            `Previously on Cosmic Horizon... ${data.recap}`,
+            "system",
+            8000,
+          );
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Switch audio track based on game context
@@ -304,7 +605,6 @@ export default function Game({ onLogout }: GameProps) {
       on("player:entered", (data: { username: string; sectorId: number }) => {
         game.addLine(`${data.username} has entered the sector`, "warning");
         game.refreshSector();
-        if (activePanelRef.current !== "crew") incrementBadge("crew");
       }),
       on("player:left", (_data: { playerId: string }) => {
         game.refreshSector();
@@ -325,6 +625,7 @@ export default function Game({ onLogout }: GameProps) {
             "combat",
             5000,
           );
+          audio.sfx("hit");
           game.refreshStatus();
           if (activePanelRef.current !== "combat") incrementBadge("combat");
           setCombatFlash(true);
@@ -335,9 +636,22 @@ export default function Game({ onLogout }: GameProps) {
           aria.triggerCombat();
           game.enqueueScene(buildCombatScene("scout", data.damage));
           aria.triggerCombat();
+          if (!hasSeenFirstTime("first_combat")) {
+            markFirstTimeSeen("first_combat");
+            const ft = FIRST_TIME_EVENTS.combat;
+            eventOverlay.enqueueEvent({
+              category: "first_time",
+              title: ft.title,
+              subtitle: ft.subtitle,
+              body: ft.body,
+              colorScheme: ft.colorScheme,
+              duration: ft.duration,
+            });
+          }
         },
       ),
       on("combat:destroyed", (data: { destroyerName: string }) => {
+        audio.sfx("explosion");
         game.addLine(
           `Your ship was destroyed by ${data.destroyerName}!`,
           "error",
@@ -446,6 +760,120 @@ export default function Game({ onLogout }: GameProps) {
       on("syndicate:vote_resolved", (data: { result: string }) => {
         game.addLine(`Vote resolved: ${data.result}`, "system");
       }),
+      on(
+        "achievement:unlocked",
+        (data: {
+          name: string;
+          description: string;
+          xpReward: number;
+          creditReward: number;
+        }) => {
+          showToast(`Achievement: ${data.name}`, "achievement", 6000);
+          game.addLine(
+            `Achievement unlocked: ${data.name} — ${data.description}`,
+            "success",
+          );
+          aria.triggerMilestone();
+        },
+      ),
+      on(
+        "mission:completed",
+        (data: {
+          missionId: string;
+          title: string;
+          type: string;
+          rewardCredits: number;
+          rewardXp: number;
+          requiresClaim: boolean;
+          isStory?: boolean;
+        }) => {
+          audio.sfx("success");
+          if (data.isStory) {
+            eventOverlay.enqueueEvent({
+              category: "story_mission",
+              title: "STORY QUEST COMPLETE",
+              subtitle: data.title,
+              body: "Claim your reward in the Story tab.",
+              colorScheme: "yellow",
+              duration: 7000,
+              dismissable: true,
+              priority: "interstitial",
+            });
+          } else {
+            eventOverlay.enqueueEvent({
+              category: "mission_complete",
+              title: "MISSION COMPLETE",
+              subtitle: data.title,
+              body: data.requiresClaim
+                ? "Visit a Star Mall to claim your reward."
+                : `+${data.rewardXp} XP  +${data.rewardCredits} cr`,
+              colorScheme: "green",
+              duration: 6000,
+              dismissable: true,
+              priority: "interstitial",
+            });
+          }
+          if (activePanelRef.current !== "missions") incrementBadge("missions");
+        },
+      ),
+      on(
+        "story:act_complete",
+        (data: { act: number; actTitle: string; actSummary: string }) => {
+          eventOverlay.enqueueEvent({
+            category: "story_act",
+            title: `ACT ${data.act} COMPLETE`,
+            subtitle: data.actTitle,
+            body: data.actSummary,
+            colorScheme: "yellow",
+            duration: 0,
+            priority: "blocking",
+            actions: [
+              { id: "continue", label: "CONTINUE", variant: "primary" },
+            ],
+          });
+        },
+      ),
+      on("story:act_unlocked", (data: { message: string }) => {
+        showToast(data.message, "story", 8000);
+        game.refreshStatus();
+      }),
+      on(
+        "story:lore_unlocked",
+        (data: { codexTitle: string; codexContent: string }) => {
+          eventOverlay.enqueueEvent({
+            category: "lore_reveal",
+            title: "CODEX ENTRY UNLOCKED",
+            subtitle: data.codexTitle,
+            body: data.codexContent,
+            colorScheme: "purple",
+            duration: 7000,
+            priority: "interstitial",
+          });
+        },
+      ),
+      on(
+        "faction:rankup",
+        (data: {
+          factionId: string;
+          factionName: string;
+          newTier: string;
+          fame: number;
+        }) => {
+          eventOverlay.enqueueEvent({
+            category: "faction_rankup",
+            title: "FACTION RANK UP",
+            subtitle: `${data.factionName}: ${data.newTier}`,
+            colorScheme: "purple",
+            duration: 7000,
+            dismissable: true,
+            priority: "interstitial",
+          });
+          game.addLine(
+            `Faction rank up: ${data.factionName} — ${data.newTier}`,
+            "success",
+          );
+        },
+      ),
     ];
 
     return () => {
@@ -482,6 +910,94 @@ export default function Game({ onLogout }: GameProps) {
     },
     [game, emit],
   );
+
+  // Story act transitions — detect when mission progress crosses act boundaries
+  // SP: 20 missions, acts at 5/10/15/20
+  // MP: ~80 missions, acts at 20/40/60/80
+  const SP_ACT_GATES = [
+    { gate: 5, act: 1 },
+    { gate: 10, act: 2 },
+    { gate: 15, act: 3 },
+    { gate: 20, act: 4 },
+  ];
+  const SP_ACT_STARTS = [
+    { start: 1, act: 1 },
+    { start: 6, act: 2 },
+    { start: 11, act: 3 },
+    { start: 16, act: 4 },
+  ];
+  const MP_ACT_GATES = [
+    { gate: 20, act: 1 },
+    { gate: 40, act: 2 },
+    { gate: 60, act: 3 },
+    { gate: 80, act: 4 },
+  ];
+  const MP_ACT_STARTS = [
+    { start: 1, act: 1 },
+    { start: 21, act: 2 },
+    { start: 41, act: 3 },
+    { start: 61, act: 4 },
+  ];
+
+  const prevMissionsCompleted = useRef<number | null>(null);
+  useEffect(() => {
+    if (!game.player) return;
+    const isSP = game.player.gameMode === "singleplayer";
+    const completed = isSP
+      ? (game.player.spMissions?.completed ?? 0)
+      : (game.player.missionsCompleted ?? 0);
+    const prev = prevMissionsCompleted.current;
+    prevMissionsCompleted.current = completed;
+    if (prev === null || prev === completed) return;
+
+    const actGates = isSP ? SP_ACT_GATES : MP_ACT_GATES;
+    const actStarts = isSP ? SP_ACT_STARTS : MP_ACT_STARTS;
+
+    // Check if an act was just completed
+    for (const { gate, act } of actGates) {
+      if (prev < gate && completed >= gate) {
+        const interstitial = ACT_COMPLETIONS[act];
+        if (interstitial) {
+          eventOverlay.enqueueEvent({
+            category: "story_act",
+            priority: "blocking",
+            title: interstitial.title,
+            subtitle: interstitial.subtitle,
+            body: interstitial.body,
+            colorScheme: interstitial.colorScheme,
+            duration: interstitial.duration,
+            dismissable: true,
+          });
+        }
+      }
+    }
+
+    // Check if a new act is starting
+    for (const { start, act } of actStarts) {
+      const nextGate = actGates.find((g) => g.act === act)?.gate ?? start + 19;
+      if (prev < start && completed >= start && completed < nextGate) {
+        const lsKey = `coho_act_opening_${act}`;
+        if (localStorage.getItem(lsKey)) continue;
+        localStorage.setItem(lsKey, "1");
+        const interstitial = ACT_OPENINGS[act];
+        if (interstitial) {
+          eventOverlay.enqueueEvent({
+            category: "story_act",
+            priority: "blocking",
+            title: interstitial.title,
+            subtitle: interstitial.subtitle,
+            body: interstitial.body,
+            colorScheme: interstitial.colorScheme,
+            duration: interstitial.duration,
+            dismissable: true,
+          });
+        }
+      }
+    }
+
+    // Reset story idle timer on mission completion
+    lastStoryAction.current = Date.now();
+  }, [game.player?.missionsCompleted, game.player?.spMissions?.completed]);
 
   // Detect SP mission completion
   useEffect(() => {
@@ -530,6 +1046,19 @@ export default function Game({ onLogout }: GameProps) {
     const curDocked = game.player?.dockedAtOutpostId;
     if (curDocked && !prevDockedRef.current) {
       mood.onDock();
+      // First star mall visit
+      if (game.sector?.hasStarMall && !hasSeenFirstTime("first_starmall")) {
+        markFirstTimeSeen("first_starmall");
+        const ft = FIRST_TIME_EVENTS.starmall;
+        eventOverlay.enqueueEvent({
+          category: "first_time",
+          title: ft.title,
+          subtitle: ft.subtitle,
+          body: ft.body,
+          colorScheme: ft.colorScheme,
+          duration: ft.duration,
+        });
+      }
     }
     prevDockedRef.current = curDocked;
   }, [game.player?.dockedAtOutpostId]);
@@ -543,10 +1072,73 @@ export default function Game({ onLogout }: GameProps) {
     [onCommand],
   );
 
+  const handleMove = useCallback(
+    (sectorId: number) => {
+      audio.sfx("warp");
+      game.doMove(sectorId);
+    },
+    [game.doMove],
+  );
+
+  const handleUndock = useCallback(() => {
+    audio.sfx("undock");
+    game.doUndock();
+  }, [game.doUndock]);
+
+  const handleLiftoff = useCallback(() => {
+    audio.sfx("thruster");
+    game.doLiftoff();
+  }, [game.doLiftoff]);
+
+  const handleFire = useCallback(
+    (targetId: string, energy: number) => {
+      audio.sfx("laser_fire");
+      game.doFire(targetId, energy);
+    },
+    [game.doFire],
+  );
+
+  const handleBuy = useCallback(
+    (outpostId: string, commodity: string, qty: number) => {
+      audio.sfx("trade");
+      return game.doBuy(outpostId, commodity, qty);
+    },
+    [game.doBuy],
+  );
+
+  const handleSell = useCallback(
+    (outpostId: string, commodity: string, qty: number) => {
+      audio.sfx("trade");
+      return game.doSell(outpostId, commodity, qty);
+    },
+    [game.doSell],
+  );
+
+  const handleSelectPanel = useCallback(
+    (id: any) => {
+      audio.sfx("click");
+      selectPanel(id);
+    },
+    [selectPanel],
+  );
+
   const handleDock = useCallback(async () => {
+    audio.sfx("dock");
     await game.doDock();
     selectPanel("trade");
     aria.triggerDock();
+    if (!hasSeenFirstTime("first_dock")) {
+      markFirstTimeSeen("first_dock");
+      const ft = FIRST_TIME_EVENTS.dock;
+      eventOverlay.enqueueEvent({
+        category: "first_time",
+        title: ft.title,
+        subtitle: ft.subtitle,
+        body: ft.body,
+        colorScheme: ft.colorScheme,
+        duration: ft.duration,
+      });
+    }
   }, [game.doDock, selectPanel, aria.triggerDock]);
 
   const handleNPCClick = useCallback(
@@ -572,7 +1164,7 @@ export default function Game({ onLogout }: GameProps) {
         return (
           <MapPanel
             sector={game.sector}
-            onMoveToSector={game.doMove}
+            onMoveToSector={handleMove}
             onWarpTo={game.doWarpTo}
             onCommand={handleActionButton}
             onNPCClick={handleNPCClick}
@@ -581,16 +1173,14 @@ export default function Game({ onLogout }: GameProps) {
             isLanded={!!game.player?.landedAtPlanetId}
             hasPlanets={(game.sector?.planets?.length ?? 0) > 0}
             onDock={handleDock}
-            onUndock={game.doUndock}
+            onUndock={handleUndock}
             onLandClick={() => selectPanel("planets")}
-            onLiftoff={game.doLiftoff}
+            onLiftoff={handleLiftoff}
             exploredSectorIds={game.mapData?.sectors?.map((s) => s.id)}
             alliedPlayerIds={alliedPlayerIds}
             bare
           />
         );
-      case "aria":
-        return <AriaPanel bare />;
       case "explore":
         return (
           <ExplorePanel
@@ -609,15 +1199,28 @@ export default function Game({ onLogout }: GameProps) {
           return (
             <MallPanel
               outpostId={activeOutpost}
-              onBuy={game.doBuy}
-              onSell={game.doSell}
+              onBuy={handleBuy}
+              onSell={handleSell}
               credits={game.player?.credits ?? 0}
               energy={game.player?.energy ?? 0}
               maxEnergy={game.player?.maxEnergy ?? 100}
               onAction={() => {
+                audio.sfx("confirm");
                 game.refreshStatus();
                 setRefreshKey((k) => k + 1);
                 aria.triggerTrade();
+                if (!hasSeenFirstTime("first_trade")) {
+                  markFirstTimeSeen("first_trade");
+                  const ft = FIRST_TIME_EVENTS.trade;
+                  eventOverlay.enqueueEvent({
+                    category: "first_time",
+                    title: ft.title,
+                    subtitle: ft.subtitle,
+                    body: ft.body,
+                    colorScheme: ft.colorScheme,
+                    duration: ft.duration,
+                  });
+                }
               }}
               bare
             />
@@ -625,12 +1228,16 @@ export default function Game({ onLogout }: GameProps) {
         }
         return (
           <>
-            <TradeTable
-              outpostId={activeOutpost}
-              onBuy={game.doBuy}
-              onSell={game.doSell}
-              bare
-            />
+            {activeOutpost ? (
+              <TradeTable
+                outpostId={activeOutpost}
+                onBuy={handleBuy}
+                onSell={handleSell}
+                bare
+              />
+            ) : (
+              <TradeComputerPanel bare />
+            )}
             <TradeRoutesPanel
               refreshKey={refreshKey}
               onCommand={handleActionButton}
@@ -642,6 +1249,18 @@ export default function Game({ onLogout }: GameProps) {
                 game.refreshStatus();
                 setRefreshKey((k) => k + 1);
                 aria.triggerTrade();
+                if (!hasSeenFirstTime("first_trade")) {
+                  markFirstTimeSeen("first_trade");
+                  const ft = FIRST_TIME_EVENTS.trade;
+                  eventOverlay.enqueueEvent({
+                    category: "first_time",
+                    title: ft.title,
+                    subtitle: ft.subtitle,
+                    body: ft.body,
+                    colorScheme: ft.colorScheme,
+                    duration: ft.duration,
+                  });
+                }
               }}
               bare
             />
@@ -652,7 +1271,7 @@ export default function Game({ onLogout }: GameProps) {
         return (
           <CombatGroupPanel
             sector={game.sector}
-            onFire={game.doFire}
+            onFire={handleFire}
             onFlee={game.doFlee}
             weaponEnergy={game.player?.currentShip?.weaponEnergy ?? 0}
             combatAnimation={game.combatAnimation}
@@ -666,7 +1285,7 @@ export default function Game({ onLogout }: GameProps) {
         return (
           <CrewGroupPanel
             sector={game.sector}
-            onFire={game.doFire}
+            onFire={handleFire}
             refreshKey={refreshKey}
             onCommand={handleActionButton}
             alliedPlayerIds={alliedPlayerIds}
@@ -679,24 +1298,64 @@ export default function Game({ onLogout }: GameProps) {
         );
       case "missions":
         return (
-          <>
-            <DailyMissions
-              refreshKey={refreshKey}
-              onClaim={() => {
-                game.refreshStatus();
-                setRefreshKey((k) => k + 1);
-              }}
-            />
-            <ActiveMissionsPanel
-              refreshKey={refreshKey}
-              atStarMall={!!activeOutpost && !!game.sector?.hasStarMall}
-              onAction={() => {
-                game.refreshStatus();
-                setRefreshKey((k) => k + 1);
-              }}
-              bare
-            />
-          </>
+          <ActiveMissionsPanel
+            refreshKey={refreshKey}
+            atStarMall={!!activeOutpost && !!game.sector?.hasStarMall}
+            onAction={() => {
+              game.refreshStatus();
+              setRefreshKey((k) => k + 1);
+            }}
+            onStoryEvent={(data) => {
+              audio.sfx("quest");
+              if (data.type === "journey_begin") {
+                eventOverlay.enqueueEvent({
+                  category: "story_accept",
+                  title: data.title,
+                  subtitle: data.subtitle,
+                  body: data.body,
+                  colorScheme: "yellow",
+                  duration: 0,
+                  priority: "blocking",
+                  actions: [
+                    {
+                      id: "begin",
+                      label: "BEGIN YOUR JOURNEY",
+                      variant: "primary",
+                    },
+                  ],
+                });
+              } else if (data.type === "act_begin") {
+                eventOverlay.enqueueEvent({
+                  category: "story_accept",
+                  title: data.title,
+                  subtitle: data.subtitle,
+                  body: data.body,
+                  colorScheme: "cyan",
+                  duration: 0,
+                  priority: "blocking",
+                  actions: [
+                    {
+                      id: "continue",
+                      label: "CONTINUE THE SAGA",
+                      variant: "primary",
+                    },
+                  ],
+                });
+              } else {
+                eventOverlay.enqueueEvent({
+                  category: "story_accept",
+                  title: data.title,
+                  subtitle: data.subtitle,
+                  body: data.body,
+                  colorScheme: "green",
+                  duration: 5000,
+                  priority: "interstitial",
+                  dismissable: true,
+                });
+              }
+            }}
+            bare
+          />
         );
       case "planets":
         return (
@@ -712,13 +1371,26 @@ export default function Game({ onLogout }: GameProps) {
               game.refreshStatus();
               game.refreshSector();
               setRefreshKey((k) => k + 1);
+              if (!hasSeenFirstTime("first_planet")) {
+                markFirstTimeSeen("first_planet");
+                const ft = FIRST_TIME_EVENTS.planet_claim;
+                eventOverlay.enqueueEvent({
+                  category: "first_time",
+                  title: ft.title,
+                  subtitle: ft.subtitle,
+                  body: ft.body,
+                  colorScheme: ft.colorScheme,
+                  duration: ft.duration,
+                });
+              }
             }}
             onCommand={handleActionButton}
             onAdvanceTutorial={game.advanceTutorial}
             onLand={game.doLand}
-            onLiftoff={game.doLiftoff}
+            onLiftoff={handleLiftoff}
             onWarpTo={game.doWarpTo}
             landedAtPlanetId={game.player?.landedAtPlanetId ?? null}
+            onSfx={audio.sfx}
             bare
           />
         );
@@ -778,6 +1450,8 @@ export default function Game({ onLogout }: GameProps) {
         return <IntelLogPanel refreshKey={refreshKey} bare />;
       case "trade-history":
         return <TradeHistoryPanel refreshKey={refreshKey} bare />;
+      case "codex":
+        return <CodexPanel refreshKey={refreshKey} bare />;
       case "profile":
         return <ProfilePanel refreshKey={refreshKey} bare />;
     }
@@ -873,32 +1547,13 @@ export default function Game({ onLogout }: GameProps) {
         onDismiss={aria.dismissComment}
       />
       <ToastManager toasts={toasts} onDismiss={dismissToast} />
-      <LevelUpOverlay
-        level={game.player?.level ?? 0}
-        rank={game.player?.rank ?? ""}
-        onLevelUp={(lvl, rnk) => {
-          game.addLine(
-            `LEVEL UP! You are now level ${lvl} — ${rnk}`,
-            "success",
-          );
-          showToast(`Level ${lvl} — ${rnk}!`, "success", 8000);
-          aria.triggerMilestone();
-        }}
-      />
-      {resourceEventNotification && (
-        <ResourceEventOverlay
-          events={resourceEventNotification.events}
-          onInvestigate={() => {
-            setResourceEventNotification(null);
-            selectPanel("explore");
-          }}
-          onDismiss={() => setResourceEventNotification(null)}
+      {eventOverlay.currentEvent && (
+        <EventOverlay
+          event={eventOverlay.currentEvent}
+          onDismiss={eventOverlay.dismissCurrent}
+          onAction={eventOverlay.handleAction}
         />
       )}
-      <DailyMissionsOverlay
-        onOpenMissions={() => selectPanel("missions")}
-        onToastReminder={(msg) => showToast(msg, "system", 6000)}
-      />
       {showSPComplete && (
         <div
           className="sp-complete-modal"
@@ -984,6 +1639,8 @@ export default function Game({ onLogout }: GameProps) {
               gameMode={game.player?.gameMode ?? undefined}
               volume={audio.volume}
               onVolumeChange={audio.setVolume}
+              sfxVolume={audio.sfxVolume}
+              onSfxVolumeChange={audio.setSfxVolume}
               map3D={map3D}
               onToggleMap3D={() => setMap3D((v) => !v)}
               onLogout={onLogout ?? (() => {})}
@@ -1026,7 +1683,7 @@ export default function Game({ onLogout }: GameProps) {
       <div className="game-main">
         <ActivityBar
           activePanel={activePanel}
-          onSelect={selectPanel}
+          onSelect={handleSelectPanel}
           badges={badges}
         />
         <div className="game-center">
@@ -1041,6 +1698,35 @@ export default function Game({ onLogout }: GameProps) {
             >
               {map3D ? "2D" : "3D"}
             </button>
+            {!map3D && (
+              <div className="map-commodity-filters">
+                {(
+                  [
+                    ["buys_cyr", "Sell Cyr", "var(--cyan)"],
+                    ["sells_cyr", "Buy Cyr", "var(--cyan)"],
+                    ["buys_food", "Sell Food", "var(--green)"],
+                    ["sells_food", "Buy Food", "var(--green)"],
+                    ["buys_tech", "Sell Tech", "var(--purple)"],
+                    ["sells_tech", "Buy Tech", "var(--purple)"],
+                    ["sells_fuel", "Fuel", "var(--yellow)"],
+                  ] as [CommodityFilter, string, string][]
+                ).map(([key, label, color]) => (
+                  <button
+                    key={key}
+                    className={`map-filter-btn${commodityFilter === key ? " map-filter-btn--active" : ""}`}
+                    style={{
+                      borderColor: commodityFilter === key ? color : undefined,
+                      color: commodityFilter === key ? color : undefined,
+                    }}
+                    onClick={() =>
+                      setCommodityFilter(commodityFilter === key ? null : key)
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             {map3D ? (
               <SectorMap3D
                 mapData={game.mapData}
@@ -1048,7 +1734,7 @@ export default function Game({ onLogout }: GameProps) {
                 adjacentSectorIds={
                   game.sector?.adjacentSectors?.map((a) => a.sectorId) || []
                 }
-                onMoveToSector={game.doMove}
+                onMoveToSector={handleMove}
               />
             ) : (
               <SectorMap
@@ -1057,7 +1743,8 @@ export default function Game({ onLogout }: GameProps) {
                 adjacentSectorIds={
                   game.sector?.adjacentSectors?.map((a) => a.sectorId) || []
                 }
-                onMoveToSector={game.doMove}
+                onMoveToSector={handleMove}
+                commodityFilter={commodityFilter}
               />
             )}
           </div>
@@ -1077,13 +1764,17 @@ export default function Game({ onLogout }: GameProps) {
             </div>
             <div className="game-viewport-wrapper">
               <div className="panel-area-header">BRIDGE VIEW</div>
-              <SceneViewport
+              <SectorViewport
                 actionScene={game.inlineScene}
                 ambientScene={ambientScene}
                 onActionComplete={game.dequeueScene}
                 sectorId={game.player?.currentSectorId}
                 shipType={game.player?.currentShip?.shipTypeId}
                 shake={combatShake}
+                isDocked={!!game.player?.dockedAtOutpostId}
+                sectorType={game.sector?.type}
+                sector={game.sector}
+                playerId={game.player?.id ?? ""}
               />
               <FloatingNumbers
                 xp={game.player?.xp ?? 0}

@@ -40,6 +40,7 @@ import planetTradesRouter from "./api/planet-trades";
 import planetCombatRouter from "./api/planet-combat";
 import dailyMissionsRouter from "./api/daily-missions";
 import tradeHistoryRouter from "./api/trade-history";
+import storyMissionsRouter from "./api/story-missions";
 import { setupWebSocket } from "./ws/handlers";
 import { startGameTick } from "./engine/game-tick";
 import {
@@ -291,6 +292,15 @@ app.use(
   loadTutorialState,
   blockDuringTutorial,
   dailyMissionsRouter,
+);
+
+app.use(
+  "/api/story",
+  loadTutorialState,
+  blockDuringTutorial,
+  loadSPContext,
+  blockInSinglePlayer,
+  storyMissionsRouter,
 );
 
 app.use(

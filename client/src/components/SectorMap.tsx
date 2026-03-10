@@ -17,9 +17,28 @@ export interface MapData {
     npcCount?: number;
     planetNames?: string[];
     outpostNames?: string[];
+    commodities?: {
+      buysCyr: boolean;
+      sellsCyr: boolean;
+      buysFood: boolean;
+      sellsFood: boolean;
+      buysTech: boolean;
+      sellsTech: boolean;
+      sellsFuel: boolean;
+    } | null;
   }[];
   edges: { from: number; to: number; oneWay: boolean }[];
 }
+
+export type CommodityFilter =
+  | null
+  | "buys_cyr"
+  | "sells_cyr"
+  | "buys_food"
+  | "sells_food"
+  | "buys_tech"
+  | "sells_tech"
+  | "sells_fuel";
 
 interface Props {
   mapData: MapData | null;
@@ -27,6 +46,7 @@ interface Props {
   adjacentSectorIds: number[];
   onMoveToSector: (sectorId: number) => void;
   compact?: boolean;
+  commodityFilter?: CommodityFilter;
 }
 
 const WIDTH = 400;
@@ -338,12 +358,38 @@ function computeLayout(
   return positions;
 }
 
+function matchesCommodityFilter(
+  s: MapData["sectors"][0],
+  filter: CommodityFilter,
+): boolean {
+  if (!filter || !s.commodities) return false;
+  switch (filter) {
+    case "buys_cyr":
+      return s.commodities.buysCyr;
+    case "sells_cyr":
+      return s.commodities.sellsCyr;
+    case "buys_food":
+      return s.commodities.buysFood;
+    case "sells_food":
+      return s.commodities.sellsFood;
+    case "buys_tech":
+      return s.commodities.buysTech;
+    case "sells_tech":
+      return s.commodities.sellsTech;
+    case "sells_fuel":
+      return s.commodities.sellsFuel;
+    default:
+      return false;
+  }
+}
+
 export default function SectorMap({
   mapData,
   currentSectorId,
   adjacentSectorIds,
   onMoveToSector,
   compact,
+  commodityFilter,
 }: Props) {
   const positionCache = useRef<Map<number, { x: number; y: number }>>(
     new Map(),
@@ -371,6 +417,7 @@ export default function SectorMap({
     npcCount?: number;
     planetNames?: string[];
     outpostNames?: string[];
+    commodities?: MapData["sectors"][0]["commodities"];
   } | null>(null);
   const [showLegend, setShowLegend] = useState(false);
   const [parallax, setParallax] = useState({ x: 0, y: 0 });
@@ -701,6 +748,12 @@ export default function SectorMap({
         const glowOffsetX = parallax.x * depth * 3;
         const glowOffsetY = parallax.y * depth * 3;
 
+        const filterMatch = commodityFilter
+          ? matchesCommodityFilter(s, commodityFilter)
+          : null;
+        // When filter active: dim non-matching, boost matching
+        const filterDim = commodityFilter && !filterMatch && !isCurrent;
+
         let nodeClass = "sector-map-node sector-map-node--twinkle";
         if (isCurrent) nodeClass += " sector-map-node--current";
         else if (isAdjacent) nodeClass += " sector-map-node--adjacent";
@@ -718,6 +771,7 @@ export default function SectorMap({
                 ...(isAdjacent ? { cursor: "pointer" } : {}),
                 "--twinkle-dur": `${12 + (s.id % 11) * 4}s`,
                 "--twinkle-delay": `${(s.id * 3.7) % 40}s`,
+                ...(filterDim ? { opacity: 0.15 } : {}),
               } as React.CSSProperties
             }
             onMouseEnter={(e) => {
@@ -746,6 +800,7 @@ export default function SectorMap({
                   npcCount: s.npcCount,
                   planetNames: s.planetNames,
                   outpostNames: s.outpostNames,
+                  commodities: s.commodities,
                 });
               }
             }}
@@ -797,6 +852,18 @@ export default function SectorMap({
                   }
                   strokeWidth={0.8}
                   opacity={0.35}
+                />
+              )}
+
+              {/* 5b. Commodity filter highlight ring */}
+              {filterMatch && (
+                <circle
+                  r={glowRadius * 0.7}
+                  fill="none"
+                  stroke="var(--yellow)"
+                  strokeWidth={1.5}
+                  opacity={0.9}
+                  className="sector-commodity-ring"
                 />
               )}
 
@@ -1047,6 +1114,24 @@ export default function SectorMap({
               >
                 {hoveredSector.npcCount} NPC
                 {hoveredSector.npcCount !== 1 ? "s" : ""}
+              </div>
+            )}
+            {hoveredSector.commodities && (
+              <div
+                className="sector-map-tooltip__sub"
+                style={{ color: "var(--yellow)", fontSize: "0.615rem" }}
+              >
+                {[
+                  hoveredSector.commodities.buysCyr && "Sell Cyr",
+                  hoveredSector.commodities.sellsCyr && "Buy Cyr",
+                  hoveredSector.commodities.buysFood && "Sell Food",
+                  hoveredSector.commodities.sellsFood && "Buy Food",
+                  hoveredSector.commodities.buysTech && "Sell Tech",
+                  hoveredSector.commodities.sellsTech && "Buy Tech",
+                  hoveredSector.commodities.sellsFuel && "Fuel",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </div>
             )}
           </div>

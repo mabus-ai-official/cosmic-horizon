@@ -36,7 +36,7 @@ import {
   checkMilestones,
 } from "../engine/profile-stats";
 import { syncPlayer } from "../ws/sync";
-import { handleSectorChange } from "../ws/handlers";
+import { handleSectorChange, notifyPlayer } from "../ws/handlers";
 import { pickFlavor, outpostNpcRace } from "../config/flavor-text";
 import type { RaceId } from "../config/races";
 import { updateDailyMissionProgress } from "./daily-missions";
@@ -102,6 +102,24 @@ router.get("/status", requireAuth, async (req, res) => {
       };
     }
 
+    // Story progress
+    let storyProgress = null;
+    if (player.game_mode !== "singleplayer") {
+      try {
+        const { getStoryProgress } = await import("../engine/story-missions");
+        storyProgress = await getStoryProgress(player.id);
+      } catch {
+        /* story tables may not exist yet */
+      }
+    }
+
+    // Total missions completed (all modes) — used for story act progression
+    const totalMissionsRow = await db("player_missions")
+      .where({ player_id: player.id, status: "completed" })
+      .count("* as count")
+      .first();
+    const missionsCompleted = Number(totalMissionsRow?.count || 0);
+
     // Load colonists by race for current ship
     let colonistsByRace: { race: string; count: number }[] = [];
     if (ship) {
@@ -141,7 +159,9 @@ router.get("/status", requireAuth, async (req, res) => {
       rank: progress.rank,
       xp: progress.totalXp,
       loginStreak: player.login_streak || 0,
+      missionsCompleted,
       spMissions,
+      storyProgress,
       currentShip: ship
         ? {
             id: ship.id,
@@ -290,7 +310,8 @@ router.post("/move/:sectorId", requireAuth, async (req, res) => {
     }
 
     // Mission progress: move
-    checkAndUpdateMissions(player.id, "move", { sectorId: targetSectorId });
+    const io = req.app.get("io");
+    checkAndUpdateMissions(player.id, "move", { sectorId: targetSectorId }, io);
     updateDailyMissionProgress(player.id, "visit_sectors").catch(() => {});
 
     // Award explore XP for new sector discovery
@@ -301,10 +322,20 @@ router.post("/move/:sectorId", requireAuth, async (req, res) => {
         GAME_CONFIG.XP_EXPLORE_NEW_SECTOR,
         "explore",
       );
-      await checkAchievements(player.id, "explore", {
+      const achUnlocked = await checkAchievements(player.id, "explore", {
         sectorId: targetSectorId,
         explored,
       });
+      if (io) {
+        for (const a of achUnlocked) {
+          notifyPlayer(io, player.id, "achievement:unlocked", {
+            name: a.name,
+            description: a.description,
+            xpReward: a.xpReward,
+            creditReward: a.creditReward,
+          });
+        }
+      }
 
       // Profile stats: new sector
       incrementStat(player.id, "sectors_explored", 1);
@@ -327,7 +358,6 @@ router.post("/move/:sectorId", requireAuth, async (req, res) => {
     }
 
     // Multi-session sync: sector change + full refresh
-    const io = req.app.get("io");
     if (io) {
       const excludeSocket = req.headers["x-socket-id"] as string | undefined;
       handleSectorChange(
@@ -361,12 +391,18 @@ router.post("/move/:sectorId", requireAuth, async (req, res) => {
             levelUp: xpResult.levelUp,
           }
         : undefined,
-      npcs: npcs.map((n) => ({
+      npcs: npcs.map((n: any) => ({
         id: n.id,
         name: n.name,
         title: n.title,
         race: n.race,
         encountered: n.encountered,
+        factionId: n.factionId,
+        factionName: n.factionName,
+        locationType: n.locationType,
+        isKeyNpc: n.isKeyNpc,
+        reputation: n.reputation,
+        services: n.services,
       })),
       npcEncounters,
     });
@@ -514,6 +550,7 @@ router.post("/warp-to/:sectorId", requireAuth, async (req, res) => {
 
     // Award XP for new sectors discovered along the way
     let xpResult = null;
+    const io = req.app.get("io");
     if (newSectors.length > 0) {
       xpResult = await awardXP(
         player.id,
@@ -521,10 +558,20 @@ router.post("/warp-to/:sectorId", requireAuth, async (req, res) => {
         "explore",
       );
       for (const sid of newSectors) {
-        await checkAchievements(player.id, "explore", {
+        const achUnlocked = await checkAchievements(player.id, "explore", {
           sectorId: sid,
           explored,
         });
+        if (io) {
+          for (const a of achUnlocked) {
+            notifyPlayer(io, player.id, "achievement:unlocked", {
+              name: a.name,
+              description: a.description,
+              xpReward: a.xpReward,
+              creditReward: a.creditReward,
+            });
+          }
+        }
       }
 
       // Profile stats: new sectors
@@ -537,7 +584,7 @@ router.post("/warp-to/:sectorId", requireAuth, async (req, res) => {
 
     // Mission progress for each hop
     for (let i = 1; i < path.length; i++) {
-      checkAndUpdateMissions(player.id, "move", { sectorId: path[i] });
+      checkAndUpdateMissions(player.id, "move", { sectorId: path[i] }, io);
     }
 
     // Get destination sector contents
@@ -561,7 +608,6 @@ router.post("/warp-to/:sectorId", requireAuth, async (req, res) => {
     }
 
     // Multi-session sync: sector change + full refresh
-    const io = req.app.get("io");
     if (io) {
       const excludeSocket = req.headers["x-socket-id"] as string | undefined;
       handleSectorChange(
@@ -604,6 +650,12 @@ router.post("/warp-to/:sectorId", requireAuth, async (req, res) => {
         title: n.title,
         race: n.race,
         encountered: n.encountered,
+        factionId: n.factionId,
+        factionName: n.factionName,
+        locationType: n.locationType,
+        isKeyNpc: n.isKeyNpc,
+        reputation: n.reputation,
+        services: n.services,
       })),
     });
   } catch (err) {
@@ -740,12 +792,18 @@ router.get("/sector", requireAuth, async (req, res) => {
       })),
       events: events.map((e) => ({ id: e.id, eventType: e.event_type })),
       warpGates,
-      npcs: npcsInSector.map((n) => ({
+      npcs: npcsInSector.map((n: any) => ({
         id: n.id,
         name: n.name,
         title: n.title,
         race: n.race,
         encountered: n.encountered,
+        factionId: n.factionId,
+        factionName: n.factionName,
+        locationType: n.locationType,
+        isKeyNpc: n.isKeyNpc,
+        reputation: n.reputation,
+        services: n.services,
       })),
       resourceEvents: resourceEvents.map((e) => ({
         id: e.id,
@@ -864,6 +922,52 @@ router.get("/map", requireAuth, async (req, res) => {
       outpostNameMap.get(r.sector_id)!.push(r.name);
     }
 
+    // Outpost commodity modes per sector (for map filters)
+    const outpostCommodityRows =
+      explored.length > 0
+        ? await db("outposts")
+            .select(
+              "sector_id",
+              "cyrillium_mode",
+              "food_mode",
+              "tech_mode",
+              "sells_fuel",
+            )
+            .whereIn("sector_id", explored)
+        : [];
+    // Aggregate: per sector, track which commodities are bought/sold
+    const sectorCommodityMap = new Map<
+      number,
+      {
+        buysCyr: boolean;
+        sellsCyr: boolean;
+        buysFood: boolean;
+        sellsFood: boolean;
+        buysTech: boolean;
+        sellsTech: boolean;
+        sellsFuel: boolean;
+      }
+    >();
+    for (const r of outpostCommodityRows) {
+      const existing = sectorCommodityMap.get(r.sector_id) || {
+        buysCyr: false,
+        sellsCyr: false,
+        buysFood: false,
+        sellsFood: false,
+        buysTech: false,
+        sellsTech: false,
+        sellsFuel: false,
+      };
+      if (r.cyrillium_mode === "buy") existing.buysCyr = true;
+      if (r.cyrillium_mode === "sell") existing.sellsCyr = true;
+      if (r.food_mode === "buy") existing.buysFood = true;
+      if (r.food_mode === "sell") existing.sellsFood = true;
+      if (r.tech_mode === "buy") existing.buysTech = true;
+      if (r.tech_mode === "sell") existing.sellsTech = true;
+      if (r.sells_fuel) existing.sellsFuel = true;
+      sectorCommodityMap.set(r.sector_id, existing);
+    }
+
     // Get sector ownership data (sector_name, claimed_by, is_npc_starmall)
     let sectorOwnerData = new Map<
       number,
@@ -928,6 +1032,7 @@ router.get("/map", requireAuth, async (req, res) => {
         npcCount: npcCountMap.get(s.id) || 0,
         planetNames: planetNameMap.get(s.id) || [],
         outpostNames: outpostNameMap.get(s.id) || [],
+        commodities: sectorCommodityMap.get(s.id) || null,
       })),
       edges: edges.map((e) => ({
         from: e.from_sector_id,
@@ -960,12 +1065,10 @@ router.post("/scan", requireAuth, async (req, res) => {
     const { SHIP_TYPES } = require("../config/ship-types");
     const shipType = SHIP_TYPES.find((s: any) => s.id === ship.ship_type_id);
     if (!shipType?.hasPlanetaryScanner) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "Your ship needs a Planetary Scanner. Buy one at a Star Mall (8,000 cr) or pick up a single-use Scanner Probe (2,500 cr).",
-        });
+      return res.status(400).json({
+        error:
+          "Your ship needs a Planetary Scanner. Buy one at a Star Mall (8,000 cr) or pick up a single-use Scanner Probe (2,500 cr).",
+      });
     }
     const hasScanner = true;
 
@@ -987,7 +1090,8 @@ router.post("/scan", requireAuth, async (req, res) => {
         : [];
 
     // Mission progress: scan
-    checkAndUpdateMissions(player.id, "scan", {});
+    const io = req.app.get("io");
+    checkAndUpdateMissions(player.id, "scan", {}, io);
     updateDailyMissionProgress(player.id, "scan_sectors").catch(() => {});
 
     // Resource events in scanned sectors (current + adjacent)

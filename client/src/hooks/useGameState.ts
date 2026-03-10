@@ -32,6 +32,7 @@ export interface PlayerState {
   rank: string;
   xp: number;
   loginStreak: number;
+  missionsCompleted: number;
   spMissions?: { completed: number; total: number };
   currentShip: {
     id: string;

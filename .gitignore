@@ -41,6 +41,10 @@ client/public/audio/*.mp3
 client/public/audio/*.ogg
 client/public/audio/*.wav
 
+# Art assets (large binary files)
+art/
+client/public/models/
+
 # Firebase service account key
 firebase-service-account.json
 server/firebase-service-account.json
@@ -50,3 +54,6 @@ client/e2e/.auth.json
 client/e2e/.auth2.json
 test-results/
 playwright-report/
+
+# Original book manuscript (copyrighted)
+agaricalis-saga/

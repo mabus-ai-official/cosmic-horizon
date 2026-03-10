@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { SfxId } from "../config/sfx";
 import CollapsiblePanel from "./CollapsiblePanel";
 import PlanetAnalytics from "./PlanetAnalytics";
 import { getPlanetTypeInfo } from "../config/planet-tooltips";
@@ -75,6 +76,7 @@ interface Props {
   onLiftoff?: () => void;
   onWarpTo?: (sectorId: number) => void;
   landedAtPlanetId?: string | null;
+  onSfx?: (id: SfxId) => void;
   bare?: boolean;
 }
 
@@ -142,6 +144,7 @@ export default function PlanetsPanel({
   onLiftoff,
   onWarpTo,
   landedAtPlanetId,
+  onSfx,
   bare,
 }: Props) {
   const [planets, setPlanets] = useState<PlanetData[]>([]);
@@ -215,12 +218,28 @@ export default function PlanetsPanel({
     setBusy(planetId + "-collect");
     setError("");
     try {
-      await collectPlanetResources(planetId);
+      const { data } = await collectPlanetResources(planetId);
       await collectAllRefinery(planetId).catch(() => {});
       refresh();
       onAction?.();
+      onSfx?.("cargo_load");
+      if (data.collected?.length > 0) {
+        const summary = data.collected
+          .map((c: any) => `${c.quantity} ${c.name}`)
+          .join(", ");
+        if (data.cargoFull) {
+          setError(
+            `Loaded: ${summary}. Cargo full (${data.cargoUsed}/${data.cargoMax})! Sell at an outpost to make room.`,
+          );
+        } else {
+          setError(
+            `Loaded: ${summary}. Cargo: ${data.cargoUsed}/${data.cargoMax}`,
+          );
+        }
+      }
     } catch (err: any) {
       setError(err.response?.data?.error || "Collection failed");
+      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -233,8 +252,10 @@ export default function PlanetsPanel({
       await upgradePlanet(planetId);
       refresh();
       onAction?.();
+      onSfx?.("success");
     } catch (err: any) {
       setError(err.response?.data?.error || "Upgrade failed");
+      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -249,8 +270,10 @@ export default function PlanetsPanel({
       await colonizePlanet(planetId, qty, race);
       refresh();
       onAction?.();
+      onSfx?.("cargo_load");
     } catch (err: any) {
       setError(err.response?.data?.error || "Colonization failed");
+      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -264,8 +287,10 @@ export default function PlanetsPanel({
       refresh();
       onAction?.();
       onAdvanceTutorial?.("claim");
+      onSfx?.("confirm");
     } catch (err: any) {
       setError(err.response?.data?.error || "Claim failed");
+      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -280,8 +305,10 @@ export default function PlanetsPanel({
       await collectColonists(planetId, qty, race);
       refresh();
       onAction?.();
+      onSfx?.("cargo_load");
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to collect colonists");
+      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -295,8 +322,10 @@ export default function PlanetsPanel({
       await depositFood(planetId, qty);
       refresh();
       onAction?.();
+      onSfx?.("cargo_load");
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to deposit food");
+      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -311,8 +340,10 @@ export default function PlanetsPanel({
       await depositColonists(planetId, qty, race);
       refresh();
       onAction?.();
+      onSfx?.("cargo_load");
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to deposit colonists");
+      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -328,8 +359,10 @@ export default function PlanetsPanel({
       setRenameInput((prev) => ({ ...prev, [planetId]: "" }));
       refresh();
       onAction?.();
+      onSfx?.("confirm");
     } catch (err: any) {
       setError(err.response?.data?.error || "Rename failed");
+      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -343,6 +376,7 @@ export default function PlanetsPanel({
       setScanResults(data.planets || []);
     } catch (err: any) {
       setError(err.response?.data?.error || "Scanner failed");
+      onSfx?.("error");
     } finally {
       setScanning(false);
     }
@@ -357,8 +391,10 @@ export default function PlanetsPanel({
       await fortifyPlanet(planetId, type, amount);
       refresh();
       onAction?.();
+      onSfx?.("shield");
     } catch (err: any) {
       setError(err.response?.data?.error || "Fortify failed");
+      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -383,8 +419,10 @@ export default function PlanetsPanel({
       );
       refresh();
       onAction?.();
+      onSfx?.(data.conquered ? "explosion" : "hit");
     } catch (err: any) {
       setError(err.response?.data?.error || "Bombardment failed");
+      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -597,7 +635,7 @@ export default function PlanetsPanel({
                       disabled={busy === p.id + "-collect"}
                       onClick={() => handleCollect(p.id)}
                     >
-                      {busy === p.id + "-collect" ? "..." : "COLLECT"}
+                      {busy === p.id + "-collect" ? "..." : "LOAD CARGO"}
                     </button>
                     <button
                       className="btn-sm btn-primary"

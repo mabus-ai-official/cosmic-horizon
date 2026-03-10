@@ -30,6 +30,9 @@ export async function getNPCsInSector(
     title: string | null;
     race: string | null;
     factionId: string | null;
+    factionName: string | null;
+    locationType: string;
+    isKeyNpc: boolean;
     encountered: boolean;
     reputation: number;
     services: any;
@@ -45,6 +48,7 @@ export async function getNPCsInSector(
           db.raw("?", [playerId]),
         );
       })
+      .leftJoin("factions", "npc_definitions.faction_id", "factions.id")
       .where("npc_definitions.sector_id", sectorId)
       .select(
         "npc_definitions.id",
@@ -52,6 +56,9 @@ export async function getNPCsInSector(
         "npc_definitions.title",
         "npc_definitions.race",
         "npc_definitions.faction_id",
+        "factions.name as faction_name",
+        "npc_definitions.location_type",
+        "npc_definitions.is_key_npc",
         "npc_definitions.services",
         "npc_definitions.sprite_config",
         "player_npc_state.encountered",
@@ -64,6 +71,9 @@ export async function getNPCsInSector(
       title: r.title ?? null,
       race: r.race ?? null,
       factionId: r.faction_id ?? null,
+      factionName: r.faction_name ?? null,
+      locationType: r.location_type,
+      isKeyNpc: r.is_key_npc === true || r.is_key_npc === 1,
       encountered: r.encountered === true || r.encountered === 1,
       reputation: r.reputation ?? 0,
       services: safeParseJSON(r.services),

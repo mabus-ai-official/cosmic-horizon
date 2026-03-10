@@ -82,9 +82,18 @@ router.post("/accept/:templateId", requireAuth, async (req, res) => {
       .first();
     if (!player) return res.status(404).json({ error: "Player not found" });
 
-    // Check active mission count
+    // Check active mission count (exclude story missions from cap)
     const activeCount = await db("player_missions")
-      .where({ player_id: player.id, status: "active" })
+      .join(
+        "mission_templates",
+        "player_missions.template_id",
+        "mission_templates.id",
+      )
+      .where({
+        "player_missions.player_id": player.id,
+        "player_missions.status": "active",
+      })
+      .where("mission_templates.source", "!=", "story")
       .count("* as count")
       .first();
 
@@ -380,6 +389,33 @@ router.post("/claim/:missionId", requireAuth, async (req, res) => {
       .where({ id: req.session.playerId })
       .first();
     if (!player) return res.status(404).json({ error: "Player not found" });
+
+    // Block non-story claims while a story mission is active
+    try {
+      const { hasActiveStoryMission } =
+        await import("../engine/story-missions");
+      const storyActive = await hasActiveStoryMission(player.id);
+      if (storyActive) {
+        // Check if this claim IS for a story mission
+        const claimTarget = await db("player_missions")
+          .join(
+            "mission_templates",
+            "player_missions.template_id",
+            "mission_templates.id",
+          )
+          .where({ "player_missions.id": req.params.missionId })
+          .select("mission_templates.source")
+          .first();
+        if (claimTarget?.source !== "story") {
+          return res.status(400).json({
+            error:
+              "Your current quest demands your full attention. Complete your story mission before claiming other rewards.",
+          });
+        }
+      }
+    } catch {
+      /* story tables may not exist yet */
+    }
 
     const sector = await db("sectors")
       .where({ id: player.current_sector_id })

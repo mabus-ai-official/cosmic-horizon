@@ -29,6 +29,7 @@ import {
   checkMilestones,
 } from "../engine/profile-stats";
 import { syncPlayer } from "../ws/sync";
+import { notifyPlayer } from "../ws/handlers";
 
 const router = Router();
 
@@ -220,11 +221,17 @@ router.post("/buy", requireAuth, async (req, res) => {
     });
 
     // Mission progress: trade (buy)
-    checkAndUpdateMissions(player.id, "trade", {
-      quantity: result.quantity,
-      tradeType: "buy",
-      commodity,
-    });
+    const io = req.app.get("io");
+    checkAndUpdateMissions(
+      player.id,
+      "trade",
+      {
+        quantity: result.quantity,
+        tradeType: "buy",
+        commodity,
+      },
+      io,
+    );
     updateDailyMissionProgress(player.id, "trade_value", adjustedCost).catch(
       () => {},
     );
@@ -235,7 +242,17 @@ router.post("/buy", requireAuth, async (req, res) => {
       result.quantity * GAME_CONFIG.XP_TRADE_BUY,
       "trade",
     );
-    await checkAchievements(player.id, "trade", {});
+    const unlocked = await checkAchievements(player.id, "trade", {});
+    if (io) {
+      for (const a of unlocked) {
+        notifyPlayer(io, player.id, "achievement:unlocked", {
+          name: a.name,
+          description: a.description,
+          xpReward: a.xpReward,
+          creditReward: a.creditReward,
+        });
+      }
+    }
 
     // Faction fame for significant trades
     try {
@@ -263,7 +280,6 @@ router.post("/buy", requireAuth, async (req, res) => {
     checkMilestones(player.id);
 
     // Multi-session sync
-    const io = req.app.get("io");
     if (io)
       syncPlayer(
         io,
@@ -417,11 +433,17 @@ router.post("/sell", requireAuth, async (req, res) => {
     });
 
     // Mission progress: trade (sell) + deliver_cargo
-    checkAndUpdateMissions(player.id, "trade", {
-      quantity: result.quantity,
-      tradeType: "sell",
-      commodity,
-    });
+    const io = req.app.get("io");
+    checkAndUpdateMissions(
+      player.id,
+      "trade",
+      {
+        quantity: result.quantity,
+        tradeType: "sell",
+        commodity,
+      },
+      io,
+    );
     updateDailyMissionProgress(player.id, "trade_value", adjustedRevenue).catch(
       () => {},
     );
@@ -432,7 +454,17 @@ router.post("/sell", requireAuth, async (req, res) => {
       result.quantity * GAME_CONFIG.XP_TRADE_SELL,
       "trade",
     );
-    await checkAchievements(player.id, "trade", {});
+    const unlocked = await checkAchievements(player.id, "trade", {});
+    if (io) {
+      for (const a of unlocked) {
+        notifyPlayer(io, player.id, "achievement:unlocked", {
+          name: a.name,
+          description: a.description,
+          xpReward: a.xpReward,
+          creditReward: a.creditReward,
+        });
+      }
+    }
 
     // Faction fame for significant trades
     try {
@@ -465,7 +497,6 @@ router.post("/sell", requireAuth, async (req, res) => {
     checkMilestones(player.id);
 
     // Multi-session sync
-    const io = req.app.get("io");
     if (io)
       syncPlayer(
         io,
@@ -498,6 +529,71 @@ router.post("/sell", requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error("Sell error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Trade Computer — directory of all outposts with commodity info
+router.get("/directory", requireAuth, async (req, res) => {
+  try {
+    const player = await db("players")
+      .where({ id: req.session.playerId })
+      .first();
+    if (!player) return res.status(404).json({ error: "Player not found" });
+
+    const outposts = await db("outposts")
+      .join("sectors", "outposts.sector_id", "sectors.id")
+      .select(
+        "outposts.id",
+        "outposts.name",
+        "outposts.sector_id",
+        "outposts.sells_fuel",
+        "outposts.cyrillium_stock",
+        "outposts.cyrillium_capacity",
+        "outposts.cyrillium_mode",
+        "outposts.food_stock",
+        "outposts.food_capacity",
+        "outposts.food_mode",
+        "outposts.tech_stock",
+        "outposts.tech_capacity",
+        "outposts.tech_mode",
+        "sectors.has_star_mall",
+      )
+      .orderBy("outposts.name");
+
+    const directory = outposts.map((o: any) => ({
+      id: o.id,
+      name: o.name,
+      sectorId: o.sector_id,
+      sellsFuel: !!o.sells_fuel,
+      hasStarMall: !!o.has_star_mall,
+      cyrillium: {
+        mode: o.cyrillium_mode,
+        stock: o.cyrillium_stock,
+        capacity: o.cyrillium_capacity,
+        price: calculatePrice(
+          "cyrillium",
+          o.cyrillium_stock,
+          o.cyrillium_capacity,
+        ),
+      },
+      food: {
+        mode: o.food_mode,
+        stock: o.food_stock,
+        capacity: o.food_capacity,
+        price: calculatePrice("food", o.food_stock, o.food_capacity),
+      },
+      tech: {
+        mode: o.tech_mode,
+        stock: o.tech_stock,
+        capacity: o.tech_capacity,
+        price: calculatePrice("tech", o.tech_stock, o.tech_capacity),
+      },
+    }));
+
+    res.json({ outposts: directory });
+  } catch (err) {
+    console.error("Trade directory error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import CollapsiblePanel from "./CollapsiblePanel";
 import PixelSprite from "./PixelSprite";
+import AriaPanel from "./AriaPanel";
 import {
   getSectorWarpGates,
   useWarpGate,
@@ -40,6 +41,7 @@ interface MapPanelProps {
   exploredSectorIds?: number[];
   alliedPlayerIds?: string[];
   bare?: boolean;
+  initialTab?: "helm" | "aria";
 }
 
 export default function MapPanel({
@@ -59,7 +61,9 @@ export default function MapPanel({
   exploredSectorIds,
   alliedPlayerIds,
   bare,
+  initialTab = "helm",
 }: MapPanelProps) {
+  const [activeTab, setActiveTab] = useState<"helm" | "aria">(initialTab);
   const [warpGates, setWarpGates] = useState<WarpGate[]>([]);
   const [warpTarget, setWarpTarget] = useState("");
   const [hoveredPlanet, setHoveredPlanet] = useState<string | null>(null);
@@ -99,10 +103,45 @@ export default function MapPanel({
     }
   };
 
+  const tabBar = (
+    <div className="group-panel-tabs">
+      <span
+        onClick={() => setActiveTab("helm")}
+        style={{
+          cursor: "pointer",
+          color: activeTab === "helm" ? "#0f0" : "#666",
+        }}
+      >
+        {activeTab === "helm" ? "[Helm]" : "Helm"}
+      </span>
+      <span style={{ color: "#444", margin: "0 0.5rem" }}>|</span>
+      <span
+        onClick={() => setActiveTab("aria")}
+        style={{
+          cursor: "pointer",
+          color: activeTab === "aria" ? "#d29922" : "#666",
+        }}
+      >
+        {activeTab === "aria" ? "[ARIA]" : "ARIA"}
+      </span>
+    </div>
+  );
+
   if (!sector) {
-    const empty = <div>No data</div>;
-    if (bare) return <div className="panel-content">{empty}</div>;
-    return <CollapsiblePanel title="NAVIGATION">{empty}</CollapsiblePanel>;
+    const body = activeTab === "aria" ? <AriaPanel bare /> : <div>No data</div>;
+    if (bare)
+      return (
+        <div className="panel-content">
+          {tabBar}
+          {body}
+        </div>
+      );
+    return (
+      <CollapsiblePanel title="NAVIGATION">
+        {tabBar}
+        {body}
+      </CollapsiblePanel>
+    );
   }
 
   const npcs = sector.npcs || [];
@@ -433,10 +472,19 @@ export default function MapPanel({
     </>
   );
 
-  if (bare) return <div className="panel-content">{content}</div>;
+  const body = activeTab === "aria" ? <AriaPanel bare /> : content;
+
+  if (bare)
+    return (
+      <div className="panel-content">
+        {tabBar}
+        {body}
+      </div>
+    );
   return (
     <CollapsiblePanel title={`NAVIGATION - Sector ${sector.sectorId}`}>
-      {content}
+      {tabBar}
+      {body}
     </CollapsiblePanel>
   );
 }

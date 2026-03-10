@@ -9,7 +9,7 @@ interface ActivityBarProps {
   badges: Record<string, number>;
 }
 
-const SEPARATOR_AFTER = new Set([2, 5, 9, 11]);
+const SEPARATOR_AFTER = new Set([2, 5, 8, 13]);
 
 export default function ActivityBar({
   activePanel,

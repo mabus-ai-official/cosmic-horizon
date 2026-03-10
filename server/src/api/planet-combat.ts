@@ -13,6 +13,7 @@ import {
   logActivity,
   checkMilestones,
 } from "../engine/profile-stats";
+import { notifyPlayer } from "../ws/handlers";
 import { syncPlayer } from "../ws/sync";
 
 const router = Router();
@@ -229,7 +230,22 @@ router.post("/bombard", requireAuth, async (req, res) => {
         GAME_CONFIG.XP_CONQUER_PLANET,
         "combat",
       );
-      await checkAchievements(player.id, "conquer_planet", {});
+      const achUnlocked = await checkAchievements(
+        player.id,
+        "conquer_planet",
+        {},
+      );
+      const io = req.app.get("io");
+      if (io) {
+        for (const a of achUnlocked) {
+          notifyPlayer(io, player.id, "achievement:unlocked", {
+            name: a.name,
+            description: a.description,
+            xpReward: a.xpReward,
+            creditReward: a.creditReward,
+          });
+        }
+      }
     }
 
     // Profile stats

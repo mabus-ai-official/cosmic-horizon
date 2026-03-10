@@ -45,6 +45,7 @@ export const GAME_CONFIG = {
   MIN_FLEE_CHANCE: 0.15,
   MULTI_SHIP_FLEE_BONUS: 0.1, // per additional attacker
   RACHE_DAMAGE_MULTIPLIER: 0.5,
+  WEAPON_RECHARGE_PER_TICK: 5, // weapon energy recharged per game tick
 
   // Game tick interval
   TICK_INTERVAL_MS: 60000, // 60 seconds
@@ -280,6 +281,13 @@ export const GAME_CONFIG = {
 
   SCOUT_CARAVAN_RANGE: 5,
   TARRI_SCOUT_BONUS_RANGE: 2,
+
+  // Story Missions
+  STORY_ACT_COOLDOWN_HOURS: 2,
+  STORY_HINT_THRESHOLD: 3,
+  STORY_DIFFICULTY_THRESHOLD: 5,
+  STORY_DIFFICULTY_REDUCTION: 0.8,
+  STORY_ACTS: { 1: 10, 2: 20, 3: 25, 4: 25 } as Record<number, number>,
 
   // Planet Conquest
   AP_COST_BOMBARD: 3,

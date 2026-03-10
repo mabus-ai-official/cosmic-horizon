@@ -1,7 +1,13 @@
-import db from '../db/connection';
-import { GAME_CONFIG } from '../config/game';
+import db from "../db/connection";
+import { GAME_CONFIG } from "../config/game";
 
-export type MissionType = 'deliver_cargo' | 'visit_sector' | 'destroy_ship' | 'colonize_planet' | 'trade_units' | 'scan_sectors';
+export type MissionType =
+  | "deliver_cargo"
+  | "visit_sector"
+  | "destroy_ship"
+  | "colonize_planet"
+  | "trade_units"
+  | "scan_sectors";
 
 export interface MissionObjectives {
   // deliver_cargo: deliver X units of commodity to a sector with an outpost
@@ -21,6 +27,7 @@ export interface MissionObjectives {
 
 export interface MissionProgress {
   sectorsVisited?: number[];
+  exploredAtStart?: number[]; // snapshot of explored sectors when mission was accepted
   shipsDestroyed?: number;
   colonistsDeposited?: number;
   unitsTraded?: number;
@@ -37,17 +44,21 @@ export interface ObjectiveDetail {
 }
 
 export function checkMissionProgress(
-  mission: { type: string; objectives: MissionObjectives; progress: MissionProgress },
+  mission: {
+    type: string;
+    objectives: MissionObjectives;
+    progress: MissionProgress;
+  },
   action: string,
-  data: Record<string, any>
+  data: Record<string, any>,
 ): { updated: boolean; completed: boolean; progress: MissionProgress } {
   const { type, objectives, progress } = mission;
   const p = { ...progress };
   let updated = false;
 
   switch (type) {
-    case 'visit_sector':
-      if (action === 'move') {
+    case "visit_sector":
+      if (action === "move") {
         const visited = p.sectorsVisited || [];
         if (!visited.includes(data.sectorId)) {
           visited.push(data.sectorId);
@@ -57,36 +68,37 @@ export function checkMissionProgress(
       }
       break;
 
-    case 'destroy_ship':
-      if (action === 'combat_destroy') {
+    case "destroy_ship":
+      if (action === "combat_destroy") {
         p.shipsDestroyed = (p.shipsDestroyed || 0) + 1;
         updated = true;
       }
       break;
 
-    case 'colonize_planet':
-      if (action === 'colonize') {
-        p.colonistsDeposited = (p.colonistsDeposited || 0) + (data.quantity || 0);
+    case "colonize_planet":
+      if (action === "colonize") {
+        p.colonistsDeposited =
+          (p.colonistsDeposited || 0) + (data.quantity || 0);
         updated = true;
       }
       break;
 
-    case 'trade_units':
-      if (action === 'trade') {
+    case "trade_units":
+      if (action === "trade") {
         p.unitsTraded = (p.unitsTraded || 0) + (data.quantity || 0);
         updated = true;
       }
       break;
 
-    case 'scan_sectors':
-      if (action === 'scan') {
+    case "scan_sectors":
+      if (action === "scan") {
         p.scansCompleted = (p.scansCompleted || 0) + 1;
         updated = true;
       }
       break;
 
-    case 'deliver_cargo':
-      if (action === 'trade' && data.tradeType === 'sell') {
+    case "deliver_cargo":
+      if (action === "trade" && data.tradeType === "sell") {
         if (data.commodity === objectives.commodity) {
           p.cargoDelivered = (p.cargoDelivered || 0) + (data.quantity || 0);
           updated = true;
@@ -99,19 +111,29 @@ export function checkMissionProgress(
   return { updated, completed, progress: p };
 }
 
-function isMissionComplete(type: string, objectives: MissionObjectives, progress: MissionProgress): boolean {
+function isMissionComplete(
+  type: string,
+  objectives: MissionObjectives,
+  progress: MissionProgress,
+): boolean {
   switch (type) {
-    case 'visit_sector':
-      return (progress.sectorsVisited?.length || 0) >= (objectives.sectorsToVisit || 0);
-    case 'destroy_ship':
+    case "visit_sector":
+      return (
+        (progress.sectorsVisited?.length || 0) >=
+        (objectives.sectorsToVisit || 0)
+      );
+    case "destroy_ship":
       return (progress.shipsDestroyed || 0) >= (objectives.shipsToDestroy || 0);
-    case 'colonize_planet':
-      return (progress.colonistsDeposited || 0) >= (objectives.colonistsToDeposit || 0);
-    case 'trade_units':
+    case "colonize_planet":
+      return (
+        (progress.colonistsDeposited || 0) >=
+        (objectives.colonistsToDeposit || 0)
+      );
+    case "trade_units":
       return (progress.unitsTraded || 0) >= (objectives.unitsToTrade || 0);
-    case 'scan_sectors':
+    case "scan_sectors":
       return (progress.scansCompleted || 0) >= (objectives.scansRequired || 0);
-    case 'deliver_cargo':
+    case "deliver_cargo":
       return (progress.cargoDelivered || 0) >= (objectives.quantity || 0);
     default:
       return false;
@@ -127,31 +149,32 @@ export function isMissionExpired(expiresAt: string | null): boolean {
 export function buildObjectivesDetail(
   type: string,
   objectives: MissionObjectives,
-  hints?: string[]
+  hints?: string[],
+  descriptionSuffix?: string,
 ): ObjectiveDetail[] {
   const details: ObjectiveDetail[] = [];
   const hint = hints?.[0];
 
   switch (type) {
-    case 'visit_sector':
+    case "visit_sector":
       details.push({
-        description: `Visit ${objectives.sectorsToVisit} sectors`,
+        description: `Visit ${objectives.sectorsToVisit} distinct sectors`,
         target: objectives.sectorsToVisit || 0,
         current: 0,
         complete: false,
         hint,
       });
       break;
-    case 'destroy_ship':
+    case "destroy_ship":
       details.push({
-        description: `Destroy ${objectives.shipsToDestroy} enemy ship${(objectives.shipsToDestroy || 0) > 1 ? 's' : ''}`,
+        description: `Destroy ${objectives.shipsToDestroy} enemy ship${(objectives.shipsToDestroy || 0) > 1 ? "s" : ""}`,
         target: objectives.shipsToDestroy || 0,
         current: 0,
         complete: false,
         hint,
       });
       break;
-    case 'colonize_planet':
+    case "colonize_planet":
       details.push({
         description: `Deposit ${objectives.colonistsToDeposit} colonists`,
         target: objectives.colonistsToDeposit || 0,
@@ -160,7 +183,7 @@ export function buildObjectivesDetail(
         hint,
       });
       break;
-    case 'trade_units':
+    case "trade_units":
       details.push({
         description: `Trade ${objectives.unitsToTrade} units of goods`,
         target: objectives.unitsToTrade || 0,
@@ -169,7 +192,7 @@ export function buildObjectivesDetail(
         hint,
       });
       break;
-    case 'scan_sectors':
+    case "scan_sectors":
       details.push({
         description: `Perform ${objectives.scansRequired} sector scans`,
         target: objectives.scansRequired || 0,
@@ -178,11 +201,12 @@ export function buildObjectivesDetail(
         hint,
       });
       break;
-    case 'deliver_cargo': {
-      const commodity = objectives.commodity || 'unknown';
-      const capCommodity = commodity.charAt(0).toUpperCase() + commodity.slice(1);
+    case "deliver_cargo": {
+      const commodity = objectives.commodity || "unknown";
+      const capCommodity =
+        commodity.charAt(0).toUpperCase() + commodity.slice(1);
       details.push({
-        description: `Deliver ${objectives.quantity} ${capCommodity}`,
+        description: `Deliver ${objectives.quantity} ${capCommodity}${descriptionSuffix || ""}`,
         target: objectives.quantity || 0,
         current: 0,
         complete: false,
@@ -198,28 +222,28 @@ export function buildObjectivesDetail(
 export function updateObjectivesDetail(
   type: string,
   progress: MissionProgress,
-  details: ObjectiveDetail[]
+  details: ObjectiveDetail[],
 ): ObjectiveDetail[] {
   if (!details || details.length === 0) return details;
-  const updated = details.map(d => ({ ...d }));
+  const updated = details.map((d) => ({ ...d }));
 
   switch (type) {
-    case 'visit_sector':
+    case "visit_sector":
       updated[0].current = progress.sectorsVisited?.length || 0;
       break;
-    case 'destroy_ship':
+    case "destroy_ship":
       updated[0].current = progress.shipsDestroyed || 0;
       break;
-    case 'colonize_planet':
+    case "colonize_planet":
       updated[0].current = progress.colonistsDeposited || 0;
       break;
-    case 'trade_units':
+    case "trade_units":
       updated[0].current = progress.unitsTraded || 0;
       break;
-    case 'scan_sectors':
+    case "scan_sectors":
       updated[0].current = progress.scansCompleted || 0;
       break;
-    case 'deliver_cargo':
+    case "deliver_cargo":
       updated[0].current = progress.cargoDelivered || 0;
       break;
   }
@@ -231,12 +255,17 @@ export function updateObjectivesDetail(
 }
 
 // Check if a player has completed a prerequisite mission
-export async function checkPrerequisite(playerId: string, prerequisiteMissionId: string): Promise<boolean> {
-  const completed = await db('player_missions')
+export async function checkPrerequisite(
+  playerId: string,
+  prerequisiteMissionId: string,
+): Promise<boolean> {
+  const completed = await db("player_missions")
     .where({ player_id: playerId, template_id: prerequisiteMissionId })
     .where(function () {
-      this.where({ status: 'completed', claim_status: 'claimed' })
-        .orWhere({ status: 'completed', claim_status: 'auto' });
+      this.where({ status: "completed", claim_status: "claimed" }).orWhere({
+        status: "completed",
+        claim_status: "auto",
+      });
     })
     .first();
   return !!completed;
@@ -251,8 +280,16 @@ export async function hasCantinaAccess(playerId: string): Promise<boolean> {
 export async function generateMissionPool(
   playerId: string,
   playerSectorId: number,
-  playerLevel: number
+  playerLevel: number,
 ): Promise<any[]> {
+  // Gate behind Act 1 completion
+  try {
+    const { hasCompletedAct1 } = await import("../engine/story-missions");
+    if (!(await hasCompletedAct1(playerId))) return [];
+  } catch {
+    /* story tables may not exist yet */
+  }
+
   // Determine which tiers are unlocked
   const tierLevels = GAME_CONFIG.MISSION_TIER_LEVELS;
   const unlockedTiers = Object.entries(tierLevels)
@@ -260,26 +297,30 @@ export async function generateMissionPool(
     .map(([tier]) => Number(tier));
 
   // Get non-repeatable missions already active or completed by player
-  const excludeTemplates = await db('player_missions')
+  const excludeTemplates = await db("player_missions")
     .where({ player_id: playerId })
-    .whereIn('status', ['active', 'completed'])
-    .join('mission_templates', 'player_missions.template_id', 'mission_templates.id')
-    .where('mission_templates.repeatable', false)
-    .select('mission_templates.id');
+    .whereIn("status", ["active", "completed"])
+    .join(
+      "mission_templates",
+      "player_missions.template_id",
+      "mission_templates.id",
+    )
+    .where("mission_templates.repeatable", false)
+    .select("mission_templates.id");
 
   const excludeIds = excludeTemplates.map((r: any) => r.id);
 
-  let query = db('mission_templates')
-    .where('source', 'board')
-    .whereIn('tier', unlockedTiers);
+  let query = db("mission_templates")
+    .where("source", "board")
+    .whereIn("tier", unlockedTiers);
 
   if (excludeIds.length > 0) {
-    query = query.whereNotIn('id', excludeIds);
+    query = query.whereNotIn("id", excludeIds);
   }
 
   const templates = await query
-    .orderBy('sort_order', 'asc')
-    .orderByRaw('RANDOM()')
+    .orderBy("sort_order", "asc")
+    .orderByRaw("RANDOM()")
     .limit(GAME_CONFIG.MISSION_POOL_SIZE);
 
   return templates.map((t: any) => ({
@@ -289,7 +330,10 @@ export async function generateMissionPool(
     type: t.type,
     difficulty: t.difficulty,
     tier: t.tier,
-    objectives: typeof t.objectives === 'string' ? JSON.parse(t.objectives) : t.objectives,
+    objectives:
+      typeof t.objectives === "string"
+        ? JSON.parse(t.objectives)
+        : t.objectives,
     rewardCredits: t.reward_credits,
     rewardXp: t.reward_xp,
     rewardItemId: t.reward_item_id,
@@ -297,41 +341,51 @@ export async function generateMissionPool(
     repeatable: !!t.repeatable,
     requiresClaimAtMall: !!t.requires_claim_at_mall,
     prerequisiteMissionId: t.prerequisite_mission_id,
-    hints: typeof t.hints === 'string' ? JSON.parse(t.hints) : (t.hints || []),
+    hints: typeof t.hints === "string" ? JSON.parse(t.hints) : t.hints || [],
   }));
 }
 
 // Generate a cantina mission for the bartender to offer
 export async function generateCantinaMissionPool(
   playerId: string,
-  playerLevel: number
+  playerLevel: number,
 ): Promise<any | null> {
+  // Gate behind Act 1 completion
+  try {
+    const { hasCompletedAct1 } = await import("../engine/story-missions");
+    if (!(await hasCompletedAct1(playerId))) return null;
+  } catch {
+    /* story tables may not exist yet */
+  }
+
   const tierLevels = GAME_CONFIG.MISSION_TIER_LEVELS;
   const unlockedTiers = Object.entries(tierLevels)
     .filter(([, reqLevel]) => playerLevel >= reqLevel)
     .map(([tier]) => Number(tier));
 
   // Exclude non-repeatable cantina missions already active or completed
-  const excludeTemplates = await db('player_missions')
+  const excludeTemplates = await db("player_missions")
     .where({ player_id: playerId })
-    .whereIn('status', ['active', 'completed'])
-    .join('mission_templates', 'player_missions.template_id', 'mission_templates.id')
-    .where('mission_templates.source', 'cantina')
-    .select('mission_templates.id');
+    .whereIn("status", ["active", "completed"])
+    .join(
+      "mission_templates",
+      "player_missions.template_id",
+      "mission_templates.id",
+    )
+    .where("mission_templates.source", "cantina")
+    .select("mission_templates.id");
 
   const excludeIds = excludeTemplates.map((r: any) => r.id);
 
-  let query = db('mission_templates')
-    .where('source', 'cantina')
-    .whereIn('tier', unlockedTiers);
+  let query = db("mission_templates")
+    .where("source", "cantina")
+    .whereIn("tier", unlockedTiers);
 
   if (excludeIds.length > 0) {
-    query = query.whereNotIn('id', excludeIds);
+    query = query.whereNotIn("id", excludeIds);
   }
 
-  const template = await query
-    .orderByRaw('RANDOM()')
-    .first();
+  const template = await query.orderByRaw("RANDOM()").first();
 
   if (!template) return null;
 
@@ -342,13 +396,19 @@ export async function generateCantinaMissionPool(
     type: template.type,
     difficulty: template.difficulty,
     tier: template.tier,
-    objectives: typeof template.objectives === 'string' ? JSON.parse(template.objectives) : template.objectives,
+    objectives:
+      typeof template.objectives === "string"
+        ? JSON.parse(template.objectives)
+        : template.objectives,
     rewardCredits: template.reward_credits,
     rewardXp: template.reward_xp,
     rewardItemId: template.reward_item_id,
     timeLimitMinutes: template.time_limit_minutes,
     repeatable: !!template.repeatable,
     requiresClaimAtMall: !!template.requires_claim_at_mall,
-    hints: typeof template.hints === 'string' ? JSON.parse(template.hints) : (template.hints || []),
+    hints:
+      typeof template.hints === "string"
+        ? JSON.parse(template.hints)
+        : template.hints || [],
   };
 }

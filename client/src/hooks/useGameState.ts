@@ -734,36 +734,56 @@ export function useGameState() {
             data.damageDealt,
           ),
         );
-        addLine(
-          `Fired! Dealt ${data.damageDealt} damage (${data.attackerEnergySpent} energy spent)`,
-          "combat",
-        );
-        if (data.message) addLine(data.message, "npc");
         if (data.defenderDestroyed) {
-          addLine("Target destroyed!", "success");
+          addLine(
+            `Fired! Dealt ${data.damageDealt} damage — target destroyed!`,
+            "success",
+          );
           if (data.killMessage) addLine(data.killMessage, "npc");
+        } else {
+          addLine(
+            `Fired! Dealt ${data.damageDealt} damage — target HP: ${data.defenderHullHpRemaining}`,
+            "combat",
+          );
         }
-        setPlayer((prev) =>
-          prev
-            ? {
-                ...prev,
-                energy: data.energy,
-                ...(data.xp
-                  ? {
-                      xp: data.xp.total,
-                      level: data.xp.level,
-                      rank: data.xp.rank,
-                    }
-                  : {}),
-              }
-            : null,
-        );
+        if (data.message) addLine(data.message, "npc");
+        setPlayer((prev) => {
+          if (!prev) return null;
+          const updated = {
+            ...prev,
+            energy: data.energy,
+            ...(data.xp
+              ? {
+                  xp: data.xp.total,
+                  level: data.xp.level,
+                  rank: data.xp.rank,
+                }
+              : {}),
+          };
+          if (prev.currentShip) {
+            updated.currentShip = {
+              ...prev.currentShip,
+              weaponEnergy:
+                prev.currentShip.weaponEnergy - data.attackerEnergySpent,
+            };
+          }
+          return updated;
+        });
         await refreshStatus();
+        if (data.defenderDestroyed) {
+          await refreshSector();
+        }
       } catch (err: any) {
         addLine(err.response?.data?.error || "Attack failed", "error");
       }
     },
-    [addLine, refreshStatus, enqueueScene, player?.currentShip?.shipTypeId],
+    [
+      addLine,
+      refreshStatus,
+      refreshSector,
+      enqueueScene,
+      player?.currentShip?.shipTypeId,
+    ],
   );
 
   const doDock = useCallback(async () => {

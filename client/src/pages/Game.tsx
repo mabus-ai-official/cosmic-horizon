@@ -588,20 +588,38 @@ export default function Game({ onLogout }: GameProps) {
     if (!game.player) return;
 
     const unsubs = [
-      on("energy:update", (data: { energy: number; maxEnergy: number }) => {
-        game.setPlayer((prev) =>
-          prev
-            ? { ...prev, energy: data.energy, maxEnergy: data.maxEnergy }
-            : null,
-        );
-        if (data.energy <= data.maxEnergy * 0.15) {
-          showToast(
-            `Low energy: ${data.energy}/${data.maxEnergy}`,
-            "warning",
-            5000,
-          );
-        }
-      }),
+      on(
+        "energy:update",
+        (data: {
+          energy: number;
+          maxEnergy: number;
+          weaponEnergy?: number;
+          maxWeaponEnergy?: number;
+        }) => {
+          game.setPlayer((prev) => {
+            if (!prev) return null;
+            const updated = {
+              ...prev,
+              energy: data.energy,
+              maxEnergy: data.maxEnergy,
+            };
+            if (data.weaponEnergy !== undefined && prev.currentShip) {
+              updated.currentShip = {
+                ...prev.currentShip,
+                weaponEnergy: data.weaponEnergy,
+              };
+            }
+            return updated;
+          });
+          if (data.energy <= data.maxEnergy * 0.15) {
+            showToast(
+              `Low energy: ${data.energy}/${data.maxEnergy}`,
+              "warning",
+              5000,
+            );
+          }
+        },
+      ),
       on("player:entered", (data: { username: string; sectorId: number }) => {
         game.addLine(`${data.username} has entered the sector`, "warning");
         game.refreshSector();

@@ -433,12 +433,26 @@ export async function gameTick(io: SocketIOServer): Promise<void> {
     for (const [, playerId] of connectedPlayers) {
       const player = await db("players")
         .where({ id: playerId, game_mode: "multiplayer" })
-        .select("energy", "max_energy")
+        .select("energy", "max_energy", "current_ship_id")
         .first();
       if (player) {
+        let weaponEnergy: number | undefined;
+        let maxWeaponEnergy: number | undefined;
+        if (player.current_ship_id) {
+          const ship = await db("ships")
+            .where({ id: player.current_ship_id })
+            .select("weapon_energy", "max_weapon_energy")
+            .first();
+          if (ship) {
+            weaponEnergy = ship.weapon_energy;
+            maxWeaponEnergy = ship.max_weapon_energy;
+          }
+        }
         notifyPlayer(io, playerId, "energy:update", {
           energy: player.energy,
           maxEnergy: player.max_energy,
+          weaponEnergy,
+          maxWeaponEnergy,
         });
       }
     }

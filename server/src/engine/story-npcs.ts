@@ -239,9 +239,36 @@ export async function isStoryNPC(playerId: string): Promise<boolean> {
 
 /**
  * Clean up a single destroyed story NPC (called from combat).
+ * Must delete from all non-CASCADE FK tables before deleting the player row.
  */
 export async function cleanupDestroyedNPC(npcPlayerId: string): Promise<void> {
+  // Delete from tables that reference players(id) without CASCADE
   await db("ships").where({ owner_id: npcPlayerId }).del();
+  const nonCascadeTables: { table: string; column: string }[] = [
+    { table: "combat_logs", column: "attacker_id" },
+    { table: "combat_logs", column: "defender_id" },
+    { table: "trade_logs", column: "player_id" },
+    { table: "game_events", column: "player_id" },
+    { table: "bounties", column: "placed_by_id" },
+    { table: "bounties", column: "target_player_id" },
+    { table: "bounties", column: "claimed_by_id" },
+    { table: "leaderboard_cache", column: "player_id" },
+    { table: "player_npc_state", column: "player_id" },
+    { table: "player_faction_rep", column: "player_id" },
+    { table: "notes", column: "player_id" },
+    { table: "sector_events", column: "resolved_by_id" },
+    { table: "messages", column: "sender_id" },
+    { table: "messages", column: "recipient_id" },
+  ];
+  for (const { table, column } of nonCascadeTables) {
+    try {
+      await db(table)
+        .where({ [column]: npcPlayerId })
+        .del();
+    } catch {
+      /* table may not exist */
+    }
+  }
   await db("players").where({ id: npcPlayerId }).del();
 }
 

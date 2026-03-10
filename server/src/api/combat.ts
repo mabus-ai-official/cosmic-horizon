@@ -195,9 +195,14 @@ router.post("/fire", requireAuth, async (req, res) => {
       "combat",
     );
 
-    // Profile stats: damage
+    // Check if target is a story NPC (needed early to skip stats/logs)
+    const targetIsStoryNPC = await isStoryNPC(target.id);
+
+    // Profile stats: damage (skip target stats for story NPCs)
     incrementStat(player.id, "damage_dealt", result.damageDealt);
-    incrementStat(target.id, "damage_taken", result.damageDealt);
+    if (!targetIsStoryNPC) {
+      incrementStat(target.id, "damage_taken", result.damageDealt);
+    }
     incrementStat(player.id, "energy_spent", getActionCost("combat_volley"));
     checkPersonalBest(
       player.id,
@@ -207,9 +212,6 @@ router.post("/fire", requireAuth, async (req, res) => {
     );
 
     let bountiesClaimed: { bountyId: string; reward: number }[] = [];
-    const targetIsStoryNPC = result.defenderDestroyed
-      ? await isStoryNPC(target.id)
-      : false;
 
     if (result.defenderDestroyed) {
       if (!targetIsStoryNPC) {

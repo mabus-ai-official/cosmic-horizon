@@ -708,7 +708,12 @@ export default function Game({ onLogout }: GameProps) {
       ),
       on(
         "chat:galaxy",
-        (data: { senderId: string; senderName: string; message: string }) => {
+        (data: {
+          senderId: string;
+          senderName: string;
+          message: string;
+          fromDiscord?: boolean;
+        }) => {
           const isOwn = data.senderId === game.player?.id;
           if (isOwn) return;
           setChatMessages((prev) => [
@@ -719,6 +724,7 @@ export default function Game({ onLogout }: GameProps) {
               message: data.message,
               isOwn: false,
               channel: "galaxy",
+              fromDiscord: data.fromDiscord,
             },
           ]);
           if (activePanelRef.current !== "comms") incrementBadge("comms");

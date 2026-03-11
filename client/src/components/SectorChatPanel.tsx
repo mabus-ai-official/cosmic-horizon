@@ -8,6 +8,7 @@ export interface ChatMessage {
   isOwn: boolean;
   channel?: string;
   syndicateName?: string;
+  fromDiscord?: boolean;
 }
 
 export type ChatChannel = "sector" | "galaxy" | "syndicate" | "alliance";

@@ -1815,6 +1815,19 @@ body {
   border-color: var(--border);
 }
 
+.mini-chat__discord-badge {
+  display: inline-block;
+  background: #5865f2;
+  color: #fff;
+  font-size: 7px;
+  font-weight: bold;
+  padding: 1px 3px;
+  border-radius: 2px;
+  margin-right: 3px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
 /* Command Input */
 .cmd-input-section {
   padding: 0;

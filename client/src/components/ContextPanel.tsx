@@ -436,6 +436,14 @@ export default function ContextPanel({
                 key={m.id}
                 className={`mini-chat__msg${m.isOwn ? " mini-chat__msg--own" : ""}`}
               >
+                {m.fromDiscord && (
+                  <span
+                    className="mini-chat__discord-badge"
+                    title="From Discord"
+                  >
+                    D
+                  </span>
+                )}
                 <span className="mini-chat__sender">[{m.senderName}]</span>{" "}
                 {m.message}
               </div>

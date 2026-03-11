@@ -3,6 +3,7 @@ import { sectorRoom, playerRoom, syndicateRoom, allianceRoom } from "./events";
 import db from "../db/connection";
 import { verifyJwt } from "../middleware/jwt";
 import { incrementStat } from "../engine/profile-stats";
+import { forwardToDiscord } from "../services/discord-bridge";
 
 // Track connected players: socketId -> playerId
 const connectedPlayers = new Map<string, string>();
@@ -90,13 +91,18 @@ export function setupWebSocket(io: SocketIOServer): void {
       const player = await db("players").where({ id: playerId }).first();
       if (!player) return;
 
+      const truncated = data.message.slice(0, 500);
+
       // Broadcast to all connected clients
       io.emit("chat:galaxy", {
         senderId: playerId,
         senderName: player.username,
-        message: data.message.slice(0, 500),
+        message: truncated,
         timestamp: Date.now(),
       });
+
+      // Forward to Discord bridge
+      forwardToDiscord(player.username, truncated);
 
       incrementStat(playerId, "chat_messages_sent", 1);
     });

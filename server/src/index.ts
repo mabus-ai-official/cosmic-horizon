@@ -43,6 +43,7 @@ import tradeHistoryRouter from "./api/trade-history";
 import storyMissionsRouter from "./api/story-missions";
 import { setupWebSocket } from "./ws/handlers";
 import { startGameTick } from "./engine/game-tick";
+import { startDiscordBridge } from "./services/discord-bridge";
 import {
   loadTutorialState,
   blockDuringTutorial,
@@ -316,6 +317,11 @@ setupWebSocket(io);
 
 // Game tick
 startGameTick(io);
+
+// Discord chat bridge (non-blocking — server starts even if Discord fails)
+startDiscordBridge(io).catch((err) =>
+  console.error("Discord bridge startup failed:", err),
+);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

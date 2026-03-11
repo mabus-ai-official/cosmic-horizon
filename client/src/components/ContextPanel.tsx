@@ -87,12 +87,23 @@ export default function ContextPanel({
       .catch(() => setFactionReps([]));
   }, [refreshKey]);
 
-  // Auto-scroll chat
+  const [showEmoji, setShowEmoji] = useState(false);
+  const userScrolledUp = useRef(false);
+
+  // Smart scroll: only auto-scroll if user hasn't scrolled up to read history
   useEffect(() => {
-    if (chatListRef.current) {
+    if (chatListRef.current && !userScrolledUp.current) {
       chatListRef.current.scrollTop = chatListRef.current.scrollHeight;
     }
   }, [chatMessages.length]);
+
+  const handleChatScroll = useCallback(() => {
+    const el = chatListRef.current;
+    if (!el) return;
+    // If scrolled more than 30px from bottom, user is reading history
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
+    userScrolledUp.current = !atBottom;
+  }, []);
 
   const handleChatSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -155,9 +166,10 @@ export default function ContextPanel({
       ? Math.round((totalCargo / ship.maxCargoHolds) * 100)
       : 0;
 
-  // Chat channels
+  // Chat channels — sector and galaxy always visible
   const channels: { key: ChatChannel; label: string; show: boolean }[] = [
     { key: "sector", label: "Sector", show: true },
+    { key: "galaxy", label: "Galaxy", show: true },
     { key: "syndicate", label: "Synd", show: hasSyndicate },
     { key: "alliance", label: "Ally", show: hasAlliance },
   ];
@@ -381,41 +393,45 @@ export default function ContextPanel({
       <div className="mini-chat">
         <div className="ctx-section-header">
           <span className="ctx-section-header__label">CHAT</span>
-          {visibleChannels.length > 1 && (
-            <span className="ctx-section-header__channels">
-              {visibleChannels.map((c, i) => (
-                <span key={c.key}>
-                  {i > 0 && <span style={{ color: "#333" }}> | </span>}
-                  <span
-                    onClick={() => setChatChannel(c.key)}
-                    style={{
-                      cursor: "pointer",
-                      color:
-                        chatChannel === c.key
-                          ? c.key === "sector"
-                            ? "#0f0"
+          <span className="ctx-section-header__channels">
+            {visibleChannels.map((c, i) => (
+              <span key={c.key}>
+                {i > 0 && <span style={{ color: "#333" }}> | </span>}
+                <span
+                  onClick={() => setChatChannel(c.key)}
+                  style={{
+                    cursor: "pointer",
+                    color:
+                      chatChannel === c.key
+                        ? c.key === "sector"
+                          ? "#0f0"
+                          : c.key === "galaxy"
+                            ? "var(--yellow)"
                             : c.key === "syndicate"
                               ? "var(--magenta)"
                               : "var(--cyan)"
-                          : "#555",
-                      fontSize: 10,
-                      fontWeight: chatChannel === c.key ? "bold" : "normal",
-                    }}
-                  >
-                    {chatChannel === c.key ? `[${c.label}]` : c.label}
-                  </span>
+                        : "#555",
+                    fontSize: 10,
+                    fontWeight: chatChannel === c.key ? "bold" : "normal",
+                  }}
+                >
+                  {chatChannel === c.key ? `[${c.label}]` : c.label}
                 </span>
-              ))}
-            </span>
-          )}
+              </span>
+            ))}
+          </span>
         </div>
-        <div className="mini-chat__messages" ref={chatListRef}>
+        <div
+          className="mini-chat__messages"
+          ref={chatListRef}
+          onScroll={handleChatScroll}
+        >
           {channelMessages.length === 0 ? (
             <div className="text-muted" style={{ fontSize: 10 }}>
               No messages
             </div>
           ) : (
-            channelMessages.slice(-8).map((m) => (
+            channelMessages.map((m) => (
               <div
                 key={m.id}
                 className={`mini-chat__msg${m.isOwn ? " mini-chat__msg--own" : ""}`}
@@ -427,14 +443,62 @@ export default function ContextPanel({
           )}
         </div>
         <form className="mini-chat__input" onSubmit={handleChatSubmit}>
-          <input
-            type="text"
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            placeholder={`Type your message to ${chatChannel}...`}
-            maxLength={500}
-          />
+          <div className="mini-chat__input-row">
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder={`${chatChannel} message...`}
+              maxLength={500}
+            />
+            <button
+              type="button"
+              className="mini-chat__emoji-btn"
+              onClick={() => setShowEmoji((v) => !v)}
+              title="Emoji"
+            >
+              😀
+            </button>
+          </div>
         </form>
+        {showEmoji && (
+          <div className="mini-chat__emoji-grid">
+            {[
+              "😀",
+              "😂",
+              "🔥",
+              "💀",
+              "👍",
+              "👎",
+              "🚀",
+              "⚔️",
+              "💰",
+              "🛡️",
+              "⭐",
+              "❤️",
+              "😎",
+              "🤔",
+              "😈",
+              "💎",
+              "🎯",
+              "⚡",
+              "🏴‍☠️",
+              "🌌",
+            ].map((e) => (
+              <button
+                key={e}
+                type="button"
+                className="mini-chat__emoji-item"
+                onClick={() => {
+                  setChatInput((prev) => prev + e);
+                  setShowEmoji(false);
+                }}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Command Input */}

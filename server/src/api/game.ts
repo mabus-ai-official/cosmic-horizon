@@ -1723,8 +1723,9 @@ router.post("/liftoff", requireAuth, async (req, res) => {
 // ── Nearest Star Mall beacon ────────────────────────────────────────
 router.get("/nearest-starmall", requireAuth, async (req, res) => {
   try {
-    const playerId = (req as any).playerId;
-    const player = await db("players").where({ id: playerId }).first();
+    const player = await db("players")
+      .where({ id: req.session.playerId })
+      .first();
     if (!player) return res.status(404).json({ error: "Player not found" });
 
     // Already at a star mall?

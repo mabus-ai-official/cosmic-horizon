@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import StatusBar from "../components/StatusBar";
 import MapPanel from "../components/MapPanel";
+import AriaPanel from "../components/AriaPanel";
 import TradeTable from "../components/TradeTable";
 import TradeRoutesPanel from "../components/TradeRoutesPanel";
 import TradeOffersPanel from "../components/TradeOffersPanel";
@@ -705,6 +706,24 @@ export default function Game({ onLogout }: GameProps) {
           if (activePanelRef.current !== "comms") incrementBadge("comms");
         },
       ),
+      on(
+        "chat:galaxy",
+        (data: { senderId: string; senderName: string; message: string }) => {
+          const isOwn = data.senderId === game.player?.id;
+          if (isOwn) return;
+          setChatMessages((prev) => [
+            ...prev.slice(-99),
+            {
+              id: chatIdCounter++,
+              senderName: data.senderName,
+              message: data.message,
+              isOwn: false,
+              channel: "galaxy",
+            },
+          ]);
+          if (activePanelRef.current !== "comms") incrementBadge("comms");
+        },
+      ),
       on("notification", (data: { message: string }) => {
         game.addLine(data.message, "system");
         showToast(data.message, "system");
@@ -1205,6 +1224,8 @@ export default function Game({ onLogout }: GameProps) {
             bare
           />
         );
+      case "aria":
+        return <AriaPanel bare onBack={() => selectTab("nav")} />;
       case "explore":
         return (
           <ExplorePanel
@@ -1497,6 +1518,8 @@ export default function Game({ onLogout }: GameProps) {
       ]);
       if (channel === "sector") {
         emit("chat:sector", { message });
+      } else if (channel === "galaxy") {
+        emit("chat:galaxy", { message });
       } else if (channel === "syndicate") {
         emit("chat:syndicate", { message });
       } else if (channel === "alliance") {

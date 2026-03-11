@@ -2,6 +2,7 @@ import { useRef, useMemo, useState, useCallback, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, Stars, Html } from "@react-three/drei";
+import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
 import type { MapData } from "./SectorMap";
 
@@ -204,7 +205,7 @@ function GalaxyDust({ exploredSet }: { exploredSet: Set<number> }) {
   const uniforms = useMemo(
     () => ({
       uTime: { value: 0 },
-      uBaseSize: { value: 1.2 },
+      uBaseSize: { value: 2.2 },
     }),
     [],
   );
@@ -238,7 +239,7 @@ function GalaxyDust({ exploredSet }: { exploredSet: Set<number> }) {
             float twinkleStrength = step(0.7, fract(phase * 3.17));
             vTwinkle = mix(1.0, 0.3 + twinkle * 0.7, twinkleStrength);
             vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-            gl_PointSize = max(1.5, uBaseSize * (200.0 / -mvPosition.z));
+            gl_PointSize = max(2.0, uBaseSize * (250.0 / -mvPosition.z));
             gl_Position = projectionMatrix * mvPosition;
           }
         `}
@@ -249,7 +250,7 @@ function GalaxyDust({ exploredSet }: { exploredSet: Set<number> }) {
             float dist = length(gl_PointCoord - vec2(0.5));
             if (dist > 0.5) discard;
             float alpha = smoothstep(0.5, 0.0, dist) * vTwinkle;
-            gl_FragColor = vec4(vColor * 1.4, alpha);
+            gl_FragColor = vec4(vColor * 1.8, alpha);
           }
         `}
       />
@@ -257,70 +258,273 @@ function GalaxyDust({ exploredSet }: { exploredSet: Set<number> }) {
   );
 }
 
-/** Nebula clouds — soft billboard sprites with radial gradient (no hard edges) */
-function NebulaClouds() {
-  const nebulaTexture = useMemo(() => {
-    const size = 128;
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext("2d")!;
-    const gradient = ctx.createRadialGradient(
-      size / 2,
-      size / 2,
-      0,
-      size / 2,
-      size / 2,
-      size / 2,
-    );
-    gradient.addColorStop(0, "rgba(255,255,255,0.6)");
-    gradient.addColorStop(0.3, "rgba(255,255,255,0.2)");
-    gradient.addColorStop(0.7, "rgba(255,255,255,0.04)");
-    gradient.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, size, size);
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.needsUpdate = true;
-    return tex;
-  }, []);
+/** Single nebula cloud — procedural wispy shape, billboards to camera, zoom-responsive */
+function NebulaCloud({
+  position,
+  color,
+  scaleX,
+  scaleY,
+  opacity,
+  zRotation,
+  seed,
+}: {
+  position: [number, number, number];
+  color: string;
+  scaleX: number;
+  scaleY: number;
+  opacity: number;
+  zRotation: number;
+  seed: number;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const matRef = useRef<THREE.ShaderMaterial>(null);
 
+  useFrame(({ camera }, delta) => {
+    if (!meshRef.current || !matRef.current) return;
+
+    matRef.current.uniforms.uTime.value += delta;
+
+    // Billboard: face camera, but preserve the artistic z-rotation
+    meshRef.current.quaternion.copy(camera.quaternion);
+    meshRef.current.rotateZ(zRotation);
+
+    // Zoom-responsive opacity: fade down when very close, full when zoomed out
+    const dist = camera.position.distanceTo(meshRef.current.position);
+    const zoomFade = THREE.MathUtils.smoothstep(dist, 15, 80);
+    matRef.current.uniforms.uOpacity.value = opacity * zoomFade;
+  });
+
+  return (
+    <mesh ref={meshRef} position={position} scale={[scaleX, scaleY, 1]}>
+      <planeGeometry args={[1, 1]} />
+      <shaderMaterial
+        ref={matRef}
+        transparent
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        uniforms={{
+          uTime: { value: 0 },
+          uColor: { value: new THREE.Color(color) },
+          uOpacity: { value: opacity },
+          uSeed: { value: seed },
+        }}
+        vertexShader={`
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          uniform float uTime;
+          uniform vec3 uColor;
+          uniform float uOpacity;
+          uniform float uSeed;
+          varying vec2 vUv;
+
+          // Simplex-style noise for organic shapes
+          vec3 mod289(vec3 x) { return x - floor(x * (1.0/289.0)) * 289.0; }
+          vec2 mod289(vec2 x) { return x - floor(x * (1.0/289.0)) * 289.0; }
+          vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+
+          float snoise(vec2 v) {
+            const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+                               -0.577350269189626, 0.024390243902439);
+            vec2 i = floor(v + dot(v, C.yy));
+            vec2 x0 = v - i + dot(i, C.xx);
+            vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+            vec4 x12 = x0.xyxy + C.xxzz;
+            x12.xy -= i1;
+            i = mod289(i);
+            vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0))
+                    + i.x + vec3(0.0, i1.x, 1.0));
+            vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy),
+                    dot(x12.zw,x12.zw)), 0.0);
+            m = m*m; m = m*m;
+            vec3 x = 2.0 * fract(p * C.www) - 1.0;
+            vec3 h = abs(x) - 0.5;
+            vec3 ox = floor(x + 0.5);
+            vec3 a0 = x - ox;
+            m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+            vec3 g;
+            g.x = a0.x * x0.x + h.x * x0.y;
+            g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+            return 130.0 * dot(m, g);
+          }
+
+          float fbm(vec2 p) {
+            float f = 0.0;
+            f += 0.5000 * snoise(p); p *= 2.02;
+            f += 0.2500 * snoise(p); p *= 2.03;
+            f += 0.1250 * snoise(p); p *= 2.01;
+            f += 0.0625 * snoise(p);
+            return f;
+          }
+
+          void main() {
+            vec2 uv = vUv - 0.5;
+            float dist = length(uv);
+
+            // Radial falloff — soft edge
+            float falloff = smoothstep(0.5, 0.1, dist);
+
+            // Wispy noise pattern — slowly drifts over time
+            vec2 noiseCoord = uv * 3.0 + uSeed * 10.0;
+            float drift = uTime * 0.02;
+            float n1 = fbm(noiseCoord + vec2(drift, drift * 0.7));
+            float n2 = fbm(noiseCoord * 1.5 + vec2(-drift * 0.5, drift * 0.3) + 5.0);
+
+            // Combine noise layers for filament-like wisps
+            float wisps = smoothstep(-0.1, 0.6, n1) * smoothstep(-0.2, 0.5, n2);
+
+            float alpha = falloff * wisps * uOpacity;
+
+            // Fade to zero at edges
+            if (alpha < 0.001) discard;
+
+            gl_FragColor = vec4(uColor, alpha);
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
+/** Nebula clouds — wispy procedural noise billboards scattered along spiral arms */
+function NebulaClouds() {
   const clouds = useMemo(
     () => [
+      // Inner arm nebulae
       {
-        pos: [30, 20, -5] as [number, number, number],
+        pos: [25, 15, -5] as [number, number, number],
         color: "#e847a0",
-        scale: 50,
-        opacity: 0.06,
+        sx: 45,
+        sy: 28,
+        opacity: 0.16,
+        rot: 0.4,
       },
       {
-        pos: [-40, -15, -3] as [number, number, number],
+        pos: [-30, -12, -3] as [number, number, number],
         color: "#4060c0",
-        scale: 60,
-        opacity: 0.05,
+        sx: 50,
+        sy: 30,
+        opacity: 0.14,
+        rot: -0.6,
       },
       {
-        pos: [15, -35, -4] as [number, number, number],
-        color: "#8040a0",
-        scale: 45,
-        opacity: 0.06,
-      },
-      {
-        pos: [-25, 30, -2] as [number, number, number],
+        pos: [-18, 25, -2] as [number, number, number],
         color: "#c05040",
-        scale: 40,
-        opacity: 0.04,
+        sx: 35,
+        sy: 22,
+        opacity: 0.12,
+        rot: -0.3,
       },
       {
-        pos: [55, -30, -6] as [number, number, number],
-        color: "#3080a0",
-        scale: 55,
-        opacity: 0.04,
-      },
-      {
-        pos: [-10, -5, -1] as [number, number, number],
+        pos: [-8, -4, -1] as [number, number, number],
         color: "#9060d0",
-        scale: 35,
+        sx: 35,
+        sy: 22,
+        opacity: 0.16,
+        rot: -1.0,
+      },
+      // Mid-range arm nebulae
+      {
+        pos: [50, -25, -5] as [number, number, number],
+        color: "#3080a0",
+        sx: 50,
+        sy: 30,
+        opacity: 0.12,
+        rot: 0.8,
+      },
+      {
+        pos: [40, 35, -4] as [number, number, number],
+        color: "#d06080",
+        sx: 40,
+        sy: 24,
+        opacity: 0.12,
+        rot: 0.2,
+      },
+      {
+        pos: [-45, 30, -5] as [number, number, number],
+        color: "#5070e0",
+        sx: 45,
+        sy: 26,
+        opacity: 0.11,
+        rot: -0.9,
+      },
+      {
+        pos: [10, -45, -4] as [number, number, number],
+        color: "#8040a0",
+        sx: 40,
+        sy: 25,
+        opacity: 0.13,
+        rot: 1.1,
+      },
+      // Outer edge nebulae
+      {
+        pos: [75, 20, -6] as [number, number, number],
+        color: "#3070b0",
+        sx: 50,
+        sy: 28,
+        opacity: 0.09,
+        rot: 0.5,
+      },
+      {
+        pos: [-70, -35, -6] as [number, number, number],
+        color: "#a04080",
+        sx: 55,
+        sy: 30,
+        opacity: 0.08,
+        rot: -0.7,
+      },
+      {
+        pos: [-25, -70, -5] as [number, number, number],
+        color: "#40a0a0",
+        sx: 45,
+        sy: 25,
+        opacity: 0.08,
+        rot: 1.3,
+      },
+      {
+        pos: [60, -60, -6] as [number, number, number],
+        color: "#6050c0",
+        sx: 50,
+        sy: 28,
         opacity: 0.07,
+        rot: -1.2,
+      },
+      {
+        pos: [-60, 55, -5] as [number, number, number],
+        color: "#c06050",
+        sx: 45,
+        sy: 26,
+        opacity: 0.08,
+        rot: 0.9,
+      },
+      {
+        pos: [20, 75, -5] as [number, number, number],
+        color: "#5080d0",
+        sx: 40,
+        sy: 24,
+        opacity: 0.07,
+        rot: -0.4,
+      },
+      // Warm core haze
+      {
+        pos: [0, 0, -2] as [number, number, number],
+        color: "#ffe0a0",
+        sx: 28,
+        sy: 28,
+        opacity: 0.12,
+        rot: 0,
+      },
+      {
+        pos: [5, -3, -1] as [number, number, number],
+        color: "#ffb060",
+        sx: 22,
+        sy: 18,
+        opacity: 0.09,
+        rot: 0.7,
       },
     ],
     [],
@@ -329,18 +533,368 @@ function NebulaClouds() {
   return (
     <group>
       {clouds.map((c, i) => (
-        <sprite key={i} position={c.pos} scale={[c.scale, c.scale, 1]}>
-          <spriteMaterial
-            map={nebulaTexture}
-            color={c.color}
-            transparent
-            opacity={c.opacity}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-          />
-        </sprite>
+        <NebulaCloud
+          key={i}
+          position={c.pos}
+          color={c.color}
+          scaleX={c.sx}
+          scaleY={c.sy}
+          opacity={c.opacity}
+          zRotation={c.rot}
+          seed={i * 1.37}
+        />
       ))}
     </group>
+  );
+}
+
+/**
+ * Background galaxy shader — supports spiral, elliptical, and irregular types.
+ * type 0 = spiral, 1 = elliptical, 2 = irregular
+ */
+const BG_GALAXY_VERTEX = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const BG_GALAXY_FRAGMENT = `
+  uniform float uTime;
+  uniform vec3 uColor;
+  uniform vec3 uCoreColor;
+  uniform float uOpacity;
+  uniform float uFade;
+  uniform float uSpiralTightness;
+  uniform float uTumbleSpeed;
+  uniform float uSeed;
+  uniform int uType; // 0=spiral, 1=elliptical, 2=irregular
+  varying vec2 vUv;
+
+  // Simple hash noise for irregular galaxies
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+  float vnoise(vec2 p) {
+    vec2 i = floor(p); vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = hash(i); float b = hash(i + vec2(1,0));
+    float c = hash(i + vec2(0,1)); float d = hash(i + vec2(1,1));
+    return mix(mix(a,b,f.x), mix(c,d,f.x), f.y);
+  }
+
+  void main() {
+    vec2 uv = vUv - 0.5;
+
+    // Slow tumble
+    float tumble = sin(uTime * uTumbleSpeed) * 0.15;
+    float co = cos(tumble); float si = sin(tumble);
+    uv = mat2(co, -si, si, co) * uv;
+
+    float dist = length(uv);
+    // Circular discard
+    if (dist > 0.48) discard;
+    float mask = smoothstep(0.48, 0.2, dist);
+
+    float brightness = 0.0;
+
+    if (uType == 0) {
+      // SPIRAL — arms + core + halo
+      float core = exp(-dist * 16.0) * 0.8;
+      float angle = atan(uv.y, uv.x);
+      float s1 = sin(angle * 2.0 + dist * uSpiralTightness + uSeed * 6.28);
+      float s2 = sin(angle * 2.0 + dist * uSpiralTightness + 3.14 + uSeed * 6.28);
+      float arms = (smoothstep(0.2, 0.8, s1) + smoothstep(0.2, 0.8, s2)) * 0.5;
+      arms *= smoothstep(0.0, 0.08, dist) * smoothstep(0.48, 0.12, dist);
+      float halo = exp(-dist * 5.0) * 0.25;
+      brightness = core + arms * 0.35 + halo;
+    } else if (uType == 1) {
+      // ELLIPTICAL — smooth fuzzy blob, no arms
+      float core = exp(-dist * 12.0) * 0.7;
+      float halo = exp(-dist * 4.0) * 0.35;
+      // Subtle mottling
+      float mottle = vnoise(uv * 8.0 + uSeed * 5.0) * 0.15;
+      brightness = core + halo + mottle * smoothstep(0.4, 0.05, dist);
+    } else {
+      // IRREGULAR — patchy, asymmetric blobs
+      float n1 = vnoise(uv * 6.0 + uSeed * 10.0);
+      float n2 = vnoise(uv * 10.0 + uSeed * 7.0 + 3.0);
+      float patches = smoothstep(0.3, 0.7, n1) * smoothstep(0.25, 0.65, n2);
+      float glow = exp(-dist * 6.0) * 0.4;
+      brightness = patches * 0.5 * smoothstep(0.45, 0.1, dist) + glow;
+    }
+
+    vec3 color = mix(uColor, uCoreColor, exp(-dist * 12.0));
+    float alpha = brightness * uOpacity * uFade * mask;
+    if (alpha < 0.001) discard;
+    gl_FragColor = vec4(color, alpha);
+  }
+`;
+
+/** Single distant background galaxy — billboard, zoom-responsive */
+function BackgroundGalaxy({
+  position,
+  color,
+  coreColor,
+  size,
+  tilt,
+  spiralTightness,
+  tumbleSpeed,
+  seed,
+  baseOpacity,
+  type,
+}: {
+  position: [number, number, number];
+  color: string;
+  coreColor: string;
+  size: number;
+  tilt: number;
+  spiralTightness: number;
+  tumbleSpeed: number;
+  seed: number;
+  baseOpacity: number;
+  type: number;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const matRef = useRef<THREE.ShaderMaterial>(null);
+
+  useFrame(({ camera }, delta) => {
+    if (!meshRef.current || !matRef.current) return;
+    matRef.current.uniforms.uTime.value += delta;
+    meshRef.current.quaternion.copy(camera.quaternion);
+    const camDist = camera.position.length();
+    const fade = THREE.MathUtils.smoothstep(camDist, 30, 120);
+    matRef.current.uniforms.uFade.value = fade;
+  });
+
+  return (
+    <mesh ref={meshRef} position={position} scale={[size, size * tilt, 1]}>
+      <planeGeometry args={[1, 1]} />
+      <shaderMaterial
+        ref={matRef}
+        transparent
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        uniforms={{
+          uTime: { value: 0 },
+          uColor: { value: new THREE.Color(color) },
+          uCoreColor: { value: new THREE.Color(coreColor) },
+          uOpacity: { value: baseOpacity },
+          uFade: { value: 0 },
+          uSpiralTightness: { value: spiralTightness },
+          uTumbleSpeed: { value: tumbleSpeed },
+          uSeed: { value: seed },
+          uType: { value: type },
+        }}
+        vertexShader={BG_GALAXY_VERTEX}
+        fragmentShader={BG_GALAXY_FRAGMENT}
+      />
+    </mesh>
+  );
+}
+
+/** Distant background galaxies — visible when zoomed out */
+function BackgroundGalaxies() {
+  // type: 0=spiral, 1=elliptical, 2=irregular
+  const galaxies = useMemo(
+    () => [
+      // --- Spirals ---
+      // Face-on spiral — far upper right
+      {
+        pos: [500, 350, -300] as [number, number, number],
+        color: "#b464dc",
+        coreColor: "#ffe6ff",
+        size: 25,
+        tilt: 0.5,
+        spiral: 12.0,
+        tumble: 0.04,
+        opacity: 0.1,
+        type: 0,
+      },
+      // Large faint spiral — far left
+      {
+        pos: [-600, 80, -400] as [number, number, number],
+        color: "#6080c0",
+        coreColor: "#ffffff",
+        size: 55,
+        tilt: 0.55,
+        spiral: 10.0,
+        tumble: 0.02,
+        opacity: 0.05,
+        type: 0,
+      },
+      // Small spiral — lower right, very distant
+      {
+        pos: [400, -500, -450] as [number, number, number],
+        color: "#5090dc",
+        coreColor: "#c8f0ff",
+        size: 18,
+        tilt: 0.4,
+        spiral: 14.0,
+        tumble: 0.035,
+        opacity: 0.07,
+        type: 0,
+      },
+
+      // --- Ellipticals ---
+      // Big fuzzy elliptical — upper left, warm gold
+      {
+        pos: [-450, 480, -350] as [number, number, number],
+        color: "#d0a060",
+        coreColor: "#fff4e0",
+        size: 50,
+        tilt: 0.7,
+        spiral: 0.0,
+        tumble: 0.03,
+        opacity: 0.05,
+        type: 1,
+      },
+      // Compact elliptical — far right
+      {
+        pos: [650, -150, -380] as [number, number, number],
+        color: "#c09070",
+        coreColor: "#ffe8d0",
+        size: 14,
+        tilt: 0.8,
+        spiral: 0.0,
+        tumble: 0.05,
+        opacity: 0.07,
+        type: 1,
+      },
+      // Faint large elliptical — far below
+      {
+        pos: [120, -620, -500] as [number, number, number],
+        color: "#b0a090",
+        coreColor: "#f0e8e0",
+        size: 60,
+        tilt: 0.65,
+        spiral: 0.0,
+        tumble: 0.02,
+        opacity: 0.04,
+        type: 1,
+      },
+
+      // --- Irregulars ---
+      // Irregular — far lower left
+      {
+        pos: [-520, -420, -380] as [number, number, number],
+        color: "#4090b0",
+        coreColor: "#a0e0ff",
+        size: 22,
+        tilt: 0.85,
+        spiral: 0.0,
+        tumble: 0.04,
+        opacity: 0.06,
+        type: 2,
+      },
+      // Patchy irregular — far upper middle
+      {
+        pos: [200, 580, -420] as [number, number, number],
+        color: "#a06090",
+        coreColor: "#e0b0d0",
+        size: 30,
+        tilt: 0.75,
+        spiral: 0.0,
+        tumble: 0.03,
+        opacity: 0.05,
+        type: 2,
+      },
+
+      // --- Edge-on spiral (very thin tilt) ---
+      {
+        pos: [-350, -550, -400] as [number, number, number],
+        color: "#7090c0",
+        coreColor: "#e0f0ff",
+        size: 35,
+        tilt: 0.15,
+        spiral: 15.0,
+        tumble: 0.025,
+        opacity: 0.06,
+        type: 0,
+      },
+    ],
+    [],
+  );
+
+  return (
+    <group>
+      {galaxies.map((g, i) => (
+        <BackgroundGalaxy
+          key={i}
+          position={g.pos}
+          color={g.color}
+          coreColor={g.coreColor}
+          size={g.size}
+          tilt={g.tilt}
+          spiralTightness={g.spiral}
+          tumbleSpeed={g.tumble}
+          seed={i * 2.71}
+          baseOpacity={g.opacity}
+          type={g.type}
+        />
+      ))}
+    </group>
+  );
+}
+
+/** Galactic core — bright warm glow at the galaxy center, billboards to camera */
+function GalacticCore() {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const matRef = useRef<THREE.ShaderMaterial>(null);
+
+  useFrame(({ camera }, delta) => {
+    if (matRef.current) {
+      matRef.current.uniforms.uTime.value += delta;
+    }
+    if (meshRef.current) {
+      meshRef.current.quaternion.copy(camera.quaternion);
+    }
+  });
+
+  return (
+    <mesh ref={meshRef} position={[0, 0, -3]}>
+      <planeGeometry args={[60, 60]} />
+      <shaderMaterial
+        ref={matRef}
+        transparent
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        uniforms={{
+          uTime: { value: 0 },
+          uColor1: { value: new THREE.Color("#ffcc66") },
+          uColor2: { value: new THREE.Color("#ff8844") },
+        }}
+        vertexShader={`
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          uniform float uTime;
+          uniform vec3 uColor1;
+          uniform vec3 uColor2;
+          varying vec2 vUv;
+          void main() {
+            float dist = length(vUv - vec2(0.5));
+            // Hard circular cutoff — discard outside radius to avoid square edges
+            if (dist > 0.48) discard;
+            // Smooth circular mask
+            float mask = smoothstep(0.48, 0.25, dist);
+            // Soft radial falloff with pulsing
+            float pulse = 1.0 + sin(uTime * 0.3) * 0.08;
+            float glow = exp(-dist * 8.0) * 0.3 * pulse;
+            float outerGlow = exp(-dist * 4.0) * 0.08;
+            vec3 color = mix(uColor1, uColor2, smoothstep(0.0, 0.35, dist));
+            float alpha = (glow + outerGlow) * mask;
+            if (alpha < 0.002) discard;
+            gl_FragColor = vec4(color, alpha);
+          }
+        `}
+      />
+    </mesh>
   );
 }
 
@@ -1128,6 +1682,8 @@ export default function SectorMap3D({
 
         <GalaxyDust exploredSet={exploredSet} />
         <NebulaClouds />
+        <GalacticCore />
+        <BackgroundGalaxies />
 
         <CurrentEdges
           edges={mapData.edges}
@@ -1164,6 +1720,15 @@ export default function SectorMap3D({
         })}
 
         <CameraController target={currentPos} controlsRef={controlsRef} />
+
+        <EffectComposer>
+          <Bloom
+            intensity={0.6}
+            luminanceThreshold={0.2}
+            luminanceSmoothing={0.9}
+            mipmapBlur
+          />
+        </EffectComposer>
       </Canvas>
 
       {/* Header */}

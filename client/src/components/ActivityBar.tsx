@@ -22,7 +22,7 @@ export default function ActivityBar({
   badges,
   groupBadge,
 }: ActivityBarProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
   // Keyboard shortcuts
   useEffect(() => {

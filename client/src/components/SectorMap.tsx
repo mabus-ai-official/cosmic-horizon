@@ -355,6 +355,20 @@ function computeLayout(
     }
   }
 
+  // Re-center layout so current sector is always at map center.
+  // This ensures pan {0,0} at zoom 1 shows the current sector centered.
+  const currentPos = positions.get(currentSectorId);
+  if (currentPos) {
+    const offsetX = cx - currentPos.x;
+    const offsetY = cy - currentPos.y;
+    if (Math.abs(offsetX) > 0.5 || Math.abs(offsetY) > 0.5) {
+      for (const [, p] of positions) {
+        p.x += offsetX;
+        p.y += offsetY;
+      }
+    }
+  }
+
   return positions;
 }
 
@@ -481,8 +495,27 @@ export default function SectorMap({
   }, []);
 
   const handleDoubleClick = useCallback(() => {
-    setPan({ x: 0, y: 0 });
-  }, []);
+    // Center viewport on the current sector
+    if (currentSectorId != null && positions.has(currentSectorId)) {
+      const pos = positions.get(currentSectorId)!;
+      const z = zoomRef.current;
+      const s = Math.pow(z, 0.7);
+      const mcx = WIDTH / 2;
+      const mcy = HEIGHT / 2;
+      // Sector's visual position after spread
+      const sx = mcx + (pos.x - mcx) * s;
+      const sy = mcy + (pos.y - mcy) * s;
+      // Pan needed to put that position at viewport center
+      const vw = WIDTH / z;
+      const vh = HEIGHT / z;
+      setPan({
+        x: sx - (WIDTH - vw) / 2 - vw / 2,
+        y: sy - (HEIGHT - vh) / 2 - vh / 2,
+      });
+    } else {
+      setPan({ x: 0, y: 0 });
+    }
+  }, [currentSectorId, positions]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     dragging.current = true;

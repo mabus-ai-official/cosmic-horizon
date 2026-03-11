@@ -1231,10 +1231,10 @@ body {
   justify-content: center;
   border: none;
   background: transparent;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
+  color: var(--cyan);
+  font-size: 1.1rem;
   cursor: pointer;
-  opacity: 0.5;
+  opacity: 0.8;
   margin-bottom: 6px;
   transition:
     opacity 0.15s,
@@ -1323,7 +1323,7 @@ body {
 }
 
 .activity-bar__item-label {
-  font-size: 0.77rem;
+  font-size: 0.96rem;
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: 0.8px;
@@ -1337,12 +1337,12 @@ body {
 }
 
 .activity-bar__item-desc {
-  font-size: 0.62rem;
-  color: var(--text-secondary);
+  font-size: 0.86rem;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  opacity: 0.7;
+  opacity: 0.85;
   margin-top: 1px;
 }
 
@@ -1376,21 +1376,21 @@ body {
 /* Tab bar at bottom of activity bar */
 .activity-bar__tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 2px;
   padding: 6px 2px 2px;
   margin-top: 6px;
   border-top: 1px solid var(--border);
+  overflow-x: auto;
 }
 .activity-bar__tab {
-  flex: 1;
-  min-width: 0;
+  flex: 0 0 auto;
   padding: 4px 2px;
   border: 1px solid transparent;
   border-radius: 4px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 0.62rem;
+  font-size: 0.78rem;
   font-family: "IBM Plex Mono", monospace;
   cursor: pointer;
   text-align: center;
@@ -1724,8 +1724,8 @@ body {
 .mini-chat__messages {
   flex: 1;
   overflow-y: auto;
-  min-height: 80px;
-  max-height: 180px;
+  min-height: 130px;
+  max-height: 290px;
   scrollbar-width: thin;
   scrollbar-color: var(--border) var(--bg-primary);
 }
@@ -1768,6 +1768,51 @@ body {
 
 .mini-chat__input input:focus {
   border-color: var(--cyan);
+}
+
+.mini-chat__input-row {
+  display: flex;
+  gap: 4px;
+}
+
+.mini-chat__input-row input {
+  flex: 1;
+}
+
+.mini-chat__emoji-btn {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 2px 6px;
+  line-height: 1;
+}
+
+.mini-chat__emoji-btn:hover {
+  border-color: var(--cyan);
+}
+
+.mini-chat__emoji-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.mini-chat__emoji-item {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 2px 4px;
+  line-height: 1;
+}
+
+.mini-chat__emoji-item:hover {
+  background: var(--bg-secondary);
+  border-color: var(--border);
 }
 
 /* Command Input */

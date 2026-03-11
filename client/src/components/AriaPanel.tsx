@@ -8,6 +8,7 @@ interface Message {
 
 interface Props {
   bare?: boolean;
+  onBack?: () => void;
 }
 
 const STORAGE_KEY = "aria-chat-history";
@@ -47,7 +48,7 @@ const QUICK_QUESTIONS = [
   "How do trade routes work?",
 ];
 
-export default function AriaPanel({ bare }: Props) {
+export default function AriaPanel({ bare, onBack }: Props) {
   const [messages, setMessages] = useState<Message[]>(loadMessages);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -86,6 +87,21 @@ export default function AriaPanel({ bare }: Props) {
 
   const content = (
     <div className="aria-panel">
+      {onBack && (
+        <button
+          className="btn-action"
+          onClick={onBack}
+          style={{
+            marginBottom: 6,
+            fontSize: "0.75rem",
+            padding: "3px 10px",
+            borderColor: "var(--cyan)",
+            color: "var(--cyan)",
+          }}
+        >
+          ← Back to Navigation
+        </button>
+      )}
       <div className="aria-messages" ref={scrollRef}>
         {messages.map((m, i) => (
           <div key={i} className={`aria-msg aria-msg--${m.role}`}>

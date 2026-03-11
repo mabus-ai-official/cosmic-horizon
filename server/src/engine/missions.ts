@@ -176,7 +176,7 @@ export function buildObjectivesDetail(
       break;
     case "colonize_planet":
       details.push({
-        description: `Deposit ${objectives.colonistsToDeposit} colonists`,
+        description: `Deposit ${objectives.colonistsToDeposit} colonists${descriptionSuffix || ""}`,
         target: objectives.colonistsToDeposit || 0,
         current: 0,
         complete: false,

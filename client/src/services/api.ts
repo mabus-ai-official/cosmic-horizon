@@ -82,6 +82,7 @@ export const moveTo = (sectorId: number) => api.post(`/game/move/${sectorId}`);
 export const warpTo = (sectorId: number) =>
   api.post(`/game/warp-to/${sectorId}`);
 export const getSector = () => api.get("/game/sector");
+export const getNearestStarMall = () => api.get("/game/nearest-starmall");
 export const getMap = () => api.get("/game/map");
 export const scan = () => api.post("/game/scan");
 export const useScanner = () => api.post("/game/use-scanner");
@@ -147,6 +148,8 @@ export const conquerSector = (sectorId: number, claimType?: string) =>
   api.post(`/sectors/${sectorId}/conquer`, {
     claimType: claimType || "player",
   });
+export const registerSectorFaction = (sectorId: number, factionId: string) =>
+  api.post(`/sectors/${sectorId}/register-faction`, { factionId });
 
 // Combat
 export const fire = (targetPlayerId: string, energyToExpend: number) =>

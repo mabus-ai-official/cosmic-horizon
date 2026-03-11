@@ -582,10 +582,7 @@ router.post("/warp-to/:sectorId", requireAuth, async (req, res) => {
     // Profile stats: energy spent on warp
     incrementStat(player.id, "energy_spent", totalCost);
 
-    // Mission progress for each hop
-    for (let i = 1; i < path.length; i++) {
-      checkAndUpdateMissions(player.id, "move", { sectorId: path[i] }, io);
-    }
+    // Warp does NOT count toward mission progress — only manual move does
 
     // Get destination sector contents
     const sector = await db("sectors").where({ id: targetSectorId }).first();
@@ -1061,10 +1058,10 @@ router.post("/scan", requireAuth, async (req, res) => {
 
     if (!ship) return res.status(400).json({ error: "No active ship" });
 
-    // Check if ship type has scanner
+    // Check if ship has scanner (built-in for cruiser/battleship, or purchased upgrade)
     const { SHIP_TYPES } = require("../config/ship-types");
     const shipType = SHIP_TYPES.find((s: any) => s.id === ship.ship_type_id);
-    if (!shipType?.hasPlanetaryScanner) {
+    if (!shipType?.hasPlanetaryScanner && !ship.has_planetary_scanner) {
       return res.status(400).json({
         error:
           "Your ship needs a Planetary Scanner. Buy one at a Star Mall (8,000 cr) or pick up a single-use Scanner Probe (2,500 cr).",
@@ -1477,6 +1474,35 @@ router.post("/transition-to-mp", requireAuth, async (req, res) => {
         .json({ error: "Multiplayer universe not available" });
     }
 
+    // Move player + ship to MP BEFORE cleaning up SP data
+    // (otherwise FK on ships.sector_id blocks sector deletion)
+    if (player.current_ship_id) {
+      await db("ships").where({ id: player.current_ship_id }).update({
+        sector_id: mpStarMall.id,
+      });
+    }
+
+    // Preserve MP explored sectors, strip SP ones
+    const spSectorLookup = await db("sectors")
+      .where({ owner_id: player.id, universe: "sp" })
+      .select("id");
+    const spIdSet = new Set(spSectorLookup.map((s: any) => s.id));
+    const prevExplored: number[] = JSON.parse(player.explored_sectors || "[]");
+    const mpExplored = prevExplored.filter((id) => !spIdSet.has(id));
+    if (!mpExplored.includes(mpStarMall.id)) mpExplored.push(mpStarMall.id);
+
+    await db("players")
+      .where({ id: player.id })
+      .update({
+        game_mode: "multiplayer",
+        sp_sector_offset: null,
+        sp_last_tick_at: null,
+        current_sector_id: mpStarMall.id,
+        explored_sectors: JSON.stringify(mpExplored),
+        docked_at_outpost_id: null,
+        landed_at_planet_id: null,
+      });
+
     // Clean up SP universe data
     const spSectors = await db("sectors")
       .where({ owner_id: player.id, universe: "sp" })
@@ -1484,12 +1510,32 @@ router.post("/transition-to-mp", requireAuth, async (req, res) => {
     const spSectorIds = spSectors.map((s: any) => s.id);
 
     if (spSectorIds.length > 0) {
-      // Delete SP-specific data (order matters for FKs)
-      await db("outposts").whereIn("sector_id", spSectorIds).del();
-      await db("planets").whereIn("sector_id", spSectorIds).del();
-      await db("npc_definitions").whereIn("sector_id", spSectorIds).del();
-      await db("sector_edges").whereIn("from_sector_id", spSectorIds).del();
-      await db("sector_edges").whereIn("to_sector_id", spSectorIds).del();
+      // Clean all tables that reference sectors(id)
+      const fkTables: { table: string; column: string }[] = [
+        { table: "sector_events", column: "sector_id" },
+        { table: "deployables", column: "sector_id" },
+        { table: "combat_logs", column: "sector_id" },
+        { table: "trade_logs", column: "sector_id" },
+        { table: "warp_gates", column: "sector_a_id" },
+        { table: "warp_gates", column: "sector_b_id" },
+        { table: "rare_spawns", column: "sector_id" },
+        { table: "trade_routes", column: "source_sector_id" },
+        { table: "trade_routes", column: "dest_sector_id" },
+        { table: "trade_route_ships", column: "current_sector_id" },
+        { table: "ships", column: "sector_id" },
+        { table: "outposts", column: "sector_id" },
+        { table: "planets", column: "sector_id" },
+        { table: "npc_definitions", column: "sector_id" },
+        { table: "sector_edges", column: "from_sector_id" },
+        { table: "sector_edges", column: "to_sector_id" },
+      ];
+      for (const { table, column } of fkTables) {
+        try {
+          await db(table).whereIn(column, spSectorIds).del();
+        } catch {
+          /* table may not exist */
+        }
+      }
       await db("sectors").whereIn("id", spSectorIds).del();
     }
 
@@ -1501,26 +1547,6 @@ router.post("/transition-to-mp", requireAuth, async (req, res) => {
         db("mission_templates").where({ source: "singleplayer" }).select("id"),
       )
       .del();
-
-    // Update player to MP mode
-    await db("players")
-      .where({ id: player.id })
-      .update({
-        game_mode: "multiplayer",
-        sp_sector_offset: null,
-        sp_last_tick_at: null,
-        current_sector_id: mpStarMall.id,
-        explored_sectors: JSON.stringify([mpStarMall.id]),
-        docked_at_outpost_id: null,
-        landed_at_planet_id: null,
-      });
-
-    // Move active ship to MP sector
-    if (player.current_ship_id) {
-      await db("ships").where({ id: player.current_ship_id }).update({
-        sector_id: mpStarMall.id,
-      });
-    }
 
     res.json({
       success: true,
@@ -1690,6 +1716,109 @@ router.post("/liftoff", requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error("Liftoff error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── Nearest Star Mall beacon ────────────────────────────────────────
+router.get("/nearest-starmall", requireAuth, async (req, res) => {
+  try {
+    const playerId = (req as any).playerId;
+    const player = await db("players").where({ id: playerId }).first();
+    if (!player) return res.status(404).json({ error: "Player not found" });
+
+    // Already at a star mall?
+    const currentSector = await db("sectors")
+      .where({ id: player.current_sector_id })
+      .first();
+    if (currentSector?.has_star_mall) {
+      return res.json({
+        sectorId: currentSector.id,
+        distance: 0,
+        message: "You are at a Star Mall",
+      });
+    }
+
+    // Get all star mall sectors
+    const universe = player.game_mode === "singleplayer" ? "sp" : "mp";
+    const starMalls = await db("sectors")
+      .where({ has_star_mall: true, universe })
+      .select("id");
+
+    if (starMalls.length === 0) {
+      return res.status(404).json({ error: "No star malls found" });
+    }
+
+    // Build edge map
+    const edgeQuery =
+      player.game_mode === "singleplayer"
+        ? db("sector_edges")
+            .join("sectors", "sector_edges.from_sector_id", "sectors.id")
+            .where("sectors.owner_id", player.id)
+            .select(
+              "sector_edges.from_sector_id",
+              "sector_edges.to_sector_id",
+              "sector_edges.one_way",
+            )
+        : db("sector_edges").select(
+            "from_sector_id",
+            "to_sector_id",
+            "one_way",
+          );
+
+    const edgeRows = await edgeQuery;
+    const edgeMap = new Map<number, SectorEdge[]>();
+    for (const row of edgeRows) {
+      const from = row.from_sector_id;
+      const to = row.to_sector_id;
+      const fromList = edgeMap.get(from) || [];
+      fromList.push({ from, to, oneWay: !!row.one_way });
+      edgeMap.set(from, fromList);
+      if (!row.one_way) {
+        const toList = edgeMap.get(to) || [];
+        if (!toList.some((e) => e.to === from)) {
+          toList.push({ from: to, to: from, oneWay: false });
+          edgeMap.set(to, toList);
+        }
+      }
+    }
+
+    // BFS to find nearest star mall (check all, return closest)
+    const starMallIds = new Set(starMalls.map((s: any) => s.id));
+    let nearest: { sectorId: number; distance: number; path: number[] } | null =
+      null;
+
+    for (const mall of starMalls) {
+      const path = findShortestPath(
+        edgeMap,
+        player.current_sector_id,
+        mall.id,
+        200,
+      );
+      if (path && (!nearest || path.length - 1 < nearest.distance)) {
+        nearest = {
+          sectorId: mall.id,
+          distance: path.length - 1,
+          path,
+        };
+      }
+    }
+
+    if (!nearest) {
+      return res.status(404).json({ error: "No reachable star mall found" });
+    }
+
+    // Return the next sector to move toward (first hop)
+    const nextHop = nearest.path.length > 1 ? nearest.path[1] : nearest.path[0];
+
+    res.json({
+      sectorId: nearest.sectorId,
+      distance: nearest.distance,
+      nextHop,
+      path: nearest.path,
+    });
+  } catch (err) {
+    console.error("Nearest star mall error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

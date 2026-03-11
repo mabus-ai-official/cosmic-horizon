@@ -234,7 +234,7 @@ router.post("/accept", requireAuth, async (req, res) => {
         : template.hints || [];
 
     // For deliver_cargo missions, find a recommended outpost and append to description
-    let deliverOutpostHint = "";
+    let descriptionSuffix = "";
     if (template.type === "deliver_cargo" && objectives.commodity) {
       const modeCol = `${objectives.commodity}_mode`;
       const player = await db("players").where({ id: playerId }).first();
@@ -251,7 +251,27 @@ router.post("/accept", requireAuth, async (req, res) => {
           explored.includes(o.sector_id),
         );
         const pick = visited.length > 0 ? visited[0] : buyingOutposts[0];
-        deliverOutpostHint = ` (sell at ${pick.name}, Sector ${pick.sector_id})`;
+        descriptionSuffix = ` (sell at ${pick.name}, Sector ${pick.sector_id})`;
+      }
+    }
+
+    // For colonize_planet missions, find nearest seed planet for colonist pickup
+    if (template.type === "colonize_planet") {
+      const player = await db("players").where({ id: playerId }).first();
+      const explored: number[] = JSON.parse(player?.explored_sectors || "[]");
+
+      const seedSectors = await db("sectors")
+        .where({ has_seed_planet: true })
+        .select("id");
+
+      if (seedSectors.length > 0) {
+        // Prefer explored seed sectors
+        const exploredSeeds = seedSectors.filter((s: any) =>
+          explored.includes(s.id),
+        );
+        const pick =
+          exploredSeeds.length > 0 ? exploredSeeds[0] : seedSectors[0];
+        descriptionSuffix = ` — collect colonists at Seed Planet in Sector ${pick.id}. Choose a race with high affinity for your target planet type!`;
       }
     }
 
@@ -259,7 +279,7 @@ router.post("/accept", requireAuth, async (req, res) => {
       template.type,
       objectives,
       hints,
-      deliverOutpostHint,
+      descriptionSuffix,
     );
 
     const missionId = crypto.randomUUID();

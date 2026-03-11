@@ -19,6 +19,15 @@ export type PanelId =
   | "codex"
   | "profile";
 
+export type GroupId =
+  | "pilot"
+  | "helm"
+  | "ship"
+  | "ops"
+  | "market"
+  | "social"
+  | "database";
+
 export interface PanelDef {
   id: PanelId;
   label: string;
@@ -26,11 +35,112 @@ export interface PanelDef {
   hotkey: string;
 }
 
+export interface PanelGroupDef {
+  id: GroupId;
+  label: string;
+  description: string;
+  spriteKey: string;
+  hotkey: string;
+  accentColor: string;
+  tabs: { id: PanelId; label: string }[];
+}
+
+export const PANEL_GROUPS: PanelGroupDef[] = [
+  {
+    id: "pilot",
+    label: "PILOT",
+    description: "Identity & finances",
+    spriteKey: "icon_profile",
+    hotkey: "P",
+    accentColor: "var(--magenta)",
+    tabs: [
+      { id: "profile", label: "Profile" },
+      { id: "wallet", label: "Wallet" },
+      { id: "notes", label: "Notes" },
+    ],
+  },
+  {
+    id: "helm",
+    label: "HELM",
+    description: "Navigate the galaxy",
+    spriteKey: "icon_nav",
+    hotkey: "H",
+    accentColor: "var(--cyan)",
+    tabs: [
+      { id: "nav", label: "Navigation" },
+      { id: "aria", label: "ARIA" },
+    ],
+  },
+  {
+    id: "ship",
+    label: "SHIP",
+    description: "Loadout, cargo & territory",
+    spriteKey: "icon_gear",
+    hotkey: "S",
+    accentColor: "var(--green)",
+    tabs: [
+      { id: "gear", label: "Loadout" },
+      { id: "inventory", label: "Cargo" },
+      { id: "planets", label: "Planets" },
+    ],
+  },
+  {
+    id: "ops",
+    label: "OPS",
+    description: "Missions, combat & scanning",
+    spriteKey: "icon_missions",
+    hotkey: "O",
+    accentColor: "var(--red)",
+    tabs: [
+      { id: "missions", label: "Missions" },
+      { id: "combat", label: "Combat" },
+      { id: "explore", label: "Scanner" },
+    ],
+  },
+  {
+    id: "market",
+    label: "MARKET",
+    description: "Trade & economy",
+    spriteKey: "icon_trade",
+    hotkey: "M",
+    accentColor: "var(--yellow)",
+    tabs: [
+      { id: "trade", label: "Trade" },
+      { id: "trade-history", label: "Ledger" },
+    ],
+  },
+  {
+    id: "social",
+    label: "SOCIAL",
+    description: "Comms, contacts & guild",
+    spriteKey: "icon_comms",
+    hotkey: "K",
+    accentColor: "var(--purple)",
+    tabs: [
+      { id: "comms", label: "Comms" },
+      { id: "crew", label: "Contacts" },
+      { id: "syndicate", label: "Syndicate" },
+    ],
+  },
+  {
+    id: "database",
+    label: "DATABASE",
+    description: "Intel, codex & reference",
+    spriteKey: "icon_actions",
+    hotkey: "D",
+    accentColor: "var(--cyan)",
+    tabs: [
+      { id: "actions", label: "Databank" },
+      { id: "intel", label: "Intel" },
+      { id: "codex", label: "Codex" },
+    ],
+  },
+];
+
+// Legacy PANELS array for backward compatibility
 export const PANELS: PanelDef[] = [
-  // You
   { id: "profile", label: "PILOT", spriteKey: "icon_profile", hotkey: "P" },
   { id: "nav", label: "HELM", spriteKey: "icon_nav", hotkey: "H" },
-  // Action
   { id: "combat", label: "COMBAT", spriteKey: "icon_combat", hotkey: "C" },
   { id: "explore", label: "SCANNER", spriteKey: "icon_explore", hotkey: "S" },
   {
@@ -39,7 +149,6 @@ export const PANELS: PanelDef[] = [
     spriteKey: "icon_missions",
     hotkey: "I",
   },
-  // Social
   { id: "crew", label: "CONTACTS", spriteKey: "icon_crew", hotkey: "O" },
   { id: "comms", label: "COMMS", spriteKey: "icon_comms", hotkey: "K" },
   {
@@ -48,13 +157,11 @@ export const PANELS: PanelDef[] = [
     spriteKey: "icon_syndicate",
     hotkey: "Y",
   },
-  // Ship & Economy
   { id: "gear", label: "LOADOUT", spriteKey: "icon_gear", hotkey: "G" },
   { id: "inventory", label: "CARGO", spriteKey: "icon_inventory", hotkey: "A" },
   { id: "trade", label: "MARKET", spriteKey: "icon_trade", hotkey: "M" },
   { id: "planets", label: "PLANETS", spriteKey: "icon_planets", hotkey: "L" },
   { id: "wallet", label: "WALLET", spriteKey: "icon_wallet", hotkey: "W" },
-  // Reference
   { id: "actions", label: "DATABANK", spriteKey: "icon_actions", hotkey: "D" },
   { id: "intel", label: "INTEL", spriteKey: "icon_intel", hotkey: "T" },
   { id: "codex", label: "CODEX", spriteKey: "icon_codex", hotkey: "X" },

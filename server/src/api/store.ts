@@ -124,7 +124,16 @@ router.post("/buy/:itemId", requireAuth, async (req, res) => {
           .where({ id: ship.id })
           .update({ has_jump_drive: true });
       }
-      // PGD and scanner are inherent ship capabilities; purchasing "unlocks" for that session
+      if (item.id === "planetary_scanner") {
+        if (ship.has_planetary_scanner) {
+          return res
+            .status(400)
+            .json({ error: "Ship already has a planetary scanner" });
+        }
+        await db("ships")
+          .where({ id: ship.id })
+          .update({ has_planetary_scanner: true });
+      }
     }
 
     // Handle consumable items - use immediately or add to inventory

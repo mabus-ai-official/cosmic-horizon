@@ -817,7 +817,7 @@ router.post("/:id/collect-colonists", requireAuth, async (req, res) => {
   }
 });
 
-// Deposit colonists into a seed planet
+// Deposit colonists into a seed planet or owned planet
 router.post("/:id/deposit-colonists", requireAuth, async (req, res) => {
   if (tutorialBlock(req, res)) return;
   try {
@@ -837,10 +837,12 @@ router.post("/:id/deposit-colonists", requireAuth, async (req, res) => {
 
     const planet = await db("planets").where({ id: req.params.id }).first();
     if (!planet) return res.status(404).json({ error: "Planet not found" });
-    if (planet.planet_class !== "S") {
-      return res
-        .status(400)
-        .json({ error: "Can only deposit colonists into seed planets" });
+    const isOwned = planet.owner_id === player.id;
+    if (planet.planet_class !== "S" && !isOwned) {
+      return res.status(400).json({
+        error:
+          "You can only deposit colonists into seed planets or your own planets",
+      });
     }
     if (planet.sector_id !== player.current_sector_id) {
       return res.status(400).json({ error: "Planet is not in your sector" });
@@ -887,12 +889,16 @@ router.post("/:id/deposit-colonists", requireAuth, async (req, res) => {
         colonist_cargo: Math.max(0, (ship.colonist_cargo || 0) - toDeposit),
       });
 
-    // Add to seed planet (raceless total)
+    // Add to planet (raceless total)
     await db("planets")
       .where({ id: planet.id })
       .update({
         colonists: (planet.colonists || 0) + toDeposit,
       });
+
+    // Mission progress: colonize
+    const io = req.app.get("io");
+    checkAndUpdateMissions(player.id, "colonize", { quantity: toDeposit }, io);
 
     res.json({
       deposited: toDeposit,

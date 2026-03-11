@@ -34,7 +34,7 @@ interface CommandContext {
   player: any;
   sector: any;
   doMove: (sectorId: number) => void;
-  doWarpTo?: (sectorId: number) => void;
+  doWarpTo?: (sectorId: number, confirmed?: boolean) => void;
   doBuy: (outpostId: string, commodity: string, quantity: number) => void;
   doSell: (outpostId: string, commodity: string, quantity: number) => void;
   doFire: (targetPlayerId: string, energy: number) => void;
@@ -218,11 +218,11 @@ export function handleCommand(input: string, ctx: CommandContext): void {
       const sectorId = parseInt(args[0]);
       if (isNaN(sectorId)) {
         ctx.addLine(
-          "Usage: warp-to <sector_id> — auto-path to sector (1 energy per hop)",
+          "Usage: warp-to <sector_id> [confirm] — auto-path to sector (1 energy per hop)",
           "error",
         );
       } else if (ctx.doWarpTo) {
-        ctx.doWarpTo(sectorId);
+        ctx.doWarpTo(sectorId, args[1] === "confirm");
       } else {
         ctx.addLine("Warp-to not available", "error");
       }

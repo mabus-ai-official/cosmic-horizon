@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import type { SfxId } from "../config/sfx";
 import CollapsiblePanel from "./CollapsiblePanel";
 import PlanetAnalytics from "./PlanetAnalytics";
 import { getPlanetTypeInfo } from "../config/planet-tooltips";
@@ -18,9 +17,7 @@ import {
   namePlanet,
   depositFood,
   depositColonists,
-  bombardPlanet,
   fortifyPlanet,
-  getPlanetDefenses,
 } from "../services/api";
 
 interface RacePopulation {
@@ -76,7 +73,6 @@ interface Props {
   onLiftoff?: () => void;
   onWarpTo?: (sectorId: number) => void;
   landedAtPlanetId?: string | null;
-  onSfx?: (id: SfxId) => void;
   bare?: boolean;
 }
 
@@ -144,7 +140,6 @@ export default function PlanetsPanel({
   onLiftoff,
   onWarpTo,
   landedAtPlanetId,
-  onSfx,
   bare,
 }: Props) {
   const [planets, setPlanets] = useState<PlanetData[]>([]);
@@ -178,11 +173,7 @@ export default function PlanetsPanel({
   const [hoveredPlanetId, setHoveredPlanetId] = useState<string | null>(null);
   const [fortifyType, setFortifyType] = useState<Record<string, string>>({});
   const [fortifyAmt, setFortifyAmt] = useState<Record<string, number>>({});
-  const [bombardEnergy, setBombardEnergy] = useState<Record<string, number>>(
-    {},
-  );
-  const [defenseData, setDefenseData] = useState<Record<string, any>>({});
-  const [combatResult, setCombatResult] = useState<string | null>(null);
+  // bombardEnergy, defenseData, combatResult — reserved for warfare feature
 
   const refresh = () => setLocalRefreshKey((k) => k + 1);
 
@@ -222,7 +213,6 @@ export default function PlanetsPanel({
       await collectAllRefinery(planetId).catch(() => {});
       refresh();
       onAction?.();
-      onSfx?.("cargo_load");
       if (data.collected?.length > 0) {
         const summary = data.collected
           .map((c: any) => `${c.quantity} ${c.name}`)
@@ -239,7 +229,6 @@ export default function PlanetsPanel({
       }
     } catch (err: any) {
       setError(err.response?.data?.error || "Collection failed");
-      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -252,10 +241,8 @@ export default function PlanetsPanel({
       await upgradePlanet(planetId);
       refresh();
       onAction?.();
-      onSfx?.("success");
     } catch (err: any) {
       setError(err.response?.data?.error || "Upgrade failed");
-      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -270,10 +257,8 @@ export default function PlanetsPanel({
       await colonizePlanet(planetId, qty, race);
       refresh();
       onAction?.();
-      onSfx?.("cargo_load");
     } catch (err: any) {
       setError(err.response?.data?.error || "Colonization failed");
-      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -287,10 +272,8 @@ export default function PlanetsPanel({
       refresh();
       onAction?.();
       onAdvanceTutorial?.("claim");
-      onSfx?.("confirm");
     } catch (err: any) {
       setError(err.response?.data?.error || "Claim failed");
-      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -305,10 +288,8 @@ export default function PlanetsPanel({
       await collectColonists(planetId, qty, race);
       refresh();
       onAction?.();
-      onSfx?.("cargo_load");
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to collect colonists");
-      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -322,10 +303,8 @@ export default function PlanetsPanel({
       await depositFood(planetId, qty);
       refresh();
       onAction?.();
-      onSfx?.("cargo_load");
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to deposit food");
-      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -340,10 +319,8 @@ export default function PlanetsPanel({
       await depositColonists(planetId, qty, race);
       refresh();
       onAction?.();
-      onSfx?.("cargo_load");
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to deposit colonists");
-      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -359,10 +336,8 @@ export default function PlanetsPanel({
       setRenameInput((prev) => ({ ...prev, [planetId]: "" }));
       refresh();
       onAction?.();
-      onSfx?.("confirm");
     } catch (err: any) {
       setError(err.response?.data?.error || "Rename failed");
-      onSfx?.("error");
     } finally {
       setBusy(null);
     }
@@ -376,7 +351,6 @@ export default function PlanetsPanel({
       setScanResults(data.planets || []);
     } catch (err: any) {
       setError(err.response?.data?.error || "Scanner failed");
-      onSfx?.("error");
     } finally {
       setScanning(false);
     }
@@ -391,55 +365,14 @@ export default function PlanetsPanel({
       await fortifyPlanet(planetId, type, amount);
       refresh();
       onAction?.();
-      onSfx?.("shield");
     } catch (err: any) {
       setError(err.response?.data?.error || "Fortify failed");
-      onSfx?.("error");
     } finally {
       setBusy(null);
     }
   };
 
-  const handleBombard = async (planetId: string) => {
-    const energy = bombardEnergy[planetId] || 10;
-    setBusy(planetId + "-bombard");
-    setError("");
-    setCombatResult(null);
-    try {
-      const { data } = await bombardPlanet(planetId, energy);
-      const parts: string[] = [];
-      if (data.shieldDamage) parts.push(`Shield -${data.shieldDamage}`);
-      if (data.cannonDamage) parts.push(`Cannon -${data.cannonDamage}`);
-      if (data.droneDamage) parts.push(`Drones -${data.droneDamage}`);
-      if (data.returnFireDamage)
-        parts.push(`Return fire: ${data.returnFireDamage} dmg to you`);
-      if (data.conquered) parts.push("PLANET CONQUERED!");
-      setCombatResult(
-        parts.join(" | ") || data.message || "Bombardment complete",
-      );
-      refresh();
-      onAction?.();
-      onSfx?.(data.conquered ? "explosion" : "hit");
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Bombardment failed");
-      onSfx?.("error");
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const handleScanDefenses = async (planetId: string) => {
-    setBusy(planetId + "-defenses");
-    setError("");
-    try {
-      const { data } = await getPlanetDefenses(planetId);
-      setDefenseData((prev) => ({ ...prev, [planetId]: data }));
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to scan defenses");
-    } finally {
-      setBusy(null);
-    }
-  };
+  // handleBombard / handleScanDefenses — reserved for warfare feature
 
   const raceSelect = (
     planetId: string,
@@ -1004,6 +937,195 @@ export default function PlanetsPanel({
       </>
     );
 
+  const renderDiscoveredPlanet = (p: DiscoveredPlanetData) => {
+    const tag = p.owned
+      ? " [YOURS]"
+      : p.ownerName
+        ? ` (${p.ownerName})`
+        : p.planetClass === "S"
+          ? " [seed world]"
+          : " *unclaimed*";
+    const tagColor = p.owned
+      ? "#0f0"
+      : p.ownerName
+        ? "#f80"
+        : p.planetClass === "S"
+          ? "#56d4dd"
+          : "#888";
+    const inSector = currentSectorId != null && p.sectorId === currentSectorId;
+    const canClaim =
+      !p.owned && !p.ownerName && inSector && p.planetClass !== "S";
+    const bestRace = p.planetClass !== "S" ? getBestRace(p.planetClass) : null;
+    return (
+      <div key={p.id} className="planet-panel-item">
+        <div className="planet-panel-item__header">
+          <span className="planet-panel-item__name">{p.name}</span>
+          <span
+            className="planet-panel-item__class"
+            style={{ position: "relative", cursor: "help" }}
+            onMouseEnter={() => setHoveredPlanetId(p.id)}
+            onMouseLeave={() => setHoveredPlanetId(null)}
+          >
+            [{p.planetClass}] {CLASS_LABELS[p.planetClass] || ""}
+            {hoveredPlanetId === p.id &&
+              (() => {
+                const ti = getPlanetTypeInfo(p.planetClass);
+                return ti ? (
+                  <div className="planet-tooltip">
+                    <div className="planet-tooltip__name">{ti.name}</div>
+                    <div className="planet-tooltip__row">{ti.description}</div>
+                    <div className="planet-tooltip__row">
+                      Production: <span>{ti.production}</span>
+                    </div>
+                    {ti.uniqueResource && (
+                      <div className="planet-tooltip__row">
+                        Unique: <span>{ti.uniqueResource}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : null;
+              })()}
+          </span>
+          <span
+            style={{
+              color: tagColor,
+              marginLeft: "0.5rem",
+              fontSize: "0.85em",
+            }}
+          >
+            {tag}
+          </span>
+        </div>
+        <div className="planet-panel-item__details">
+          <span>Sector {p.sectorId}</span>
+          <span>Level {p.upgradeLevel}</span>
+          <span>{p.colonists.toLocaleString()} colonists</span>
+          {bestRace && (
+            <span style={{ color: "var(--cyan)" }}>
+              Best: {RACE_LABELS[bestRace.race] || bestRace.race} (
+              {Math.round(bestRace.multiplier * 100)}%)
+            </span>
+          )}
+        </div>
+        {p.owned && p.cyrilliumStock != null && (
+          <div className="planet-panel-item__stocks">
+            <span title="Cyrillium">Cyr: {p.cyrilliumStock}</span>
+            <span title="Food">Food: {p.foodStock}</span>
+            <span title="Tech">Tech: {p.techStock}</span>
+          </div>
+        )}
+        <div className="planet-actions">
+          {inSector && landedAtPlanetId === p.id && onLiftoff && (
+            <button
+              className="btn-sm"
+              onClick={() => onLiftoff()}
+              style={{
+                color: "var(--yellow)",
+                borderColor: "var(--yellow)",
+              }}
+            >
+              LIFTOFF
+            </button>
+          )}
+          {inSector && landedAtPlanetId !== p.id && onLand && (
+            <button
+              className="btn-sm"
+              onClick={() => onLand(p.id)}
+              style={{
+                color: "var(--green)",
+                borderColor: "var(--green)",
+              }}
+            >
+              LAND
+            </button>
+          )}
+          {canClaim && (
+            <button
+              className="btn-sm btn-buy"
+              disabled={busy === p.id + "-claim"}
+              onClick={() => handleClaim(p.id)}
+            >
+              {busy === p.id + "-claim" ? "..." : "CLAIM"}
+            </button>
+          )}
+          {inSector &&
+            p.colonists > 0 &&
+            (p.planetClass === "S" || p.owned) &&
+            (landedAtPlanetId === p.id || hasTransporter) && (
+              <span className="planet-colonize-group">
+                <input
+                  type="number"
+                  className="qty-input"
+                  min={1}
+                  value={collectColonistQty[p.id] || 10}
+                  onChange={(e) =>
+                    setCollectColonistQty((prev) => ({
+                      ...prev,
+                      [p.id]: Math.max(1, parseInt(e.target.value) || 1),
+                    }))
+                  }
+                  style={{ width: "48px" }}
+                />
+                {raceSelect(
+                  p.id,
+                  collectColonistRace[p.id] || defaultRace,
+                  setCollectColonistRace,
+                )}
+                <button
+                  className="btn-sm"
+                  disabled={busy === p.id + "-collectcol"}
+                  onClick={() => handleCollectColonists(p.id)}
+                  style={{
+                    color: "var(--orange)",
+                    borderColor: "var(--orange)",
+                  }}
+                >
+                  {busy === p.id + "-collectcol" ? "..." : "WITHDRAW COLONISTS"}
+                </button>
+              </span>
+            )}
+          {inSector &&
+            (p.planetClass === "S" || p.owned) &&
+            (landedAtPlanetId === p.id || hasTransporter) &&
+            colonistsByRace &&
+            colonistsByRace.some((r) => r.count > 0) && (
+              <span className="planet-colonize-group">
+                <input
+                  type="number"
+                  className="qty-input"
+                  min={1}
+                  value={depositColonistQty[p.id] || 10}
+                  onChange={(e) =>
+                    setDepositColonistQty((prev) => ({
+                      ...prev,
+                      [p.id]: Math.max(1, parseInt(e.target.value) || 1),
+                    }))
+                  }
+                  style={{ width: "48px" }}
+                />
+                {raceSelect(
+                  p.id,
+                  depositColonistRace[p.id] || defaultRace,
+                  setDepositColonistRace,
+                )}
+                <button
+                  className="btn-sm"
+                  disabled={busy === p.id + "-depositcol"}
+                  onClick={() => handleDepositColonists(p.id)}
+                  style={{
+                    color: "var(--cyan)",
+                    borderColor: "var(--cyan)",
+                  }}
+                >
+                  {busy === p.id + "-depositcol" ? "..." : "DEPOSIT COLONISTS"}
+                </button>
+              </span>
+            )}
+        </div>
+      </div>
+    );
+  };
+
   const discoveredContent = (
     <>
       <div style={{ marginBottom: 8 }}>
@@ -1085,401 +1207,20 @@ export default function PlanetsPanel({
       ) : (
         <>
           {error && !scanResults && <div className="mall-error">{error}</div>}
-          {discovered.map((p) => {
-            const tag = p.owned
-              ? " [YOURS]"
-              : p.ownerName
-                ? ` (${p.ownerName})`
-                : p.planetClass === "S"
-                  ? " [seed world]"
-                  : " *unclaimed*";
-            const tagColor = p.owned
-              ? "#0f0"
-              : p.ownerName
-                ? "#f80"
-                : p.planetClass === "S"
-                  ? "#56d4dd"
-                  : "#888";
-            const inSector =
-              currentSectorId != null && p.sectorId === currentSectorId;
-            const canClaim =
-              !p.owned && !p.ownerName && inSector && p.planetClass !== "S";
-            const bestRace =
-              p.planetClass !== "S" ? getBestRace(p.planetClass) : null;
-            return (
-              <div key={p.id} className="planet-panel-item">
-                <div className="planet-panel-item__header">
-                  <span className="planet-panel-item__name">{p.name}</span>
-                  <span
-                    className="planet-panel-item__class"
-                    style={{ position: "relative", cursor: "help" }}
-                    onMouseEnter={() => setHoveredPlanetId(p.id)}
-                    onMouseLeave={() => setHoveredPlanetId(null)}
-                  >
-                    [{p.planetClass}] {CLASS_LABELS[p.planetClass] || ""}
-                    {hoveredPlanetId === p.id &&
-                      (() => {
-                        const ti = getPlanetTypeInfo(p.planetClass);
-                        return ti ? (
-                          <div className="planet-tooltip">
-                            <div className="planet-tooltip__name">
-                              {ti.name}
-                            </div>
-                            <div className="planet-tooltip__row">
-                              {ti.description}
-                            </div>
-                            <div className="planet-tooltip__row">
-                              Production: <span>{ti.production}</span>
-                            </div>
-                            {ti.uniqueResource && (
-                              <div className="planet-tooltip__row">
-                                Unique: <span>{ti.uniqueResource}</span>
-                              </div>
-                            )}
-                          </div>
-                        ) : null;
-                      })()}
-                  </span>
-                  <span
-                    style={{
-                      color: tagColor,
-                      marginLeft: "0.5rem",
-                      fontSize: "0.85em",
-                    }}
-                  >
-                    {tag}
-                  </span>
-                </div>
-                <div className="planet-panel-item__details">
-                  <span>Sector {p.sectorId}</span>
-                  <span>Level {p.upgradeLevel}</span>
-                  <span>{p.colonists.toLocaleString()} colonists</span>
-                  {bestRace && (
-                    <span style={{ color: "var(--cyan)" }}>
-                      Best: {RACE_LABELS[bestRace.race] || bestRace.race} (
-                      {Math.round(bestRace.multiplier * 100)}%)
-                    </span>
-                  )}
-                </div>
-                {p.owned && p.cyrilliumStock != null && (
-                  <div className="planet-panel-item__stocks">
-                    <span title="Cyrillium">Cyr: {p.cyrilliumStock}</span>
-                    <span title="Food">Food: {p.foodStock}</span>
-                    <span title="Tech">Tech: {p.techStock}</span>
-                  </div>
-                )}
-                <div className="planet-actions">
-                  {inSector && landedAtPlanetId === p.id && onLiftoff && (
-                    <button
-                      className="btn-sm"
-                      onClick={() => onLiftoff()}
-                      style={{
-                        color: "var(--yellow)",
-                        borderColor: "var(--yellow)",
-                      }}
-                    >
-                      LIFTOFF
-                    </button>
-                  )}
-                  {inSector && landedAtPlanetId !== p.id && onLand && (
-                    <button
-                      className="btn-sm"
-                      onClick={() => onLand(p.id)}
-                      style={{
-                        color: "var(--green)",
-                        borderColor: "var(--green)",
-                      }}
-                    >
-                      LAND
-                    </button>
-                  )}
-                  {canClaim && (
-                    <button
-                      className="btn-sm btn-buy"
-                      disabled={busy === p.id + "-claim"}
-                      onClick={() => handleClaim(p.id)}
-                    >
-                      {busy === p.id + "-claim" ? "..." : "CLAIM"}
-                    </button>
-                  )}
-                  {inSector &&
-                    p.colonists > 0 &&
-                    (p.planetClass === "S" || p.owned) &&
-                    (landedAtPlanetId === p.id || hasTransporter) && (
-                      <span className="planet-colonize-group">
-                        <input
-                          type="number"
-                          className="qty-input"
-                          min={1}
-                          value={collectColonistQty[p.id] || 10}
-                          onChange={(e) =>
-                            setCollectColonistQty((prev) => ({
-                              ...prev,
-                              [p.id]: Math.max(
-                                1,
-                                parseInt(e.target.value) || 1,
-                              ),
-                            }))
-                          }
-                          style={{ width: "48px" }}
-                        />
-                        {raceSelect(
-                          p.id,
-                          collectColonistRace[p.id] || defaultRace,
-                          setCollectColonistRace,
-                        )}
-                        <button
-                          className="btn-sm"
-                          disabled={busy === p.id + "-collectcol"}
-                          onClick={() => handleCollectColonists(p.id)}
-                          style={{
-                            color: "var(--orange)",
-                            borderColor: "var(--orange)",
-                          }}
-                        >
-                          {busy === p.id + "-collectcol"
-                            ? "..."
-                            : "WITHDRAW COLONISTS"}
-                        </button>
-                      </span>
-                    )}
-                  {inSector &&
-                    p.planetClass === "S" &&
-                    (landedAtPlanetId === p.id || hasTransporter) &&
-                    colonistsByRace &&
-                    colonistsByRace.some((r) => r.count > 0) && (
-                      <span className="planet-colonize-group">
-                        <input
-                          type="number"
-                          className="qty-input"
-                          min={1}
-                          value={depositColonistQty[p.id] || 10}
-                          onChange={(e) =>
-                            setDepositColonistQty((prev) => ({
-                              ...prev,
-                              [p.id]: Math.max(
-                                1,
-                                parseInt(e.target.value) || 1,
-                              ),
-                            }))
-                          }
-                          style={{ width: "48px" }}
-                        />
-                        {raceSelect(
-                          p.id,
-                          depositColonistRace[p.id] || defaultRace,
-                          setDepositColonistRace,
-                        )}
-                        <button
-                          className="btn-sm"
-                          disabled={busy === p.id + "-depositcol"}
-                          onClick={() => handleDepositColonists(p.id)}
-                          style={{
-                            color: "var(--cyan)",
-                            borderColor: "var(--cyan)",
-                          }}
-                        >
-                          {busy === p.id + "-depositcol"
-                            ? "..."
-                            : "DEPOSIT COLONISTS"}
-                        </button>
-                      </span>
-                    )}
-                </div>
-              </div>
-            );
-          })}
+          {discovered.map((p) => renderDiscoveredPlanet(p))}
         </>
       )}
     </>
   );
 
+  // Sector tab reuses discovered planet rendering, filtered to current sector
   const sectorContent = (
     <>
+      {error && <div className="mall-error">{error}</div>}
       {sectorPlanets.length === 0 ? (
         <div className="text-muted">No planets in this sector.</div>
       ) : (
-        sectorPlanets.map((p) => {
-          const classLabel = CLASS_LABELS[p.planetClass] || p.planetClass;
-          const isLanded = landedAtPlanetId === p.id;
-          const isEnemy = p.ownerName && !p.owned;
-          const isUnclaimed = !p.owned && !p.ownerName && p.planetClass !== "S";
-          return (
-            <div key={p.id} className="planet-panel-item">
-              <div className="planet-panel-item__header">
-                <span className="planet-panel-item__name">{p.name}</span>
-                <span
-                  className="planet-panel-item__class"
-                  style={{ position: "relative", cursor: "help" }}
-                  onMouseEnter={() => setHoveredPlanetId(p.id)}
-                  onMouseLeave={() => setHoveredPlanetId(null)}
-                >
-                  [{p.planetClass}] {classLabel}
-                  {hoveredPlanetId === p.id &&
-                    (() => {
-                      const ti = getPlanetTypeInfo(p.planetClass);
-                      return ti ? (
-                        <div className="planet-tooltip">
-                          <div className="planet-tooltip__name">{ti.name}</div>
-                          <div className="planet-tooltip__row">
-                            {ti.description}
-                          </div>
-                          <div className="planet-tooltip__row">
-                            Production: <span>{ti.production}</span>
-                          </div>
-                          {ti.uniqueResource && (
-                            <div className="planet-tooltip__row">
-                              Unique: <span>{ti.uniqueResource}</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : null;
-                    })()}
-                </span>
-              </div>
-              <div className="planet-panel-item__details">
-                <span>
-                  {p.owned
-                    ? `Owner: ${p.ownerName || "You"}`
-                    : p.planetClass === "S"
-                      ? "Seed World"
-                      : isEnemy
-                        ? `Owner: ${p.ownerName}`
-                        : "Unclaimed"}
-                </span>
-                <span>Level {p.upgradeLevel}</span>
-                <span>{p.colonists.toLocaleString()} colonists</span>
-              </div>
-              <div className="planet-actions">
-                {!isLanded && onLand && (
-                  <button
-                    className="btn-sm btn-buy"
-                    onClick={() => onLand(p.id)}
-                  >
-                    LAND
-                  </button>
-                )}
-                {isLanded && onLiftoff && (
-                  <button
-                    className="btn-sm"
-                    onClick={onLiftoff}
-                    style={{
-                      borderColor: "var(--yellow)",
-                      color: "var(--yellow)",
-                    }}
-                  >
-                    LIFTOFF
-                  </button>
-                )}
-                {isUnclaimed && (
-                  <button
-                    className="btn-sm btn-buy"
-                    disabled={busy === p.id + "-claim"}
-                    onClick={() => handleClaim(p.id)}
-                  >
-                    {busy === p.id + "-claim" ? "..." : "CLAIM"}
-                  </button>
-                )}
-              </div>
-              {isEnemy && (
-                <div className="planet-combat-section">
-                  <div
-                    style={{
-                      fontSize: 10,
-                      color: "#f44",
-                      textTransform: "uppercase",
-                      letterSpacing: 1,
-                      marginBottom: 6,
-                    }}
-                  >
-                    Hostile Planet — {p.ownerName}
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 6,
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <button
-                      className="btn-sm"
-                      disabled={busy === p.id + "-defenses"}
-                      onClick={() => handleScanDefenses(p.id)}
-                      style={{
-                        color: "var(--cyan)",
-                        borderColor: "var(--cyan)",
-                      }}
-                    >
-                      {busy === p.id + "-defenses" ? "..." : "SCAN DEFENSES"}
-                    </button>
-                    <input
-                      type="number"
-                      className="qty-input"
-                      min={1}
-                      placeholder="Energy"
-                      value={bombardEnergy[p.id] || ""}
-                      onChange={(e) =>
-                        setBombardEnergy((prev) => ({
-                          ...prev,
-                          [p.id]: Math.max(1, parseInt(e.target.value) || 1),
-                        }))
-                      }
-                      style={{ width: "56px" }}
-                    />
-                    <button
-                      className="btn-sm"
-                      disabled={
-                        busy === p.id + "-bombard" || !bombardEnergy[p.id]
-                      }
-                      onClick={() => handleBombard(p.id)}
-                      style={{ color: "#f44", borderColor: "#f44" }}
-                    >
-                      {busy === p.id + "-bombard" ? "..." : "BOMBARD"}
-                    </button>
-                  </div>
-                  {defenseData[p.id] && (
-                    <div
-                      style={{
-                        fontSize: 11,
-                        marginTop: 6,
-                        padding: "6px 8px",
-                        background: "rgba(0,0,0,0.3)",
-                        borderRadius: 4,
-                        border: "1px solid var(--border)",
-                      }}
-                    >
-                      <div style={{ color: "var(--orange)" }}>
-                        Shield: {defenseData[p.id].shieldEnergy ?? 0}
-                      </div>
-                      <div style={{ color: "var(--orange)" }}>
-                        Cannon: {defenseData[p.id].cannonEnergy ?? 0}
-                      </div>
-                      <div style={{ color: "var(--orange)" }}>
-                        Drones: {defenseData[p.id].droneCount ?? 0}
-                      </div>
-                    </div>
-                  )}
-                  {combatResult && busy === null && (
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: "var(--green)",
-                        marginTop: 6,
-                        padding: "6px 8px",
-                        background: "rgba(0,255,136,0.05)",
-                        borderRadius: 4,
-                        border: "1px solid rgba(0,255,136,0.2)",
-                      }}
-                    >
-                      {combatResult}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })
+        sectorPlanets.map((p) => renderDiscoveredPlanet(p))
       )}
     </>
   );

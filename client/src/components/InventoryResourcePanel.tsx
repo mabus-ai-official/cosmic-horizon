@@ -35,9 +35,24 @@ interface Props {
   refreshKey?: number;
   onAddLine?: (text: string, type?: LineType) => void;
   onRefreshStatus?: () => void;
+  colonistsByRace?: { race: string; count: number }[];
 }
 
-type TabView = "items" | "resources";
+type TabView = "items" | "resources" | "colonists";
+
+const RACE_LABELS: Record<string, string> = {
+  muscarian: "Muscarian",
+  vedic: "Vedic",
+  kalin: "Kalin",
+  tarri: "Tar'ri",
+};
+
+const RACE_COLORS: Record<string, string> = {
+  muscarian: "#c084fc",
+  vedic: "#60a5fa",
+  kalin: "#34d399",
+  tarri: "#fb923c",
+};
 
 // Item descriptions for tooltips
 const ITEM_HINTS: Record<string, string> = {
@@ -128,6 +143,7 @@ export default function InventoryResourcePanel({
   refreshKey,
   onAddLine,
   onRefreshStatus,
+  colonistsByRace,
 }: Props) {
   const [tab, setTab] = useState<TabView>("items");
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -206,6 +222,8 @@ export default function InventoryResourcePanel({
   }
 
   const totalItems = items.reduce((sum, i) => sum + (i.quantity || 1), 0);
+  const colonists = colonistsByRace?.filter((r) => r.count > 0) || [];
+  const totalColonists = colonists.reduce((sum, r) => sum + r.count, 0);
 
   return (
     <div className="panel-content">
@@ -232,6 +250,18 @@ export default function InventoryResourcePanel({
           {tab === "resources"
             ? `[Resources (${resources.length})]`
             : `Resources (${resources.length})`}
+        </span>
+        <span style={{ color: "#444", margin: "0 0.5rem" }}>|</span>
+        <span
+          onClick={() => setTab("colonists")}
+          style={{
+            cursor: "pointer",
+            color: tab === "colonists" ? "#0f0" : "#666",
+          }}
+        >
+          {tab === "colonists"
+            ? `[Colonists (${totalColonists})]`
+            : `Colonists (${totalColonists})`}
         </span>
       </div>
 
@@ -393,6 +423,49 @@ export default function InventoryResourcePanel({
                   </div>
                 );
               })}
+            </div>
+          )}
+        </>
+      )}
+
+      {tab === "colonists" && (
+        <>
+          {totalColonists === 0 ? (
+            <div className="text-muted" style={{ marginTop: 8 }}>
+              No colonists aboard. Collect colonists from seed planets.
+            </div>
+          ) : (
+            <div className="inventory-list">
+              <div
+                style={{
+                  fontSize: "9px",
+                  color: "#c084fc",
+                  letterSpacing: "1px",
+                  padding: "6px 0 2px",
+                  borderBottom: "1px solid #c084fc33",
+                  marginBottom: 2,
+                }}
+              >
+                COLONISTS ABOARD
+              </div>
+              {colonists.map((r) => (
+                <div key={r.race} className="inventory-item">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span
+                      className="inventory-item__name"
+                      style={{ color: RACE_COLORS[r.race] || "#aaa" }}
+                    >
+                      {RACE_LABELS[r.race] || r.race}
+                    </span>
+                  </div>
+                  <span
+                    className="inventory-item__qty"
+                    style={{ color: RACE_COLORS[r.race] || "#aaa" }}
+                  >
+                    {r.count.toLocaleString()}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </>

@@ -317,6 +317,15 @@ export async function checkAndUpdateMissions(
           await db("player_missions")
             .where({ id: mission.missionId })
             .update(updateData);
+
+          // Push live progress update to client
+          if (io) {
+            notifyPlayer(io, playerId, "mission:progress", {
+              missionId: mission.missionId,
+              progress: result.progress,
+              objectivesDetail: updatedDetail,
+            });
+          }
         }
       }
     }

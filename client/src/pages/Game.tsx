@@ -93,8 +93,16 @@ export default function Game({ onLogout }: GameProps) {
   const audio = useAudio();
   const aria = useAria();
   const mood = useMusicMood();
-  const { activePanel, selectPanel, badges, incrementBadge } =
-    useActivePanel("nav");
+  const {
+    activePanel,
+    activeGroup,
+    selectPanel,
+    selectGroup,
+    selectTab,
+    badges,
+    incrementBadge,
+    groupBadge,
+  } = useActivePanel("nav");
   const { toasts, showToast, dismissToast } = useToast();
   const eventOverlay = useEventOverlay(showToast as any);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -260,7 +268,6 @@ export default function Game({ onLogout }: GameProps) {
     const level = game.player?.level ?? 0;
     const rank = game.player?.rank ?? "";
     if (prevLevelRef.current > 0 && level > prevLevelRef.current) {
-      audio.sfx("level_up");
       eventOverlay.enqueueEvent({
         category: "level_up",
         title: "LEVEL UP!",
@@ -643,7 +650,6 @@ export default function Game({ onLogout }: GameProps) {
             "combat",
             5000,
           );
-          audio.sfx("hit");
           game.refreshStatus();
           if (activePanelRef.current !== "combat") incrementBadge("combat");
           setCombatFlash(true);
@@ -669,7 +675,6 @@ export default function Game({ onLogout }: GameProps) {
         },
       ),
       on("combat:destroyed", (data: { destroyerName: string }) => {
-        audio.sfx("explosion");
         game.addLine(
           `Your ship was destroyed by ${data.destroyerName}!`,
           "error",
@@ -805,7 +810,6 @@ export default function Game({ onLogout }: GameProps) {
           requiresClaim: boolean;
           isStory?: boolean;
         }) => {
-          audio.sfx("success");
           if (data.isStory) {
             eventOverlay.enqueueEvent({
               category: "story_mission",
@@ -834,6 +838,9 @@ export default function Game({ onLogout }: GameProps) {
           if (activePanelRef.current !== "missions") incrementBadge("missions");
         },
       ),
+      on("mission:progress", () => {
+        setRefreshKey((k) => k + 1);
+      }),
       on(
         "story:act_complete",
         (data: { act: number; actTitle: string; actSummary: string }) => {
@@ -1092,25 +1099,21 @@ export default function Game({ onLogout }: GameProps) {
 
   const handleMove = useCallback(
     (sectorId: number) => {
-      audio.sfx("warp");
       game.doMove(sectorId);
     },
     [game.doMove],
   );
 
   const handleUndock = useCallback(() => {
-    audio.sfx("undock");
     game.doUndock();
   }, [game.doUndock]);
 
   const handleLiftoff = useCallback(() => {
-    audio.sfx("thruster");
     game.doLiftoff();
   }, [game.doLiftoff]);
 
   const handleFire = useCallback(
     (targetId: string, energy: number) => {
-      audio.sfx("laser_fire");
       game.doFire(targetId, energy);
     },
     [game.doFire],
@@ -1118,7 +1121,6 @@ export default function Game({ onLogout }: GameProps) {
 
   const handleBuy = useCallback(
     (outpostId: string, commodity: string, qty: number) => {
-      audio.sfx("trade");
       return game.doBuy(outpostId, commodity, qty);
     },
     [game.doBuy],
@@ -1126,22 +1128,26 @@ export default function Game({ onLogout }: GameProps) {
 
   const handleSell = useCallback(
     (outpostId: string, commodity: string, qty: number) => {
-      audio.sfx("trade");
       return game.doSell(outpostId, commodity, qty);
     },
     [game.doSell],
   );
 
-  const handleSelectPanel = useCallback(
+  const handleSelectGroup = useCallback(
     (id: any) => {
-      audio.sfx("click");
-      selectPanel(id);
+      selectGroup(id);
     },
-    [selectPanel],
+    [selectGroup],
+  );
+
+  const handleSelectTab = useCallback(
+    (id: any) => {
+      selectTab(id);
+    },
+    [selectTab],
   );
 
   const handleDock = useCallback(async () => {
-    audio.sfx("dock");
     await game.doDock();
     selectPanel("trade");
     aria.triggerDock();
@@ -1223,7 +1229,6 @@ export default function Game({ onLogout }: GameProps) {
               energy={game.player?.energy ?? 0}
               maxEnergy={game.player?.maxEnergy ?? 100}
               onAction={() => {
-                audio.sfx("confirm");
                 game.refreshStatus();
                 setRefreshKey((k) => k + 1);
                 aria.triggerTrade();
@@ -1324,7 +1329,6 @@ export default function Game({ onLogout }: GameProps) {
               setRefreshKey((k) => k + 1);
             }}
             onStoryEvent={(data) => {
-              audio.sfx("quest");
               if (data.type === "journey_begin") {
                 eventOverlay.enqueueEvent({
                   category: "story_accept",
@@ -1408,7 +1412,6 @@ export default function Game({ onLogout }: GameProps) {
             onLiftoff={handleLiftoff}
             onWarpTo={game.doWarpTo}
             landedAtPlanetId={game.player?.landedAtPlanetId ?? null}
-            onSfx={audio.sfx}
             bare
           />
         );
@@ -1428,6 +1431,7 @@ export default function Game({ onLogout }: GameProps) {
             refreshKey={refreshKey}
             onAddLine={game.addLine}
             onRefreshStatus={game.refreshStatus}
+            colonistsByRace={game.player?.currentShip?.colonistsByRace}
           />
         );
       case "comms":
@@ -1657,8 +1661,6 @@ export default function Game({ onLogout }: GameProps) {
               gameMode={game.player?.gameMode ?? undefined}
               volume={audio.volume}
               onVolumeChange={audio.setVolume}
-              sfxVolume={audio.sfxVolume}
-              onSfxVolumeChange={audio.setSfxVolume}
               map3D={map3D}
               onToggleMap3D={() => setMap3D((v) => !v)}
               onLogout={onLogout ?? (() => {})}
@@ -1701,8 +1703,11 @@ export default function Game({ onLogout }: GameProps) {
       <div className="game-main">
         <ActivityBar
           activePanel={activePanel}
-          onSelect={handleSelectPanel}
+          activeGroup={activeGroup}
+          onSelectGroup={handleSelectGroup}
+          onSelectTab={handleSelectTab}
           badges={badges}
+          groupBadge={groupBadge}
         />
         <div className="game-center">
           <div

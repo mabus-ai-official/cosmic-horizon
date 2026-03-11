@@ -6,6 +6,7 @@ import {
   getSectorWarpGates,
   useWarpGate,
   getResourceEvents,
+  getNearestStarMall,
 } from "../services/api";
 import type { SectorState } from "../hooks/useGameState";
 import { getPlanetTypeInfo } from "../config/planet-tooltips";
@@ -27,7 +28,7 @@ interface ResourceEvent {
 interface MapPanelProps {
   sector: SectorState | null;
   onMoveToSector: (sectorId: number) => void;
-  onWarpTo?: (sectorId: number) => void;
+  onWarpTo?: (sectorId: number, confirmed?: boolean) => void;
   onCommand?: (cmd: string) => void;
   onNPCClick?: (npcId: string) => void;
   onAlertClick?: (panel: string) => void;
@@ -70,6 +71,12 @@ export default function MapPanel({
   const [planetsExpanded, setPlanetsExpanded] = useState(false);
   const exploredSet = exploredSectorIds ? new Set(exploredSectorIds) : null;
   const [resourceEvents, setResourceEvents] = useState<ResourceEvent[]>([]);
+  const [confirmWarp, setConfirmWarp] = useState(false);
+  const [nearestMall, setNearestMall] = useState<{
+    sectorId: number;
+    distance: number;
+    nextHop: number;
+  } | null>(null);
 
   useEffect(() => {
     if (sector) {
@@ -79,6 +86,13 @@ export default function MapPanel({
       getResourceEvents()
         .then(({ data }) => setResourceEvents(data.resourceEvents || []))
         .catch(() => setResourceEvents([]));
+      if (!sector.hasStarMall) {
+        getNearestStarMall()
+          .then(({ data }) => setNearestMall(data))
+          .catch(() => setNearestMall(null));
+      } else {
+        setNearestMall(null);
+      }
     }
   }, [sector?.sectorId]);
 
@@ -93,14 +107,28 @@ export default function MapPanel({
 
   const handleWarpTo = () => {
     const num = parseInt(warpTarget, 10);
-    if (!isNaN(num) && num > 0) {
-      if (onWarpTo) {
-        onWarpTo(num);
-      } else {
-        onMoveToSector(num);
-      }
-      setWarpTarget("");
+    if (isNaN(num) || num <= 0) return;
+
+    const isUnexplored = exploredSet && !exploredSet.has(num);
+
+    // If target is unexplored and not yet confirmed, require confirmation
+    if (isUnexplored && !confirmWarp) {
+      setConfirmWarp(true);
+      return;
     }
+
+    const wasConfirmed = confirmWarp;
+    setConfirmWarp(false);
+    if (onWarpTo) {
+      onWarpTo(num, wasConfirmed);
+    } else {
+      onMoveToSector(num);
+    }
+    setWarpTarget("");
+  };
+
+  const handleCancelWarp = () => {
+    setConfirmWarp(false);
   };
 
   const tabBar = (
@@ -215,39 +243,76 @@ export default function MapPanel({
 
       {/* Warp input */}
       {!isLanded && (
-        <div className="nav-warp-row">
-          <input
-            className="nav-warp-input"
-            type="text"
-            value={warpTarget}
-            onChange={(e) => setWarpTarget(e.target.value)}
-            placeholder="Sector #"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleWarpTo();
-            }}
-          />
-          <button className="btn-action" onClick={handleWarpTo}>
-            WARP
-          </button>
-          {warpTarget &&
-            (() => {
-              const num = parseInt(warpTarget, 10);
-              if (isNaN(num) || num <= 0 || !exploredSet) return null;
-              const isExplored = exploredSet.has(num);
-              return (
-                <span
-                  className={`warp-risk-icon warp-risk-icon--${isExplored ? "explored" : "unknown"}`}
-                  title={
-                    isExplored
-                      ? "Explored sector"
-                      : "Unexplored — proceed with caution"
-                  }
+        <>
+          <div className="nav-warp-row">
+            <input
+              className="nav-warp-input"
+              type="text"
+              value={warpTarget}
+              onChange={(e) => {
+                setWarpTarget(e.target.value);
+                setConfirmWarp(false);
+              }}
+              placeholder="Sector #"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleWarpTo();
+                if (e.key === "Escape") handleCancelWarp();
+              }}
+            />
+            {confirmWarp ? (
+              <>
+                <button
+                  className="btn-action btn-action--combat"
+                  onClick={handleWarpTo}
                 >
-                  {isExplored ? "✓" : "⚠"}
-                </span>
-              );
-            })()}
-        </div>
+                  CONFIRM
+                </button>
+                <button
+                  className="btn-action"
+                  onClick={handleCancelWarp}
+                  style={{ borderColor: "#666", color: "#666" }}
+                >
+                  CANCEL
+                </button>
+              </>
+            ) : (
+              <button className="btn-action" onClick={handleWarpTo}>
+                WARP
+              </button>
+            )}
+            {warpTarget &&
+              !confirmWarp &&
+              (() => {
+                const num = parseInt(warpTarget, 10);
+                if (isNaN(num) || num <= 0 || !exploredSet) return null;
+                const isExplored = exploredSet.has(num);
+                return (
+                  <span
+                    className={`warp-risk-icon warp-risk-icon--${isExplored ? "explored" : "unknown"}`}
+                    title={
+                      isExplored
+                        ? "Explored sector"
+                        : "Unexplored — proceed with caution"
+                    }
+                  >
+                    {isExplored ? "✓" : "⚠"}
+                  </span>
+                );
+              })()}
+          </div>
+          {confirmWarp && (
+            <div
+              style={{
+                color: "var(--yellow)",
+                fontSize: "0.75rem",
+                padding: "4px 0",
+              }}
+            >
+              Sector {warpTarget} is unexplored. Unknown risks ahead — confirm
+              warp?
+            </div>
+          )}
+        </>
       )}
 
       <div className="panel-row">
@@ -260,6 +325,27 @@ export default function MapPanel({
       </div>
       {sector.hasStarMall && (
         <div className="panel-row text-success">★ Star Mall Present</div>
+      )}
+      {!sector.hasStarMall && nearestMall && (
+        <div
+          className="panel-row"
+          style={{
+            color: "var(--yellow)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+          onClick={() => {
+            setWarpTarget(String(nearestMall.sectorId));
+            setConfirmWarp(false);
+          }}
+          title={`Warp to nearest Star Mall (Sector ${nearestMall.sectorId})`}
+        >
+          <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>★</span>
+          Nearest Star Mall: Sector {nearestMall.sectorId} (
+          {nearestMall.distance} hops)
+        </div>
       )}
 
       {/* Sector Alerts */}

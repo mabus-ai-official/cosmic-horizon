@@ -517,7 +517,7 @@ export function useGameState() {
   );
 
   const doWarpTo = useCallback(
-    async (sectorId: number) => {
+    async (sectorId: number, confirmed?: boolean) => {
       if (playerRef.current?.dockedAtOutpostId) {
         addLine("You must undock before traveling", "error");
         return;
@@ -526,6 +526,21 @@ export function useGameState() {
         addLine("You must liftoff before traveling", "error");
         return;
       }
+
+      // Check if target is unexplored — warn via terminal
+      if (!confirmed) {
+        const exploredIds = mapData?.sectors?.map((s) => s.id) || [];
+        const exploredSet = new Set(exploredIds);
+        if (exploredIds.length > 0 && !exploredSet.has(sectorId)) {
+          addLine(
+            `WARNING: Sector ${sectorId} is unexplored. Unknown risks ahead.`,
+            "warning",
+          );
+          addLine(`Use 'warp-to ${sectorId} confirm' to proceed.`, "warning");
+          return;
+        }
+      }
+
       try {
         const { data } = await api.warpTo(sectorId);
         setPlayer((prev) =>
@@ -614,6 +629,7 @@ export function useGameState() {
       refreshSector,
       refreshStatus,
       refreshMap,
+      mapData,
       player?.currentShip?.shipTypeId,
     ],
   );

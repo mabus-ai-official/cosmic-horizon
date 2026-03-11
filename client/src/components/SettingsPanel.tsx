@@ -21,8 +21,6 @@ interface SettingsPanelProps {
   gameMode?: string;
   volume: number;
   onVolumeChange: (v: number) => void;
-  sfxVolume: number;
-  onSfxVolumeChange: (v: number) => void;
   map3D: boolean;
   onToggleMap3D: () => void;
   onLogout: () => void;
@@ -35,8 +33,6 @@ export default function SettingsPanel({
   gameMode,
   volume,
   onVolumeChange,
-  sfxVolume,
-  onSfxVolumeChange,
   map3D,
   onToggleMap3D,
   onLogout,
@@ -162,19 +158,6 @@ export default function SettingsPanel({
             className="settings-slider"
           />
           <span className="settings-value">{Math.round(volume * 100)}%</span>
-        </div>
-        <div className="settings-row">
-          <label>SFX</label>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.05"
-            value={sfxVolume}
-            onChange={(e) => onSfxVolumeChange(parseFloat(e.target.value))}
-            className="settings-slider"
-          />
-          <span className="settings-value">{Math.round(sfxVolume * 100)}%</span>
         </div>
       </div>
 

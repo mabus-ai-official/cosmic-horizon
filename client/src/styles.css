@@ -1194,196 +1194,166 @@ body {
 }
 
 /* === Activity Bar === */
+/* === Activity Bar (Navigation Sidebar) === */
 .activity-bar {
-  width: 66px;
+  width: 140px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 0;
+  padding: 8px 6px;
   background:
-    /* Nebula glow */
     radial-gradient(
       ellipse at 50% 20%,
-      rgba(232, 71, 160, 0.06) 0%,
+      rgba(232, 71, 160, 0.05) 0%,
       transparent 60%
     ),
     radial-gradient(
       ellipse at 50% 80%,
-      rgba(86, 212, 221, 0.04) 0%,
+      rgba(86, 212, 221, 0.03) 0%,
       transparent 60%
     ),
-    /* Star field */
-    radial-gradient(1px 1px at 10px 15px, rgba(255, 255, 255, 0.4), transparent),
-    radial-gradient(
-      1px 1px at 30px 45px,
-      rgba(255, 255, 255, 0.3),
-      transparent
-    ),
-    radial-gradient(
-      1px 1px at 20px 80px,
-      rgba(255, 255, 255, 0.5),
-      transparent
-    ),
-    radial-gradient(
-      1px 1px at 35px 120px,
-      rgba(255, 255, 255, 0.2),
-      transparent
-    ),
-    radial-gradient(
-      1px 1px at 8px 160px,
-      rgba(255, 255, 255, 0.35),
-      transparent
-    ),
-    radial-gradient(
-      1px 1px at 28px 200px,
-      rgba(255, 255, 255, 0.4),
-      transparent
-    ),
-    radial-gradient(
-      1px 1px at 15px 250px,
-      rgba(255, 255, 255, 0.25),
-      transparent
-    ),
-    radial-gradient(
-      1px 1px at 38px 300px,
-      rgba(255, 255, 255, 0.45),
-      transparent
-    ),
-    radial-gradient(
-      1px 1px at 5px 350px,
-      rgba(255, 255, 255, 0.3),
-      transparent
-    ),
-    radial-gradient(
-      1px 1px at 22px 400px,
-      rgba(255, 255, 255, 0.35),
-      transparent
-    ),
-    radial-gradient(
-      1px 1px at 40px 450px,
-      rgba(255, 255, 255, 0.2),
-      transparent
-    ),
-    radial-gradient(
-      1px 1px at 12px 500px,
-      rgba(255, 255, 255, 0.4),
-      transparent
-    ),
-    /* Dark gradient base */
     linear-gradient(to bottom, #1a1f28, var(--bg-tertiary), #0d1015);
   border-right: 1px solid var(--border);
   flex-shrink: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: width 0.2s ease;
+}
+.activity-bar--expanded {
+  width: 200px;
 }
 
-.activity-bar__btn {
-  width: 54px;
-  height: 54px;
+/* Toggle button */
+.activity-bar__toggle {
+  width: 100%;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
   background: transparent;
-  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  opacity: 0.5;
+  margin-bottom: 6px;
+  transition:
+    opacity 0.15s,
+    color 0.15s;
+  font-family: "IBM Plex Mono", monospace;
+}
+.activity-bar__toggle:hover {
+  opacity: 1;
+  color: var(--cyan);
+}
+
+/* Groups container */
+.activity-bar__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+/* Individual group item — card style like context panel */
+.activity-bar__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
   cursor: pointer;
   position: relative;
   opacity: 0.55;
   transition:
     opacity 0.15s,
-    background 0.15s,
-    box-shadow 0.15s;
+    background 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
+  font-family: "IBM Plex Mono", monospace;
+  text-align: left;
+  width: 100%;
 }
-
-.activity-bar__btn:hover {
+.activity-bar__item:hover {
   opacity: 0.9;
-  background: rgba(86, 212, 221, 0.08);
-  box-shadow: 0 0 8px rgba(86, 212, 221, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
 }
-.activity-bar__btn:not(.activity-bar__btn--active) {
-  animation: activity-btn-pulse 3s ease-in-out infinite;
-}
-.activity-bar__btn--active {
+.activity-bar__item--active {
   opacity: 1;
   background: linear-gradient(
     135deg,
-    rgba(232, 71, 160, 0.12),
-    rgba(86, 212, 221, 0.06)
+    color-mix(in srgb, var(--accent) 10%, transparent),
+    transparent
   );
-  border-left: 2px solid var(--magenta);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+  border-left: 3px solid var(--accent);
   box-shadow:
-    0 0 12px rgba(232, 71, 160, 0.35),
-    inset 0 0 8px rgba(232, 71, 160, 0.12);
-  animation: activity-btn-select 0.25s ease-out;
+    0 0 12px color-mix(in srgb, var(--accent) 25%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--accent) 8%, transparent);
+  animation: activity-item-select 0.25s ease-out;
 }
 
-/* Icon colorization */
-.activity-bar__btn:not(.activity-bar__btn--active) .pixel-sprite {
+.activity-bar__item-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activity-bar__item:not(.activity-bar__item--active) .pixel-sprite {
   filter: grayscale(0.6) brightness(0.8);
   transition: filter 0.2s;
 }
-.activity-bar__btn:hover .pixel-sprite {
+.activity-bar__item:hover .pixel-sprite {
   filter: grayscale(0) brightness(1.1);
 }
-.activity-bar__btn--active .pixel-sprite {
+.activity-bar__item--active .pixel-sprite {
   filter: brightness(1.15);
 }
 
-/* Custom tooltip — fixed positioning to bypass overflow clipping */
-.activity-bar__tooltip {
-  position: fixed;
-  transform: translateY(-50%);
-  background: rgba(8, 12, 20, 0.92);
-  border: 1px solid rgba(232, 71, 160, 0.3);
+.activity-bar__item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.activity-bar__item-label {
+  font-size: 0.77rem;
+  font-weight: 600;
   color: var(--text-primary);
-  padding: 3px 8px;
-  font-size: 0.692rem;
-  border-radius: 3px;
+  letter-spacing: 0.8px;
   white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s;
-  z-index: 1000;
-  letter-spacing: 0.5px;
-  font-family: "IBM Plex Mono", monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.activity-bar__tooltip--visible {
-  opacity: 1;
+.activity-bar__item--active .activity-bar__item-label {
+  color: var(--accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
-/* Separator */
-.activity-bar__sep {
-  width: 24px;
-  height: 1px;
-  background: var(--border);
-  margin: 2px 0;
-  opacity: 0.5;
-}
-.activity-bar__sep--primary {
-  margin: 6px 0;
-  background: var(--magenta);
-  opacity: 0.3;
+.activity-bar__item-desc {
+  font-size: 0.62rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.7;
+  margin-top: 1px;
 }
 
-/* Selection micro-animation */
-@keyframes activity-btn-select {
-  0% {
-    transform: scale(1);
-  }
-  40% {
-    transform: scale(1.15);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
+/* Badge */
 .activity-bar__badge {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: 4px;
+  right: 6px;
   background: var(--cyan, #56d4dd);
   color: var(--bg-primary);
-  font-size: 0.692rem;
+  font-size: 0.62rem;
   min-width: 14px;
   height: 14px;
   border-radius: 7px;
@@ -1392,6 +1362,85 @@ body {
   justify-content: center;
   font-weight: 700;
   animation: badge-pulse 2s ease-in-out infinite;
+}
+
+/* Separator */
+.activity-bar__sep {
+  width: 60%;
+  height: 1px;
+  background: var(--border);
+  margin: 4px auto;
+  opacity: 0.4;
+}
+
+/* Tab bar at bottom of activity bar */
+.activity-bar__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 6px 2px 2px;
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.activity-bar__tab {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 2px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.62rem;
+  font-family: "IBM Plex Mono", monospace;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+  position: relative;
+  letter-spacing: 0.3px;
+}
+.activity-bar__tab:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+}
+.activity-bar__tab--active {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  font-weight: 600;
+}
+
+.activity-bar__tab-badge {
+  display: inline-block;
+  background: var(--cyan);
+  color: var(--bg-primary);
+  font-size: 0.55rem;
+  min-width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  line-height: 10px;
+  text-align: center;
+  font-weight: 700;
+  margin-left: 3px;
+  vertical-align: middle;
+}
+
+/* Selection animation */
+@keyframes activity-item-select {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* === Context Panel (Info Sidebar) === */
@@ -3862,10 +3911,7 @@ body {
   }
 }
 
-.activity-bar__btn--shimmer:not(.activity-bar__btn--active) {
-  animation: activity-shimmer var(--shimmer-dur, 10s) ease-in-out infinite;
-  animation-delay: var(--shimmer-delay, 0s);
-}
+/* shimmer animation available for activity-bar items if needed */
 
 /* 4. Border accent pulse — corner accents randomly brighten */
 @keyframes corner-pulse {
@@ -6160,17 +6206,29 @@ body {
     border-bottom: 1px solid var(--border);
     overflow-x: auto;
   }
-  .activity-bar__btn {
-    width: 32px;
-    height: 32px;
+  .activity-bar__toggle {
+    display: none;
   }
-  .activity-bar__tooltip {
+  .activity-bar__groups {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0 4px;
+    gap: 2px;
+  }
+  .activity-bar__item {
+    min-width: unset;
+    padding: 4px 8px;
+  }
+  .activity-bar__item-text {
     display: none;
   }
   .activity-bar__sep {
     width: 1px;
     height: 24px;
     margin: 0 2px;
+  }
+  .activity-bar__tabs {
+    display: none;
   }
   .context-panel {
     width: 100%;
@@ -6425,11 +6483,10 @@ body {
     width: 340px;
   }
   .activity-bar {
-    width: 78px;
+    width: 160px;
   }
-  .activity-bar__btn {
-    width: 63px;
-    height: 63px;
+  .activity-bar__item {
+    padding: 8px 12px;
   }
 }
 
@@ -6438,11 +6495,10 @@ body {
     width: 400px;
   }
   .activity-bar {
-    width: 90px;
+    width: 180px;
   }
-  .activity-bar__btn {
-    width: 72px;
-    height: 72px;
+  .activity-bar__item {
+    padding: 10px 14px;
   }
 }
 

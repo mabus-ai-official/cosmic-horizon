@@ -61,7 +61,7 @@
 }
 
 .profile-section__race {
-  font-size: 0.769rem;
+  font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
@@ -90,7 +90,7 @@
   text-shadow: 0 0 6px rgba(86, 212, 221, 0.4);
 }
 .xp-section__rank {
-  font-size: 0.769rem;
+  font-size: 0.875rem;
   color: var(--purple);
 }
 .xp-section__detail {
@@ -122,7 +122,7 @@
 .ctx-bar-label {
   display: flex;
   justify-content: space-between;
-  font-size: 0.769rem;
+  font-size: 0.875rem;
   color: var(--text-secondary);
   margin-bottom: 2px;
 }
@@ -193,7 +193,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  font-size: 0.769rem;
+  font-size: 0.875rem;
   margin-top: 4px;
 }
 
@@ -288,7 +288,7 @@
 }
 
 .mini-chat__msg {
-  font-size: 0.769rem;
+  font-size: 0.875rem;
   padding: 2px 0;
   word-break: break-word;
   color: var(--text-primary);
@@ -317,7 +317,7 @@
   border: 1px solid var(--border);
   color: var(--text-primary);
   padding: 5px 8px;
-  font-size: 0.769rem;
+  font-size: 0.875rem;
   font-family: inherit;
   border-radius: 4px;
   outline: none;
@@ -427,7 +427,7 @@
 }
 
 .context-panel__subheader {
-  font-size: 0.769rem;
+  font-size: 0.875rem;
   text-transform: uppercase;
   color: var(--text-secondary);
   padding: 4px 0;

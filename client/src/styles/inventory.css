@@ -1,0 +1,296 @@
+/* === Inventory Panel === */
+.inventory-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 0;
+}
+
+.inventory-item__name {
+  font-size: 0.923rem;
+  color: var(--foreground);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-sm.btn-use {
+  background: var(--cyan);
+  color: var(--bg-primary);
+  border: none;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 0.769rem;
+  cursor: pointer;
+}
+
+.btn-sm.btn-use:hover {
+  opacity: 0.8;
+}
+
+.btn-sm.btn-use:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* === Inventory Resource Panel === */
+.inventory-list {
+  margin-top: 6px;
+}
+.inventory-item__count {
+  color: var(--cyan);
+  font-size: 0.846rem;
+}
+.inventory-item__qty {
+  color: var(--cyan);
+  font-size: 0.923rem;
+  font-weight: bold;
+}
+
+/* === Explore Panel === */
+.resource-event-item {
+  padding: 8px;
+  margin-bottom: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.resource-event-item__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.resource-event-item__type {
+  font-size: 0.923rem;
+  font-weight: 500;
+}
+.resource-event-item__type--asteroid {
+  color: var(--cyan);
+}
+.resource-event-item__type--derelict {
+  color: var(--yellow);
+}
+.resource-event-item__type--anomaly {
+  color: var(--purple);
+}
+.resource-event-item__type--alien_cache {
+  color: var(--red);
+}
+.resource-event-item__time {
+  font-size: 0.769rem;
+}
+.resource-event-item__nodes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.resource-event-item__details {
+  font-size: 0.846rem;
+  color: var(--text-secondary);
+  margin: 4px 0;
+}
+.guardian-hp-bar {
+  height: 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 4px 0;
+}
+.guardian-hp-bar__fill {
+  height: 100%;
+  background: var(--red);
+  transition: width 0.3s;
+}
+
+/* === Tablet Panel === */
+.tablet-equip-slots {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.tablet-slot {
+  flex: 1;
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  text-align: center;
+  font-size: 0.846rem;
+}
+.tablet-slot--equipped {
+  border-color: var(--cyan);
+}
+.tablet-slot__label {
+  font-size: 0.769rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.tablet-slot__name {
+  color: var(--text-primary);
+  margin: 4px 0;
+}
+.tablet-slot__rarity {
+  color: var(--yellow);
+  font-size: 0.769rem;
+}
+.tablet-checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tablet-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.923rem;
+  cursor: pointer;
+}
+.tablet-checkbox-item input {
+  accent-color: var(--cyan);
+}
+
+/* === Crafting Panel === */
+.crafting-resource-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.crafting-resource {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 4px;
+  font-size: 0.846rem;
+}
+.crafting-resource--t1 {
+  color: var(--text-secondary);
+}
+.crafting-resource--t2 {
+  color: var(--green);
+}
+.crafting-resource--t3 {
+  color: var(--blue);
+}
+.crafting-resource--t4 {
+  color: var(--purple);
+}
+.crafting-resource--t5 {
+  color: var(--orange);
+}
+.recipe-toggle-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.recipe-tier-header {
+  font-size: 0.769rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 0 2px;
+  margin-top: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.recipe-item {
+  padding: 8px;
+  margin-bottom: 6px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.recipe-item--craftable {
+  border-color: var(--green-dim);
+}
+.recipe-item--locked {
+  opacity: 0.6;
+}
+.recipe-item--undiscovered {
+  opacity: 0.5;
+  border-color: var(--border) !important;
+}
+.recipe-item--undiscovered .recipe-item__name {
+  color: var(--text-muted);
+  font-style: italic;
+}
+.recipe-item__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.recipe-item__name {
+  font-size: 0.923rem;
+  color: var(--text-primary);
+}
+.recipe-item__time {
+  font-size: 0.769rem;
+  color: var(--text-secondary);
+}
+.recipe-item__desc {
+  font-size: 0.769rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  font-style: italic;
+}
+.recipe-item__ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.recipe-ingredient {
+  font-size: 0.769rem;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+}
+.recipe-ingredient--have {
+  color: var(--green);
+  border-color: var(--green-dim);
+}
+.recipe-ingredient--need {
+  color: var(--red);
+  border-color: var(--red-dim, #4a1c1c);
+}
+.recipe-ingredient--credits {
+  color: var(--yellow);
+  border-color: var(--yellow-dim, #4a3a1c);
+}
+.recipe-ingredient__qty {
+  margin-left: 3px;
+  opacity: 0.8;
+}
+.recipe-item__actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+}
+.planet-selector {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 2px 6px;
+  font-size: 0.846rem;
+  font-family: inherit;
+  border-radius: 3px;
+}
+.refinery-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--bg-tertiary);
+  font-size: 0.846rem;
+}
+.refinery-item--ready {
+  color: var(--green);
+}
+.refinery-item--pending {
+  color: var(--yellow);
+}
+

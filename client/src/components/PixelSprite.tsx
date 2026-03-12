@@ -1,4 +1,5 @@
-import { SPRITES } from '../config/pixel-sprites';
+import { memo } from "react";
+import { SPRITES } from "../config/pixel-sprites";
 
 interface Props {
   spriteKey: string;
@@ -7,7 +8,7 @@ interface Props {
   title?: string;
 }
 
-export default function PixelSprite({ spriteKey, size = 16, className, title }: Props) {
+function PixelSprite({ spriteKey, size = 16, className, title }: Props) {
   const def = SPRITES[spriteKey];
   if (!def) return null;
 
@@ -19,21 +20,28 @@ export default function PixelSprite({ spriteKey, size = 16, className, title }: 
       const fill = def.palette[idx];
       if (!fill) continue;
       rects.push(
-        <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill={fill} />
+        <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill={fill} />,
       );
     }
   }
 
   return (
     <svg
-      className={`pixel-sprite${className ? ` ${className}` : ''}`}
+      className={`pixel-sprite${className ? ` ${className}` : ""}`}
       viewBox={`0 0 ${def.cols} ${def.rows}`}
       width={size}
       height={size}
-      style={{ imageRendering: 'pixelated', display: 'inline-block', verticalAlign: 'middle', flexShrink: 0 }}
+      style={{
+        imageRendering: "pixelated",
+        display: "inline-block",
+        verticalAlign: "middle",
+        flexShrink: 0,
+      }}
       aria-label={title}
     >
       {rects}
     </svg>
   );
 }
+
+export default memo(PixelSprite);

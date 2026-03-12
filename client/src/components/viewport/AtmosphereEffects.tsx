@@ -1,4 +1,4 @@
-import { useRef, useMemo } from "react";
+import { memo, useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -179,10 +179,7 @@ function WarpStreaks({ count = 60 }) {
   );
 }
 
-export default function AtmosphereEffects({
-  context,
-  sectorType,
-}: AtmosphereEffectsProps) {
+function AtmosphereEffects({ context, sectorType }: AtmosphereEffectsProps) {
   return (
     <>
       <NebulaClouds sectorType={sectorType} />
@@ -191,3 +188,5 @@ export default function AtmosphereEffects({
     </>
   );
 }
+
+export default memo(AtmosphereEffects);

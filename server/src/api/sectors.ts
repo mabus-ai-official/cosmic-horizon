@@ -8,38 +8,48 @@ import { adjustFactionFame, applyRivalrySpillover } from "../engine/npcs";
 
 const router = Router();
 
-// Get sector claim info
+// Get sector claim info — single query with left joins for owner/syndicate/faction
 router.get("/:id/info", requireAuth, async (req, res) => {
   try {
     const sectorId = parseInt(req.params.id as string);
     if (isNaN(sectorId))
       return res.status(400).json({ error: "Invalid sector ID" });
 
-    const sector = await db("sectors").where({ id: sectorId }).first();
+    const sector = await db("sectors")
+      .leftJoin("players", "sectors.claimed_by_player_id", "players.id")
+      .leftJoin(
+        "syndicates",
+        "sectors.claimed_by_syndicate_id",
+        "syndicates.id",
+      )
+      .leftJoin("factions", "sectors.registered_faction_id", "factions.id")
+      .where({ "sectors.id": sectorId })
+      .select(
+        "sectors.id",
+        "sectors.sector_name",
+        "sectors.is_npc_starmall",
+        "sectors.claimed_by_player_id",
+        "sectors.claimed_by_syndicate_id",
+        "sectors.claimed_at",
+        "sectors.registered_faction_id",
+        "players.username as player_name",
+        "syndicates.name as syndicate_name",
+        "factions.id as faction_id",
+        "factions.name as faction_name",
+      )
+      .first();
     if (!sector) return res.status(404).json({ error: "Sector not found" });
 
     let owner: { name: string; type: "player" | "syndicate" } | null = null;
-    if (sector.claimed_by_player_id) {
-      const player = await db("players")
-        .where({ id: sector.claimed_by_player_id })
-        .first();
-      if (player) owner = { name: player.username, type: "player" };
-    } else if (sector.claimed_by_syndicate_id) {
-      const syndicate = await db("syndicates")
-        .where({ id: sector.claimed_by_syndicate_id })
-        .first();
-      if (syndicate) owner = { name: syndicate.name, type: "syndicate" };
+    if (sector.claimed_by_player_id && sector.player_name) {
+      owner = { name: sector.player_name, type: "player" };
+    } else if (sector.claimed_by_syndicate_id && sector.syndicate_name) {
+      owner = { name: sector.syndicate_name, type: "syndicate" };
     }
 
-    // Look up registered faction name if set
     let registeredFaction: { id: string; name: string } | null = null;
-    if (sector.registered_faction_id) {
-      const faction = await db("factions")
-        .where({ id: sector.registered_faction_id })
-        .first();
-      if (faction) {
-        registeredFaction = { id: faction.id, name: faction.name };
-      }
+    if (sector.registered_faction_id && sector.faction_name) {
+      registeredFaction = { id: sector.faction_id, name: sector.faction_name };
     }
 
     res.json({

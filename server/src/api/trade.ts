@@ -33,7 +33,9 @@ import { notifyPlayer } from "../ws/handlers";
 
 const router = Router();
 
-// View outpost prices
+// View outpost prices — read-only price check without docking. Prices fluctuate
+// based on supply/demand (stock vs capacity ratio). Players use this to scout
+// profitable trades before committing AP to dock. No AP cost for viewing.
 router.get("/outpost/:id", requireAuth, async (req, res) => {
   if (req.inTutorial) return handleTutorialOutpost(req, res);
   try {
@@ -93,7 +95,11 @@ router.get("/outpost/:id", requireAuth, async (req, res) => {
   }
 });
 
-// Buy commodity from outpost
+// Buy commodity from outpost — costs 1 AP. Requires docking. Validates cargo space
+// (including upgrade bonuses), applies racial trade discount (Tar'ri get cheaper buys),
+// then delegates to the pure executeTrade() engine function. Updates player credits,
+// ship cargo, outpost stock/treasury, logs the trade, triggers mission progress,
+// awards XP, and checks faction fame thresholds for significant trades.
 router.post("/buy", requireAuth, async (req, res) => {
   if (req.inTutorial) return handleTutorialBuy(req, res);
   try {
@@ -316,7 +322,10 @@ router.post("/buy", requireAuth, async (req, res) => {
   }
 });
 
-// Sell commodity to outpost
+// Sell commodity to outpost — mirror of /buy. Racial trade bonus boosts revenue
+// instead of reducing cost. Sell is constrained by outpost treasury (can it afford
+// to buy from you?) and remaining capacity. Also feeds into deliver_cargo mission
+// type since selling the right commodity at the right place completes deliveries.
 router.post("/sell", requireAuth, async (req, res) => {
   if (req.inTutorial) return handleTutorialSell(req, res);
   try {
@@ -533,7 +542,10 @@ router.post("/sell", requireAuth, async (req, res) => {
   }
 });
 
-// Trade Computer — directory of all outposts with commodity info
+// Trade Computer — directory of all outposts with live commodity info. Shows every
+// outpost in the universe with current prices, stock levels, and trade modes.
+// Players use this to plan trade routes: find where to buy cheap, sell expensive.
+// No sector restriction — this is the "galactic market data" screen.
 router.get("/directory", requireAuth, async (req, res) => {
   try {
     const player = await db("players")

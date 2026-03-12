@@ -1,0 +1,102 @@
+/* === Notes Panel === */
+.notes-panel__input-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.notes-panel__input {
+  flex: 1;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 4px 6px;
+  font-size: 0.846rem;
+  font-family: inherit;
+}
+.notes-panel__input:focus {
+  border-color: var(--blue);
+  outline: none;
+}
+.note-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--bg-tertiary);
+  font-size: 0.846rem;
+}
+.note-entry__content {
+  flex: 1;
+  word-break: break-word;
+}
+.note-entry__id {
+  color: var(--text-secondary);
+  font-size: 0.769rem;
+}
+.note-entry__delete {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.769rem;
+  padding: 0 2px;
+}
+.note-entry__delete:hover {
+  color: var(--red);
+}
+
+/* === Intel Log Panel === */
+.intel-panel__search-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.intel-panel__input {
+  flex: 1;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 4px 6px;
+  font-size: 0.846rem;
+  font-family: inherit;
+}
+.intel-panel__input:focus {
+  border-color: var(--orange);
+  outline: none;
+}
+.intel-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.intel-entry {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--bg-tertiary);
+  font-size: 0.846rem;
+}
+.intel-entry__header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+.intel-entry__npc {
+  color: var(--orange);
+  font-weight: 600;
+}
+.intel-entry__title {
+  color: var(--text-secondary);
+  font-size: 0.769rem;
+  font-style: italic;
+}
+.intel-entry__time {
+  color: var(--text-secondary);
+  font-size: 0.692rem;
+  margin-left: auto;
+  white-space: nowrap;
+}
+.intel-entry__text {
+  color: var(--text-primary);
+  line-height: 1.4;
+  word-break: break-word;
+}

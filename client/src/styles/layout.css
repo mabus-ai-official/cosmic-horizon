@@ -1,0 +1,375 @@
+/* === Game Layout === */
+.game-layout {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(
+    135deg,
+    #0a0e14 0%,
+    #0a1020 25%,
+    #0a0e14 50%,
+    #0d0a18 75%,
+    #0a0e14 100%
+  );
+  background-size: 400% 400%;
+  animation: ambient-gradient-shift 25s ease infinite;
+}
+
+@keyframes ambient-gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  25% {
+    background-position: 100% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  75% {
+    background-position: 0% 100%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Three-column layout: activity-bar | center | context-panel */
+.game-main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Center column: terminal (top) + panel area (bottom) */
+.game-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  isolation: isolate;
+}
+
+/* Map area — full width, fills top of center column */
+.game-map-area {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-bottom: 1px solid var(--border);
+  box-shadow: inset 0 -4px 16px rgba(86, 212, 221, 0.04);
+  position: relative;
+}
+
+.game-panel-area {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  background:
+    /* Nebula glow */
+    radial-gradient(
+      ellipse at 20% 30%,
+      rgba(232, 71, 160, 0.04) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse at 80% 70%,
+      rgba(86, 212, 221, 0.03) 0%,
+      transparent 60%
+    ),
+    /* Star dots */
+    radial-gradient(1px 1px at 50px 20px, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(
+      1px 1px at 150px 60px,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    ),
+    radial-gradient(
+      1px 1px at 250px 40px,
+      rgba(255, 255, 255, 0.35),
+      transparent
+    ),
+    radial-gradient(
+      1px 1px at 100px 90px,
+      rgba(255, 255, 255, 0.25),
+      transparent
+    ),
+    radial-gradient(
+      1px 1px at 300px 30px,
+      rgba(255, 255, 255, 0.3),
+      transparent
+    ),
+    radial-gradient(
+      1px 1px at 200px 80px,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    ),
+    /* Dark gradient base */
+    linear-gradient(135deg, #0d1015, var(--bg-tertiary), #0d1117);
+}
+
+.game-viewport-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.game-panel-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+  border-left: 2px solid rgba(232, 71, 160, 0.15);
+}
+
+.panel-area-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.846rem;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--border);
+  border-top: 1px solid rgba(232, 71, 160, 0.2);
+  background: linear-gradient(
+    90deg,
+    rgba(232, 71, 160, 0.15),
+    var(--bg-secondary) 50%,
+    rgba(86, 212, 221, 0.04)
+  );
+  letter-spacing: 1px;
+  box-shadow: 0 2px 6px rgba(232, 71, 160, 0.12);
+}
+
+.panel-content {
+  padding: 8px 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* 4. Border accent pulse — corner accents randomly brighten */
+@keyframes corner-pulse {
+  0%,
+  60%,
+  100% {
+    opacity: 0.4;
+  }
+  65% {
+    opacity: 0.9;
+  }
+  75% {
+    opacity: 0.4;
+  }
+  80% {
+    opacity: 0.7;
+  }
+  85% {
+    opacity: 0.4;
+  }
+}
+
+.game-main::before {
+  animation: corner-pulse 7s ease-in-out infinite;
+}
+.game-main::after {
+  animation: corner-pulse 9s ease-in-out infinite 2s;
+}
+.game-center::before {
+  animation: corner-pulse 11s ease-in-out infinite 4s;
+}
+.game-center::after {
+  animation: corner-pulse 8s ease-in-out infinite 1s;
+}
+
+/* === Border Corner Accents === */
+.game-main {
+  position: relative;
+}
+.game-main::before,
+.game-main::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+  z-index: 5;
+}
+.game-main::before {
+  top: 0;
+  left: 0;
+  border-top: 1px solid var(--magenta);
+  border-left: 1px solid var(--magenta);
+  opacity: 0.4;
+}
+.game-main::after {
+  bottom: 0;
+  right: 0;
+  border-bottom: 1px solid var(--magenta);
+  border-right: 1px solid var(--magenta);
+  opacity: 0.4;
+}
+
+/* Additional corners via game-center */
+.game-center::before,
+.game-center::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+  z-index: 5;
+}
+.game-center::before {
+  top: 0;
+  right: 0;
+  border-top: 1px solid var(--magenta);
+  border-right: 1px solid var(--magenta);
+  opacity: 0.4;
+}
+.game-center::after {
+  bottom: 0;
+  left: 0;
+  border-bottom: 1px solid var(--magenta);
+  border-left: 1px solid var(--magenta);
+  opacity: 0.4;
+}
+
+/* === Ambient Noise Texture === */
+.game-layout::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 500;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* === Responsive: small screens === */
+@media (max-height: 768px) {
+  .sector-map-svg {
+    height: min(220px, 25vh);
+  }
+
+  .status-bar {
+    gap: 10px;
+    padding: 4px 12px;
+  }
+
+  .status-label {
+    font-size: 0.692rem;
+  }
+
+  .status-value {
+    font-size: 0.923rem;
+  }
+}
+
+@media (max-height: 600px) {
+  .sector-map-svg {
+    height: min(160px, 22vh);
+  }
+
+  .panel-header {
+    padding: 4px 10px;
+    font-size: 0.769rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .game-main {
+    flex-direction: column;
+  }
+  .activity-bar {
+    flex-direction: row;
+    width: 100%;
+    height: 40px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .activity-bar__toggle {
+    display: none;
+  }
+  .activity-bar__groups {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0 4px;
+    gap: 2px;
+  }
+  .activity-bar__item {
+    min-width: unset;
+    padding: 4px 8px;
+  }
+  .activity-bar__item-text {
+    display: none;
+  }
+  .activity-bar__sep {
+    width: 1px;
+    height: 24px;
+    margin: 0 2px;
+  }
+  .activity-bar__tabs {
+    display: none;
+  }
+  .context-panel {
+    width: 100%;
+    height: auto;
+    max-height: 30vh;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .notification-bar__lines {
+    max-height: 3em;
+  }
+  .notification-bar--expanded .notification-bar__lines {
+    max-height: 30vh;
+  }
+  .game-panel-area {
+    flex-direction: column;
+  }
+  .scene-viewport {
+    max-height: 150px;
+    border-left: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+/* === Upscaling for larger monitors === */
+@media (min-width: 2560px) {
+  .context-panel {
+    width: 340px;
+  }
+  .activity-bar {
+    width: 160px;
+  }
+  .activity-bar__item {
+    padding: 8px 12px;
+  }
+}
+
+@media (min-width: 3840px) {
+  .context-panel {
+    width: 400px;
+  }
+  .activity-bar {
+    width: 180px;
+  }
+  .activity-bar__item {
+    padding: 10px 14px;
+  }
+}

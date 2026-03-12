@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF, Html } from "@react-three/drei";
 import * as THREE from "three";
@@ -11,7 +11,7 @@ interface SectorOutpostProps {
   onClick?: () => void;
 }
 
-export default function SectorOutpost({
+function SectorOutpost({
   name,
   isStarMall,
   position,
@@ -93,3 +93,5 @@ export default function SectorOutpost({
     </group>
   );
 }
+
+export default memo(SectorOutpost);

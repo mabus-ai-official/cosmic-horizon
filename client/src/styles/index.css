@@ -1,0 +1,75 @@
+/* === COSMIC HORIZON - Modular CSS Imports === */
+/* Base: variables, resets, typography, buttons, text colors, global keyframes */
+@import "./base.css";
+
+/* Auth: login/register pages, race selection */
+@import "./auth.css";
+
+/* Layout: game-layout, game-main, game-center, areas, noise texture, corners, responsive */
+@import "./layout.css";
+
+/* Status Bar: top bar, audio toggle, value flash animations */
+@import "./status-bar.css";
+
+/* Activity Bar: navigation sidebar */
+@import "./activity-bar.css";
+
+/* Context Panel: right info panel, profile, ship card, alerts, mini-chat */
+@import "./context-panel.css";
+
+/* Panels: shared panel styles, collapsible panels, group tabs, actions panel */
+@import "./panels.css";
+
+/* Map: sector map 2D/3D, data rain, notification bar, full mode, tooltips */
+@import "./map.css";
+
+/* Viewport: scene viewport, space background, HUD overlay, pixel scene/sprites */
+@import "./viewport.css";
+
+/* Combat: adjacent sectors, target selection, combat controls */
+@import "./combat.css";
+
+/* Trade: trade table, trade history, trade routes, trade computer, mall, cantina */
+@import "./trade.css";
+
+/* Tutorial: overlays, welcome, progress bar, spotlight, tooltip */
+@import "./tutorial.css";
+
+/* Intro: intro sequence */
+@import "./intro.css";
+
+/* Missions: active missions, mission board, story missions, fame/rep bars */
+@import "./missions.css";
+
+/* Planets: planets panel */
+@import "./planets.css";
+
+/* Social: chat, player list, mail, NPC panel, NPC dialogue, profile dropdown */
+@import "./social.css";
+
+/* Inventory: inventory, resources, explore, tablets, crafting */
+@import "./inventory.css";
+
+/* Ship: ship status, ship upgrades */
+@import "./ship.css";
+
+/* Notes: notes panel, intel log */
+@import "./notes.css";
+
+/* Wallet: wallet panel */
+@import "./wallet.css";
+
+/* Syndicate: syndicate panels, governance, alliance */
+@import "./syndicate.css";
+
+/* Notifications: event overlay, toasts */
+@import "./notifications.css";
+
+/* ARIA: ARIA panel, ARIA ambient comment toast */
+@import "./aria.css";
+
+/* Settings: settings overlay */
+@import "./settings.css";
+
+/* Arcade: arcade modal */
+@import "./arcade.css";

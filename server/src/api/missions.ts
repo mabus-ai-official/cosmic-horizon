@@ -15,7 +15,10 @@ import { pickFlavor, outpostNpcRace } from "../config/flavor-text";
 
 const router = Router();
 
-// Get available missions (mission pool at current Star Mall)
+// Get available missions — generates the mission board at the current Star Mall.
+// Pool is level-gated by tier (higher tiers unlock at higher player levels),
+// filtered for non-repeatable missions already taken, and enriched with
+// prerequisite status so the UI can show lock icons on gated missions.
 router.get("/available", requireAuth, async (req, res) => {
   try {
     const player = await db("players")
@@ -74,7 +77,11 @@ router.get("/available", requireAuth, async (req, res) => {
   }
 });
 
-// Accept a mission
+// Accept a mission — validates level gate, prerequisite, active mission cap (story
+// missions are excluded from the cap so story progression never blocks side content),
+// and non-repeatable uniqueness. Builds objectives detail for the client's progress
+// UI. claim_status starts as 'auto' and is changed to 'pending_claim' on completion
+// if the mission requires returning to a Star Mall to collect rewards.
 router.post("/accept/:templateId", requireAuth, async (req, res) => {
   try {
     const player = await db("players")
@@ -224,7 +231,9 @@ router.post("/accept/:templateId", requireAuth, async (req, res) => {
   }
 });
 
-// List active missions
+// List active missions — includes both 'active' status missions and 'completed'
+// missions with 'pending_claim' status (need to visit a Star Mall). This dual
+// query ensures the missions panel always shows everything the player needs to act on.
 router.get("/active", requireAuth, async (req, res) => {
   try {
     const missions = await db("player_missions")
@@ -382,7 +391,10 @@ router.get("/claimable", requireAuth, async (req, res) => {
   }
 });
 
-// Claim a completed mission's rewards
+// Claim a completed mission's rewards — must be at a Star Mall. Story missions
+// take priority: if the player has an active story mission, non-story claims are
+// blocked to maintain narrative focus. This is the only place mission rewards
+// (credits + XP) are actually distributed.
 router.post("/claim/:missionId", requireAuth, async (req, res) => {
   try {
     const player = await db("players")

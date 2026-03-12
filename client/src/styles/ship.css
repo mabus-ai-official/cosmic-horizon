@@ -1,0 +1,107 @@
+/* === Ship Status Panel === */
+.cargo-bar {
+  height: 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 4px 0;
+}
+
+.cargo-bar__fill {
+  height: 100%;
+  background: var(--cyan);
+  transition: width 0.3s ease;
+}
+
+.cargo-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.846rem;
+}
+
+.cargo-item {
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: var(--bg-tertiary);
+}
+
+.cargo-item--cyr {
+  color: var(--magenta);
+}
+.cargo-item--food {
+  color: var(--green);
+}
+.cargo-item--tech {
+  color: var(--cyan);
+}
+.cargo-item--col {
+  color: var(--yellow);
+}
+
+
+.ship-status-sprite-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.ship-status-sprite {
+  filter: drop-shadow(0 0 4px rgba(232, 71, 160, 0.3));
+}
+.ship-status-sprite-header__info {
+  flex: 1;
+}
+
+/* 5. Ship sprite breathing glow */
+@keyframes ship-breathe {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 4px rgba(232, 71, 160, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 10px rgba(232, 71, 160, 0.6));
+  }
+}
+
+.ship-status-sprite--breathing {
+  animation: ship-breathe 4s ease-in-out infinite;
+}
+
+/* === Ship Upgrades === */
+.upgrade-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--bg-tertiary);
+  font-size: 0.923rem;
+}
+.upgrade-item:last-child {
+  border-bottom: none;
+}
+.upgrade-item__info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.upgrade-item__name {
+  color: var(--text-primary);
+}
+.upgrade-item__slot {
+  color: var(--text-secondary);
+  font-size: 0.769rem;
+}
+.upgrade-item__bonus {
+  font-size: 0.769rem;
+}
+.upgrade-item__action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

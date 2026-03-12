@@ -1,0 +1,108 @@
+/* === Wallet Panel === */
+.wallet-panel {
+  font-size: 0.923rem;
+}
+.wallet-connected {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wallet-address {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.wallet-address__label {
+  font-size: 0.769rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.wallet-address__value {
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--green);
+  font-size: 0.923rem;
+}
+.wallet-balance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.wallet-balance__label {
+  font-size: 0.769rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.wallet-balance__value {
+  color: var(--purple);
+  font-weight: 500;
+}
+.wallet-web3-hint {
+  font-style: italic;
+  color: var(--text-secondary);
+  font-size: 0.846rem;
+  padding-top: 6px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.wallet-disconnect {
+  border-color: var(--red);
+  color: var(--red);
+  margin-top: 4px;
+}
+.wallet-disconnect:hover {
+  background: rgba(248, 81, 73, 0.15);
+}
+.wallet-connect {
+  display: flex;
+  flex-direction: column;
+}
+.wallet-connectors {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.wallet-connector-btn {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.wallet-connector-btn:hover {
+  background: rgba(88, 166, 255, 0.15);
+}
+.wallet-verify {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wallet-error {
+  color: var(--red);
+  font-size: 0.923rem;
+  padding: 6px 8px;
+  background: rgba(248, 81, 73, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(248, 81, 73, 0.3);
+  margin-bottom: 8px;
+}
+.wallet-skip {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.wallet-step {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wallet-step__title {
+  color: var(--magenta);
+  font-size: 1.077rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin: 0;
+}
+.wallet-step__subtitle {
+  color: var(--text-secondary);
+  font-size: 0.846rem;
+  margin: 0 0 4px 0;
+}

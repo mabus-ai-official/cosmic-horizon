@@ -1,0 +1,470 @@
+/* === Active Missions Panel === */
+.mission-item {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--bg-tertiary);
+}
+
+.mission-item:last-child {
+  border-bottom: none;
+}
+
+.mission-item__title {
+  font-size: 0.923rem;
+  color: var(--foreground);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mission-item__desc {
+  font-size: 0.769rem;
+  color: var(--text-secondary);
+  margin: 2px 0;
+  line-height: 1.3;
+}
+
+.mission-item__progress {
+  font-size: 0.846rem;
+  color: var(--comment);
+  display: flex;
+  justify-content: space-between;
+}
+
+.mission-item__reward {
+  color: var(--yellow);
+}
+
+
+/* === Mission Item Actions === */
+.mission-item__actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.mission-item--locked {
+  opacity: 0.5;
+}
+
+/* Faction Reputation */
+.faction-rep-section {
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--purple);
+  border-radius: 6px;
+}
+
+.faction-rep-header {
+  font-size: 0.692rem;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.faction-rep-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 0.769rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.faction-rep-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.faction-rep-name {
+  color: var(--text-secondary);
+}
+
+.faction-rep-tier {
+  font-size: 0.692rem;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+/* ===== Fame Progress Bar (NPC Vendor) ===== */
+.fame-progress-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.fame-progress-bar__fill {
+  height: 100%;
+  background: var(--yellow);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* ===== Faction Rep Rows (NPC Vendor) ===== */
+.npc-faction-reps {
+  padding: 4px 0 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+
+.npc-faction-rep-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.769rem;
+  padding: 1px 0;
+}
+
+.npc-faction-rep-row__name {
+  color: var(--text-primary);
+  min-width: 80px;
+}
+
+.npc-faction-rep-row__tier {
+  font-size: 0.692rem;
+}
+
+.npc-faction-rep-row__fame {
+  color: var(--text-muted);
+  font-size: 0.692rem;
+  margin-left: auto;
+}
+
+/* Daily Missions */
+.daily-missions {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.daily-missions__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.769rem;
+  color: var(--yellow);
+  font-weight: bold;
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+.daily-missions__done {
+  font-size: 0.692rem;
+  color: var(--green);
+  font-weight: normal;
+}
+.daily-mission {
+  padding: 4px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+.daily-mission--claimed {
+  opacity: 0.5;
+}
+.daily-mission__info {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 3px;
+}
+.daily-mission__desc {
+  font-size: 0.769rem;
+  color: var(--text-primary);
+}
+.daily-mission__reward {
+  font-size: 0.692rem;
+  color: var(--cyan);
+  white-space: nowrap;
+  margin-left: 8px;
+}
+.daily-mission__bar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.daily-mission__progress {
+  font-size: 0.692rem;
+  color: var(--text-secondary);
+  min-width: 32px;
+  text-align: right;
+}
+.daily-mission__claim {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 3px 0;
+  background: rgba(86, 212, 221, 0.15);
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  font-family: inherit;
+  font-size: 0.692rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+.daily-mission__claim:hover {
+  background: rgba(86, 212, 221, 0.3);
+}
+.daily-mission__claimed-tag {
+  display: block;
+  text-align: center;
+  font-size: 0.615rem;
+  color: var(--green);
+  margin-top: 2px;
+  letter-spacing: 1px;
+}
+
+/* ── Story Missions Tab ─────────────────────────────────── */
+.story-missions-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.story-act-header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+}
+
+.story-act-title {
+  color: var(--yellow);
+  font-size: 0.9em;
+  letter-spacing: 2px;
+  margin-bottom: 0.25rem;
+}
+
+.story-act-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.story-act-count {
+  color: var(--text-secondary);
+  font-size: 0.8em;
+  min-width: 3em;
+}
+
+.story-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.story-progress-fill {
+  height: 100%;
+  background: var(--yellow);
+  transition: width 0.3s ease;
+}
+
+.story-cooldown {
+  text-align: center;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+}
+
+.story-cooldown-title {
+  color: var(--text-secondary);
+  font-size: 0.75em;
+  letter-spacing: 1px;
+}
+
+.story-cooldown-timer {
+  color: var(--cyan);
+  font-size: 1.2em;
+  margin-top: 0.25rem;
+}
+
+.story-mission-card {
+  border: 1px solid var(--border);
+  padding: 0.5rem;
+  background: var(--bg-primary);
+}
+
+.story-mission-next {
+  border-color: var(--yellow);
+  border-style: dashed;
+}
+
+.story-mission-title {
+  color: var(--yellow);
+  font-size: 0.85em;
+  margin-bottom: 0.25rem;
+}
+
+.story-mission-desc {
+  color: var(--text-secondary);
+  font-size: 0.75em;
+  margin-bottom: 0.25rem;
+}
+
+.story-lore-text {
+  color: var(--purple);
+  font-size: 0.72em;
+  font-style: italic;
+  padding: 0.25rem 0;
+  border-left: 2px solid var(--purple);
+  padding-left: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.story-objective {
+  margin: 0.25rem 0;
+}
+
+.story-objective-label {
+  color: var(--text-primary);
+  font-size: 0.75em;
+}
+
+.story-rewards {
+  color: var(--green);
+  font-size: 0.75em;
+  margin-top: 0.25rem;
+}
+
+.story-hints {
+  margin-top: 0.25rem;
+}
+
+.story-hint {
+  color: var(--cyan);
+  font-size: 0.7em;
+  font-style: italic;
+}
+
+.story-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.story-abandon-confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.story-error {
+  color: var(--orange);
+  font-size: 0.75em;
+  padding: 0.25rem;
+  border: 1px solid var(--orange);
+  background: rgba(240, 136, 62, 0.1);
+}
+
+/* ── Codex Panel ────────────────────────────────────────── */
+.codex-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.codex-progress {
+  color: var(--purple);
+  font-size: 0.8em;
+  letter-spacing: 1px;
+  margin-bottom: 0.25rem;
+}
+
+.codex-act-section {
+  border: 1px solid var(--border);
+}
+
+.codex-act-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  background: var(--bg-primary);
+}
+
+.codex-act-header:hover {
+  background: var(--bg-tertiary);
+}
+
+.codex-act-toggle {
+  color: var(--text-secondary);
+  font-size: 0.75em;
+}
+
+.codex-act-label {
+  color: var(--yellow);
+  font-size: 0.8em;
+  flex: 1;
+}
+
+.codex-act-count {
+  color: var(--text-secondary);
+  font-size: 0.75em;
+}
+
+.codex-entries {
+  border-top: 1px solid var(--border);
+}
+
+.codex-entry {
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--bg-primary);
+}
+
+.codex-entry:last-child {
+  border-bottom: none;
+}
+
+.codex-entry-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.codex-entry--unlocked .codex-entry-header {
+  cursor: pointer;
+}
+
+.codex-entry--unlocked .codex-entry-header:hover {
+  background: var(--bg-primary);
+}
+
+.codex-entry-order {
+  color: var(--text-secondary);
+  font-size: 0.7em;
+  min-width: 2em;
+}
+
+.codex-entry--unlocked .codex-entry-title {
+  color: var(--text-primary);
+  font-size: 0.75em;
+  flex: 1;
+}
+
+.codex-entry--locked .codex-entry-title {
+  color: var(--text-muted);
+  font-size: 0.75em;
+  flex: 1;
+}
+
+.codex-entry-chapter {
+  color: var(--purple);
+  font-size: 0.65em;
+}
+
+.codex-entry-content {
+  color: var(--text-secondary);
+  font-size: 0.72em;
+  padding: 0.35rem 0 0.35rem 2em;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.codex-entry-locked {
+  color: var(--text-muted);
+  font-size: 0.65em;
+  padding-left: 2em;
+  font-style: italic;
+}

@@ -1,0 +1,1318 @@
+/* 2D/3D map toggle */
+.map-toggle-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 10;
+  padding: 2px 8px;
+  font-size: 0.692rem;
+  font-family: inherit;
+  font-weight: bold;
+  color: var(--cyan);
+  background: rgba(10, 14, 20, 0.8);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.map-toggle-btn:hover {
+  background: rgba(86, 212, 221, 0.1);
+  border-color: var(--cyan);
+}
+
+/* Map commodity filters */
+.map-commodity-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 4px 6px;
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 10;
+}
+.map-filter-btn {
+  padding: 1px 5px;
+  font-size: 0.615rem;
+  font-family: inherit;
+  font-weight: bold;
+  color: #555;
+  background: rgba(10, 14, 20, 0.85);
+  border: 1px solid #333;
+  border-radius: 2px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: all 0.15s;
+}
+.map-filter-btn:hover {
+  color: #aaa;
+  border-color: #666;
+}
+.map-filter-btn--active {
+  background: rgba(10, 14, 20, 0.95);
+}
+@keyframes commodity-ring-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.sector-commodity-ring {
+  animation: commodity-ring-pulse 2s ease-in-out infinite;
+}
+
+/* 3D Sector Map */
+.sector-map-3d {
+  position: relative;
+}
+.sector-map-3d__header {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  font-size: 0.692rem;
+  font-family: inherit;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  pointer-events: none;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+}
+.sector-map-3d__tooltip {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 6px 10px;
+  background: rgba(10, 14, 20, 0.9);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.769rem;
+  color: var(--text-primary);
+  pointer-events: none;
+  max-width: 200px;
+}
+.sector-map-3d__hint {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+  opacity: 0.4;
+  pointer-events: none;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+}
+
+/* === Sector Type Colors === */
+.sector-type-standard {
+  color: var(--text-primary);
+}
+.sector-type-protected {
+  color: var(--green);
+}
+.sector-type-harmony_enforced {
+  color: var(--blue);
+}
+.sector-type-one_way {
+  color: var(--yellow);
+}
+
+/* === Sector Map === */
+.sector-map-container {
+  padding: 0;
+}
+
+.sector-map-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Edges — extremely subtle */
+.sector-map-edge {
+  stroke: rgba(100, 120, 160, 0.15);
+  stroke-width: 0.4;
+}
+
+.sector-map-edge--oneway {
+  stroke: rgba(210, 153, 34, 0.2);
+  stroke-dasharray: 4 3;
+  stroke-width: 0.4;
+}
+
+/* Star glow layer */
+.sector-star-glow {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.sector-map-node--adjacent .sector-star-glow {
+  opacity: 0.8;
+}
+
+.sector-map-node--current .sector-star-glow {
+  opacity: 1;
+}
+
+.sector-map-node:hover .sector-star-glow {
+  opacity: 0.9;
+}
+
+/* Star core — tiny bright dot */
+.sector-star-core {
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.8));
+  pointer-events: none;
+}
+
+.sector-map-node--adjacent:hover .sector-star-core {
+  filter: drop-shadow(0 0 3px rgba(160, 200, 255, 0.9));
+}
+
+/* Bloom effect — current sector only */
+.sector-star-bloom {
+  opacity: 0.5;
+  pointer-events: none;
+  animation: star-bloom-pulse 3s ease-in-out infinite;
+}
+
+@keyframes star-bloom-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Pulse animation for current sector — cyan */
+.sector-node-pulse {
+  fill: none;
+  stroke: rgba(86, 212, 221, 0.6);
+  stroke-width: 1.5;
+  opacity: 0;
+  animation: sector-pulse 3s ease-out infinite;
+}
+
+@keyframes sector-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Node labels — hidden by default, shown on hover/current/adjacent */
+.sector-node-label {
+  font-family: "IBM Plex Mono", "Consolas", monospace;
+  font-size: 0.692rem;
+  fill: var(--text-secondary);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.sector-map-node:hover .sector-node-label {
+  opacity: 0.8;
+}
+
+.sector-node-label--current {
+  fill: #56d4dd;
+  font-weight: 700;
+  opacity: 1;
+}
+
+.sector-node-label--adjacent {
+  opacity: 0.6;
+}
+
+/* Sector name label */
+.sector-node-name {
+  fill: #56d4dd;
+  font-family: "IBM Plex Mono", "Consolas", monospace;
+  font-size: 6px;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* Star Mall icon — subtle dot */
+.sector-star-mall-icon {
+  fill: var(--yellow);
+  pointer-events: none;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.sector-map-node:hover .sector-star-mall-icon {
+  opacity: 0.8;
+}
+
+/* Outpost icon — subtle */
+.sector-outpost-icon {
+  fill: var(--green);
+  pointer-events: none;
+  opacity: 0.35;
+  transition: opacity 0.2s;
+}
+
+.sector-map-node:hover .sector-outpost-icon {
+  opacity: 0.8;
+}
+
+/* Planet icon — subtle */
+.sector-planet-icon {
+  fill: var(--blue);
+  pointer-events: none;
+  opacity: 0.35;
+  transition: opacity 0.2s;
+}
+
+.sector-map-node:hover .sector-planet-icon {
+  opacity: 0.8;
+}
+
+/* One-way arrowhead marker — subtle */
+.sector-map-arrowhead polygon {
+  fill: rgba(210, 153, 34, 0.3);
+}
+
+/* Zoom controls */
+.sector-map-controls {
+  float: right;
+  display: inline-flex;
+  gap: 2px;
+}
+
+.sector-map-zoom-btn {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-family: "IBM Plex Mono", "Consolas", monospace;
+  font-size: 1.077rem;
+  line-height: 18px;
+  text-align: center;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sector-map-zoom-btn:hover:not(:disabled) {
+  border-color: #56d4dd;
+  color: #56d4dd;
+}
+
+.sector-map-zoom-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Legend */
+.sector-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 8px;
+  border-top: 1px solid var(--border);
+  font-size: 0.769rem;
+}
+
+.sector-map-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-secondary);
+}
+
+/* (Node icons defined above in Sector Map section) */
+
+/* Sector map body — keep SVG unconstrained */
+.sector-map-body {
+  max-height: none;
+  overflow: visible;
+}
+
+/* Compact sector map (context panel) */
+.sector-map-compact .sector-map-svg {
+  height: 200px;
+}
+
+
+.map-planet-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 7. Notification log scanline sweep */
+@keyframes log-scanline {
+  0% {
+    top: -2px;
+    opacity: 0;
+  }
+  5% {
+    opacity: 0.4;
+  }
+  95% {
+    opacity: 0.4;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+.log-output {
+  position: relative;
+}
+
+.log-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(232, 71, 160, 0.25) 20%,
+    rgba(232, 71, 160, 0.4) 50%,
+    rgba(232, 71, 160, 0.25) 80%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+  animation: log-scanline var(--scanline-dur, 8s) linear infinite;
+  animation-delay: var(--scanline-delay, 0s);
+}
+
+/* === Data Stream Rain === */
+.data-rain {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.data-rain__col {
+  position: absolute;
+  top: -100%;
+  display: flex;
+  flex-direction: column;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.769rem;
+  line-height: 1.4;
+  color: var(--magenta);
+  white-space: nowrap;
+  animation: data-rain-fall linear infinite;
+  text-shadow: 0 0 4px currentColor;
+}
+
+.data-rain__col span:first-child {
+  opacity: 1;
+  color: #e8e8e8;
+  text-shadow: 0 0 6px var(--magenta);
+}
+
+@keyframes data-rain-fall {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(300%);
+  }
+}
+
+/* === Notification Bar (collapsed log) === */
+.notification-bar {
+  flex-shrink: 0;
+  border-top: 1px solid rgba(232, 71, 160, 0.2);
+  border-bottom: 6px solid #444;
+  background: linear-gradient(
+    180deg,
+    rgba(232, 71, 160, 0.04),
+    var(--bg-secondary)
+  );
+  display: flex;
+  flex-direction: column;
+}
+
+.notification-bar__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.769rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--magenta);
+}
+
+.notification-bar__toggle {
+  padding: 0;
+  font-size: 0.769rem;
+  font-family: "IBM Plex Mono", monospace;
+  background: transparent;
+  color: var(--cyan);
+  border: none;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.notification-bar__toggle:hover {
+  color: var(--text-primary);
+}
+
+.notification-bar__label {
+  flex: 1;
+}
+
+.log-clear-btn {
+  padding: 1px 6px;
+  font-size: 0.615rem;
+  font-family: "IBM Plex Mono", monospace;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.log-clear-btn:hover {
+  color: var(--red);
+  border-color: var(--red);
+}
+
+.notification-bar__lines {
+  overflow: hidden;
+  padding: 2px 10px;
+  max-height: 1.5em; /* 1 line */
+}
+
+.notification-bar--expanded .notification-bar__lines {
+  max-height: 40vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--bg-primary);
+}
+
+.notification-bar--expanded .notification-bar__lines::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notification-bar--expanded .notification-bar__lines::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+.notification-bar--expanded .notification-bar__lines::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.log-line {
+  font-size: 0.923rem;
+  line-height: 1.5;
+  padding: 1px 0;
+  word-break: break-word;
+  animation: log-line-slide-in 0.25s ease-out;
+}
+
+@keyframes log-line-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.log-line--info {
+  color: var(--text-secondary);
+}
+.log-line--success {
+  color: var(--green);
+}
+.log-line--error {
+  color: var(--red);
+}
+.log-line--warning {
+  color: var(--yellow);
+}
+.log-line--system {
+  color: var(--blue);
+}
+.log-line--combat {
+  color: var(--orange);
+}
+.log-line--trade {
+  color: var(--purple);
+}
+.log-line--npc {
+  color: #56d4dd;
+  font-style: italic;
+}
+
+.log-prefix {
+  font-weight: bold;
+  margin-right: 4px;
+  font-size: 0.846rem;
+}
+
+.log-prefix--error {
+  color: var(--red);
+}
+.log-prefix--warning {
+  color: var(--yellow);
+}
+.log-prefix--info {
+  color: var(--cyan);
+}
+.log-prefix--success {
+  color: var(--green);
+}
+.log-prefix--system {
+  color: var(--blue);
+}
+.log-prefix--combat {
+  color: var(--orange);
+}
+.log-prefix--trade {
+  color: var(--purple);
+}
+.log-prefix--npc {
+  color: #56d4dd;
+}
+
+/* === Sector Map Full Mode === */
+.sector-map-full {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.sector-map-full__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border);
+}
+
+.sector-map-full__title {
+  font-size: 0.846rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #56d4dd;
+}
+
+.sector-map-full .sector-map-svg {
+  height: 100%;
+  min-height: 0;
+}
+
+.sector-map-full .sector-map-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  background: #050810;
+}
+
+/* Vignette — dark edges for deep space feel */
+.sector-map-full .sector-map-body::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 70% 65% at 50% 50%,
+    transparent 0%,
+    rgba(5, 8, 16, 0.6) 80%,
+    rgba(5, 8, 16, 0.95) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* === Space Background (Starfield + Nebula) === */
+.space-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+  background: #050810;
+}
+
+.space-bg__logo {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 80px;
+  height: auto;
+  opacity: 0.75;
+  z-index: 1;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.space-bg__galaxies {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.space-bg__galaxy {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Spiral galaxy — top right, purple tint, elongated so rotation is visible */
+.space-bg__galaxy--1 {
+  top: 8%;
+  right: 12%;
+  width: 90px;
+  height: 40px;
+  opacity: 0.14;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      ellipse 30% 50% at 50% 50%,
+      rgba(255, 230, 255, 0.9),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 100% 100% at 50% 50%,
+      rgba(180, 100, 220, 0.4),
+      transparent 65%
+    ),
+    radial-gradient(
+      ellipse 100% 40% at 50% 50%,
+      rgba(200, 120, 255, 0.3),
+      transparent 80%
+    );
+  animation: galaxy-spin-1 120s ease-in-out infinite;
+}
+
+/* Elliptical galaxy — bottom left, warm amber */
+.space-bg__galaxy--2 {
+  bottom: 15%;
+  left: 8%;
+  width: 55px;
+  height: 45px;
+  opacity: 0.12;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      ellipse 35% 35% at 50% 50%,
+      rgba(255, 240, 200, 0.9),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 90% 70% at 50% 50%,
+      rgba(240, 160, 60, 0.35),
+      transparent 65%
+    );
+  animation: galaxy-spin-2 150s ease-in-out infinite;
+}
+
+/* Edge-on spiral — center right, blue/cyan sliver */
+.space-bg__galaxy--3 {
+  top: 45%;
+  right: 5%;
+  width: 70px;
+  height: 14px;
+  opacity: 0.13;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      ellipse 25% 70% at 50% 50%,
+      rgba(200, 240, 255, 0.9),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 100% 100% at 50% 50%,
+      rgba(80, 160, 220, 0.35),
+      transparent 70%
+    ),
+    linear-gradient(
+      90deg,
+      transparent 10%,
+      rgba(60, 140, 220, 0.2) 30%,
+      rgba(100, 180, 255, 0.25) 50%,
+      rgba(60, 140, 220, 0.2) 70%,
+      transparent 90%
+    );
+  animation: galaxy-spin-3 90s ease-in-out infinite;
+}
+
+/* Small distant galaxy — bottom right, pink tint */
+.space-bg__galaxy--4 {
+  bottom: 25%;
+  right: 25%;
+  width: 35px;
+  height: 22px;
+  opacity: 0.11;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      ellipse 40% 50% at 50% 50%,
+      rgba(255, 210, 230, 0.8),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 100% 80% at 50% 50%,
+      rgba(200, 100, 150, 0.25),
+      transparent 70%
+    );
+  animation: galaxy-spin-4 80s ease-in-out infinite;
+}
+
+/* Slow tumble — simulates viewing angle change, not clock rotation */
+@keyframes galaxy-spin-1 {
+  0% {
+    transform: rotate(-25deg) scaleY(1);
+  }
+  25% {
+    transform: rotate(-20deg) scaleY(0.6);
+  }
+  50% {
+    transform: rotate(-15deg) scaleY(1);
+  }
+  75% {
+    transform: rotate(-20deg) scaleY(0.7);
+  }
+  100% {
+    transform: rotate(-25deg) scaleY(1);
+  }
+}
+@keyframes galaxy-spin-2 {
+  0% {
+    transform: rotate(15deg) scaleX(1);
+  }
+  30% {
+    transform: rotate(20deg) scaleX(0.7);
+  }
+  60% {
+    transform: rotate(12deg) scaleX(1);
+  }
+  100% {
+    transform: rotate(15deg) scaleX(1);
+  }
+}
+@keyframes galaxy-spin-3 {
+  0% {
+    transform: rotate(40deg) scaleY(1);
+  }
+  35% {
+    transform: rotate(45deg) scaleY(1.4);
+  }
+  65% {
+    transform: rotate(38deg) scaleY(0.7);
+  }
+  100% {
+    transform: rotate(40deg) scaleY(1);
+  }
+}
+@keyframes galaxy-spin-4 {
+  0% {
+    transform: rotate(-10deg) scaleY(1) scaleX(1);
+  }
+  30% {
+    transform: rotate(-5deg) scaleY(0.65) scaleX(1.1);
+  }
+  60% {
+    transform: rotate(-12deg) scaleY(1.1) scaleX(0.8);
+  }
+  100% {
+    transform: rotate(-10deg) scaleY(1) scaleX(1);
+  }
+}
+
+.space-bg__nebula {
+  position: absolute;
+  inset: -40px;
+  background:
+    radial-gradient(
+      ellipse 600px 400px at 20% 30%,
+      rgba(120, 30, 160, 0.18) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 500px 350px at 75% 60%,
+      rgba(30, 80, 170, 0.15) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 400px 300px at 50% 80%,
+      rgba(20, 130, 100, 0.12) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 350px 250px at 85% 20%,
+      rgba(160, 40, 100, 0.1) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 450px 400px at 50% 45%,
+      rgba(15, 30, 80, 0.2) 0%,
+      transparent 65%
+    );
+  animation: nebula-drift 60s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes nebula-drift {
+  0% {
+    background-position:
+      0% 0%,
+      100% 100%,
+      50% 80%,
+      85% 20%,
+      50% 45%;
+  }
+  33% {
+    background-position:
+      5% 10%,
+      90% 95%,
+      45% 85%,
+      80% 25%,
+      48% 50%;
+  }
+  66% {
+    background-position:
+      -3% 5%,
+      95% 90%,
+      55% 75%,
+      90% 15%,
+      52% 42%;
+  }
+  100% {
+    background-position:
+      2% -5%,
+      105% 105%,
+      48% 82%,
+      83% 22%,
+      50% 48%;
+  }
+}
+
+.space-bg__stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+/* Shooting stars */
+.space-bg__shooting-stars {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.shooting-star {
+  position: absolute;
+  height: 1px;
+  width: 80px;
+  border-radius: 1px;
+  transform-origin: center center;
+  opacity: 0;
+}
+
+/*
+  Shooting stars use translate() for movement so the rotation stays
+  aligned with the travel direction. The bright head leads, tail trails behind.
+  atan2(dy, dx) gives the correct rotation for each path.
+*/
+
+/* #1 — far/slow, faint, thin — distant shooting star */
+.shooting-star--1 {
+  top: 0;
+  left: 0;
+  width: 50px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(200, 210, 255, 0.2) 40%,
+    rgba(255, 255, 255, 0.4)
+  );
+  transform: rotate(16deg) translate(-120px, 0);
+  animation: shoot-1 25s linear infinite;
+}
+
+@keyframes shoot-1 {
+  0%,
+  70% {
+    opacity: 0;
+    transform: rotate(16deg) translate(-120px, 0);
+  }
+  72% {
+    opacity: 0.5;
+    transform: rotate(16deg) translate(-50px, 0);
+  }
+  88% {
+    opacity: 0.3;
+  }
+  97% {
+    opacity: 0;
+    transform: rotate(16deg) translate(500px, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(16deg) translate(500px, 0);
+  }
+}
+
+/* #2 — mid distance, medium speed */
+.shooting-star--2 {
+  top: 15%;
+  left: 0;
+  width: 70px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(180, 200, 255, 0.3) 40%,
+    rgba(255, 255, 255, 0.6)
+  );
+  transform: rotate(155deg) translate(-120px, 0);
+  animation: shoot-2 38s linear infinite;
+}
+
+@keyframes shoot-2 {
+  0%,
+  74% {
+    opacity: 0;
+    transform: rotate(155deg) translate(-600px, 0);
+  }
+  76% {
+    opacity: 0.7;
+    transform: rotate(155deg) translate(-500px, 0);
+  }
+  86% {
+    opacity: 0.4;
+  }
+  92% {
+    opacity: 0;
+    transform: rotate(155deg) translate(120px, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(155deg) translate(120px, 0);
+  }
+}
+
+/* #3 — closest/fastest, bright, grows as it flies past */
+.shooting-star--3 {
+  top: 0;
+  left: 0;
+  height: 1px;
+  width: 120px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(180, 200, 255, 0.2) 20%,
+    rgba(220, 230, 255, 0.6) 60%,
+    rgba(255, 255, 255, 1)
+  );
+  transform: rotate(35deg) translate(-150px, 0);
+  animation: shoot-3 45s linear infinite;
+}
+
+@keyframes shoot-3 {
+  0%,
+  80% {
+    opacity: 0;
+    transform: rotate(35deg) translate(-150px, 0);
+    height: 1px;
+    width: 120px;
+  }
+  81% {
+    opacity: 0.3;
+    transform: rotate(35deg) translate(-80px, 0);
+    height: 1px;
+    width: 120px;
+  }
+  84% {
+    opacity: 0.8;
+    transform: rotate(35deg) translate(150px, 0);
+    height: 2px;
+    width: 140px;
+  }
+  87% {
+    opacity: 1;
+    transform: rotate(35deg) translate(300px, 0);
+    height: 3px;
+    width: 160px;
+  }
+  90% {
+    opacity: 0;
+    transform: rotate(35deg) translate(550px, 0);
+    height: 3px;
+    width: 180px;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(35deg) translate(550px, 0);
+  }
+}
+
+/* #4 — far/slow from right, faint and distant */
+.shooting-star--4 {
+  top: 20%;
+  left: 100%;
+  width: 45px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(210, 200, 255, 0.2) 40%,
+    rgba(255, 255, 255, 0.4)
+  );
+  transform: rotate(200deg) translate(-120px, 0);
+  animation: shoot-4 32s linear infinite;
+}
+
+@keyframes shoot-4 {
+  0%,
+  68% {
+    opacity: 0;
+    transform: rotate(200deg) translate(-120px, 0);
+  }
+  70% {
+    opacity: 0.4;
+    transform: rotate(200deg) translate(-50px, 0);
+  }
+  86% {
+    opacity: 0.25;
+  }
+  96% {
+    opacity: 0;
+    transform: rotate(200deg) translate(500px, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(200deg) translate(500px, 0);
+  }
+}
+
+/* #5 — close/fast from right, bright and quick */
+.shooting-star--5 {
+  top: 50%;
+  left: 90%;
+  width: 100px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(190, 210, 255, 0.3) 30%,
+    rgba(255, 255, 255, 0.8)
+  );
+  transform: rotate(210deg) translate(-120px, 0);
+  animation: shoot-5 50s linear infinite;
+}
+
+@keyframes shoot-5 {
+  0%,
+  82% {
+    opacity: 0;
+    transform: rotate(210deg) translate(-120px, 0);
+  }
+  83% {
+    opacity: 0.8;
+    transform: rotate(210deg) translate(-50px, 0);
+  }
+  87% {
+    opacity: 0.5;
+  }
+  90% {
+    opacity: 0;
+    transform: rotate(210deg) translate(450px, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(210deg) translate(450px, 0);
+  }
+}
+
+/* Dust layer — ultra-tiny background particles */
+.space-bg__stars--dust {
+  color: rgba(160, 170, 200, 0.2);
+  width: 0.5px;
+  height: 0.5px;
+}
+
+.space-bg__stars--far {
+  color: rgba(180, 200, 255, 0.4);
+  box-shadow: inherit;
+}
+
+.space-bg__stars--mid {
+  color: rgba(200, 210, 255, 0.6);
+  width: 1.5px;
+  height: 1.5px;
+}
+
+.space-bg__stars--near {
+  color: rgba(240, 240, 255, 0.8);
+  width: 2px;
+  height: 2px;
+  animation: star-twinkle-near 4s ease-in-out infinite alternate;
+}
+
+@keyframes star-twinkle-near {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Make the SVG sit above the background and vignette */
+.sector-map-full .sector-map-body .sector-map-svg {
+  position: relative;
+  z-index: 2;
+}
+
+.sector-map-full .sector-map-body .sector-map-tooltip,
+.sector-map-full .sector-map-body .sector-map-legend-overlay {
+  z-index: 3;
+}
+
+/* Hover tooltip — space glass aesthetic */
+.sector-map-tooltip {
+  position: absolute;
+  background: rgba(8, 12, 20, 0.9);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(86, 212, 221, 0.3);
+  box-shadow:
+    0 0 8px rgba(86, 212, 221, 0.1),
+    inset 0 0 8px rgba(86, 212, 221, 0.05);
+  color: var(--text-primary);
+  padding: 4px 10px;
+  font-size: 0.769rem;
+  border-radius: 4px;
+  pointer-events: none;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+.sector-map-tooltip__sub {
+  font-size: 0.692rem;
+  opacity: 0.85;
+  padding-left: 4px;
+}
+
+/* Legend overlay */
+.sector-map-legend-overlay {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(8, 12, 20, 0.9);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(86, 212, 221, 0.2);
+  border-radius: 4px;
+  padding: 8px 12px;
+  z-index: 10;
+  min-width: 160px;
+}
+
+.sector-map-legend-overlay__title {
+  font-size: 0.769rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #56d4dd;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 3px;
+}
+
+.sector-map-legend-overlay__items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ===== Planet Tooltip (MapPanel) ===== */
+.map-planet-row {
+  position: relative;
+}
+
+.planet-tooltip {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 8px;
+  background: rgba(8, 12, 20, 0.92);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(86, 212, 221, 0.3);
+  box-shadow: 0 0 8px rgba(86, 212, 221, 0.1);
+  color: var(--text-primary);
+  padding: 6px 10px;
+  font-size: 0.769rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.planet-tooltip__name {
+  color: var(--cyan);
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+.planet-tooltip__row {
+  color: var(--text-secondary);
+  font-size: 0.692rem;
+}
+
+.planet-tooltip__row span {
+  color: var(--text-primary);
+}
+
+/* ===== Warp Risk Indicator ===== */
+.warp-risk-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  font-size: 0.769rem;
+  font-weight: bold;
+}
+
+.warp-risk-icon--explored {
+  color: var(--green);
+}
+
+.warp-risk-icon--unknown {
+  color: var(--yellow);
+}

@@ -3,7 +3,6 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
 import {
   calculateProduction,
-  calculateProductionLegacy,
   calculateFoodConsumption,
   canUpgrade,
 } from "../engine/planets";

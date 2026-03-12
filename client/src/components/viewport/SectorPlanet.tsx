@@ -1,4 +1,4 @@
-import { useRef, useMemo } from "react";
+import { memo, useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
@@ -104,7 +104,7 @@ function getPlanetTexture(planetClass: string): THREE.CanvasTexture {
   return textureCache.get(planetClass)!;
 }
 
-export default function SectorPlanet({
+function SectorPlanet({
   name,
   planetClass,
   position,
@@ -187,3 +187,5 @@ export default function SectorPlanet({
     </group>
   );
 }
+
+export default memo(SectorPlanet);

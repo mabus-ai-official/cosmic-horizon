@@ -1,11 +1,11 @@
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { CONTEXT_COLORS } from "./constants";
 
 type Context = "ambient" | "combat" | "docked" | "danger" | "warp";
 
-export default function SceneLighting({ context }: { context: Context }) {
+function SceneLighting({ context }: { context: Context }) {
   const spotRef = useRef<THREE.SpotLight>(null);
   const time = useRef(0);
   const c = CONTEXT_COLORS[context] || CONTEXT_COLORS.ambient;
@@ -62,3 +62,5 @@ export default function SceneLighting({ context }: { context: Context }) {
     </>
   );
 }
+
+export default memo(SceneLighting);

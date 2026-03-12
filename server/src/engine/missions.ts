@@ -43,6 +43,14 @@ export interface ObjectiveDetail {
   hint?: string;
 }
 
+/**
+ * Check and update mission progress based on a player action.
+ * Called by the mission-tracker service after every qualifying game event
+ * (move, trade, combat, etc.). Each mission type only listens to relevant
+ * actions — visit_sector ignores trade, deliver_cargo only cares about sells
+ * of the right commodity, etc. Returns whether the progress changed and
+ * whether the mission is now complete.
+ */
 export function checkMissionProgress(
   mission: {
     type: string;
@@ -140,12 +148,22 @@ function isMissionComplete(
   }
 }
 
+/**
+ * Check if a timed mission has expired. Null expiresAt means no time limit
+ * (exploration missions, etc.). Timed missions create urgency for combat
+ * and delivery missions while keeping exploration stress-free.
+ */
 export function isMissionExpired(expiresAt: string | null): boolean {
   if (!expiresAt) return false;
   return new Date(expiresAt) < new Date();
 }
 
-// Build per-objective detail array from mission template data
+/**
+ * Build per-objective detail array from mission template data.
+ * Creates the structured UI data (description, target, current, complete)
+ * that the client renders as progress bars. Objectives start at 0 progress
+ * and are updated via updateObjectivesDetail() as the player acts.
+ */
 export function buildObjectivesDetail(
   type: string,
   objectives: MissionObjectives,
@@ -218,7 +236,11 @@ export function buildObjectivesDetail(
   return details;
 }
 
-// Update objectives detail from current progress
+/**
+ * Update objectives detail from current progress.
+ * Merges live progress values into the objectives detail array so the
+ * client can display accurate progress bars without recalculating.
+ */
 export function updateObjectivesDetail(
   type: string,
   progress: MissionProgress,
@@ -254,7 +276,13 @@ export function updateObjectivesDetail(
   return updated;
 }
 
-// Check if a player has completed a prerequisite mission
+/**
+ * Check if a player has completed a prerequisite mission.
+ * Used to gate content behind mission completion (e.g., Stellar Census
+ * unlocks naming authority, cantina gate mission unlocks bartender missions).
+ * Checks for both 'claimed' and 'auto' claim statuses since some missions
+ * auto-complete without requiring a Star Mall visit.
+ */
 export async function checkPrerequisite(
   playerId: string,
   prerequisiteMissionId: string,
@@ -271,12 +299,22 @@ export async function checkPrerequisite(
   return !!completed;
 }
 
-// Check if a player has unlocked cantina missions by completing the gate mission
+/**
+ * Check if a player has unlocked cantina missions by completing the gate mission.
+ * The cantina is a secondary mission source (bartender NPC) — gated behind
+ * a specific mission to create a sense of discovery and progression.
+ */
 export async function hasCantinaAccess(playerId: string): Promise<boolean> {
   return checkPrerequisite(playerId, GAME_CONFIG.CANTINA_GATE_MISSION_ID);
 }
 
-// Generate mission pool filtered by player level and excluding completed/active non-repeatable missions
+/**
+ * Generate the mission board pool for a Star Mall.
+ * Filters by: player level (tier gating), Act 1 completion (story gate),
+ * and excludes non-repeatable missions already active or completed.
+ * Pool is randomized with a fixed size limit so the board feels fresh
+ * each visit. Repeatable missions can reappear even after completion.
+ */
 export async function generateMissionPool(
   playerId: string,
   playerSectorId: number,
@@ -345,7 +383,12 @@ export async function generateMissionPool(
   }));
 }
 
-// Generate a cantina mission for the bartender to offer
+/**
+ * Generate a cantina mission for the bartender to offer.
+ * Similar to the mission board but draws from the 'cantina' source pool.
+ * Returns a single mission (the bartender whispers one job at a time).
+ * Gated behind Act 1 completion like the main board.
+ */
 export async function generateCantinaMissionPool(
   playerId: string,
   playerLevel: number,

@@ -1,0 +1,165 @@
+/* === Status Bar === */
+.status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 8px 16px;
+  background: linear-gradient(
+    90deg,
+    rgba(232, 71, 160, 0.08) 0%,
+    var(--bg-secondary) 20%,
+    var(--bg-secondary) 80%,
+    rgba(86, 212, 221, 0.06) 100%
+  );
+  border-bottom: 1px solid var(--border);
+  box-shadow:
+    0 2px 12px rgba(232, 71, 160, 0.08),
+    0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.status-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-label {
+  font-size: 0.769rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.status-value {
+  font-size: 1.077rem;
+  font-weight: 500;
+}
+
+
+/* === Audio Mute Toggle === */
+.audio-toggle {
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.923rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.audio-toggle:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.audio-toggle--muted {
+  color: var(--text-muted);
+  border-color: var(--text-muted);
+}
+
+.audio-toggle--logout {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.audio-toggle--logout:hover {
+  background: rgba(248, 81, 73, 0.15);
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.audio-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 2px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.audio-controls__btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 2px 5px;
+  border-radius: 3px;
+  transition:
+    color 0.15s,
+    background 0.15s;
+  line-height: 1;
+}
+
+.audio-controls__btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.status-bar__actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  align-items: center;
+}
+
+/* 6. Status bar value flicker */
+@keyframes value-flicker {
+  0%,
+  88%,
+  92%,
+  96%,
+  100% {
+    opacity: 1;
+  }
+  89% {
+    opacity: 0.6;
+  }
+  91% {
+    opacity: 0.85;
+  }
+  93% {
+    opacity: 0.5;
+  }
+  95% {
+    opacity: 0.9;
+  }
+}
+
+.status-value--flicker {
+  animation: value-flicker var(--flicker-dur, 12s) ease-in-out infinite;
+  animation-delay: var(--flicker-delay, 0s);
+}
+
+/* === Status Bar Value Flash === */
+@keyframes status-flash-gain {
+  0% {
+    background: rgba(63, 185, 80, 0.25);
+    color: #3fb950;
+  }
+  100% {
+    background: transparent;
+  }
+}
+@keyframes status-flash-loss {
+  0% {
+    background: rgba(248, 81, 73, 0.25);
+    color: #f85149;
+  }
+  100% {
+    background: transparent;
+  }
+}
+.status-flash--gain {
+  animation: status-flash-gain 0.6s ease-out;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+.status-flash--loss {
+  animation: status-flash-loss 0.6s ease-out;
+  border-radius: 2px;
+  padding: 0 2px;
+}

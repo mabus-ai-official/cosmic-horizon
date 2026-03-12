@@ -1,0 +1,73 @@
+/* === Adjacent Sectors === */
+.adjacent-sectors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.sector-btn {
+  padding: 2px 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--blue);
+  font-family: inherit;
+  font-size: 0.923rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sector-btn:hover {
+  border-color: var(--blue);
+  background: rgba(88, 166, 255, 0.1);
+}
+
+/* === Target Selection === */
+.target-row {
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 3px;
+  transition: background 0.15s;
+}
+
+.target-row:hover {
+  background: rgba(240, 136, 62, 0.1);
+}
+
+.target-row.selected {
+  background: rgba(240, 136, 62, 0.2);
+  border-left: 2px solid var(--orange);
+}
+
+/* === Combat Controls === */
+.combat-controls {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.combat-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.combat-subheader {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Combat flash on terminal */
+@keyframes combat-flash {
+  0% {
+    background: rgba(255, 100, 0, 0.15);
+  }
+  100% {
+    background: transparent;
+  }
+}
+.terminal--combat-flash {
+  animation: combat-flash 0.3s ease-out;
+}

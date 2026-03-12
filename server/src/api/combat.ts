@@ -31,7 +31,13 @@ import { isStoryNPC, cleanupDestroyedNPC } from "../engine/story-npcs";
 
 const router = Router();
 
-// Fire volley at target (2 AP)
+// Fire volley at target (2 AP) — the core combat action. Builds full combat state
+// from ship stats + upgrades + level bonuses + tablet bonuses + race modifiers,
+// then delegates to the pure resolveCombatVolley() engine function. On kill:
+// spawns a dodge pod for the defender (they lose their ship but not their account),
+// claims any active bounties on the target, awards destroy XP, triggers faction
+// infamy in NPC-controlled sectors, and sends a push notification. Story NPCs
+// get special handling — no dodge pod, no combat log, cleanup after destruction.
 router.post("/fire", requireAuth, async (req, res) => {
   try {
     const { targetPlayerId, energyToExpend } = req.body;
@@ -387,7 +393,10 @@ router.post("/fire", requireAuth, async (req, res) => {
   }
 });
 
-// Attempt to flee
+// Attempt to flee — probability-based escape from combat. Flee chance increases
+// with more attackers in the sector (design: more chaos = easier to slip away).
+// On success, player is moved to a random adjacent sector. Tablet flee bonuses
+// stack additively with the base chance, capped at 90% (always some risk).
 router.post("/flee", requireAuth, async (req, res) => {
   try {
     const player = await db("players")

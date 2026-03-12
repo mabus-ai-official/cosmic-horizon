@@ -1,4 +1,4 @@
-import { useRef, useMemo } from "react";
+import { memo, useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Stars } from "@react-three/drei";
 import * as THREE from "three";
@@ -45,7 +45,7 @@ function DustParticles({ count = 300 }) {
   );
 }
 
-export default function SectorSkybox() {
+function SectorSkybox() {
   return (
     <>
       <Stars
@@ -61,3 +61,5 @@ export default function SectorSkybox() {
     </>
   );
 }
+
+export default memo(SectorSkybox);

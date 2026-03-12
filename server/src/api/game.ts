@@ -43,7 +43,10 @@ import { updateDailyMissionProgress } from "./daily-missions";
 
 const router = Router();
 
-// Player status
+// Player status — the master state endpoint. Called on every page load and after
+// most actions. Aggregates player, ship, upgrades, level bonuses, story progress,
+// and inventory into a single response. Heavy but cached client-side; avoids
+// multiple round-trips for the initial game state hydration.
 router.get("/status", requireAuth, async (req, res) => {
   if (req.inTutorial) return handleTutorialStatus(req, res);
   try {
@@ -195,7 +198,10 @@ router.get("/status", requireAuth, async (req, res) => {
   }
 });
 
-// Move to adjacent sector
+// Move to adjacent sector — core navigation. Validates adjacency via sector_edges,
+// deducts 1 AP, updates explored_sectors for fog-of-war, and checks for random
+// meteor damage at outpost sectors (5% chance, 1-5 damage — adds risk to trade routes).
+// Triggers mission progress, XP for new discoveries, and multi-session sync.
 router.post("/move/:sectorId", requireAuth, async (req, res) => {
   if (req.inTutorial) return handleTutorialMove(req, res);
   try {
@@ -412,7 +418,10 @@ router.post("/move/:sectorId", requireAuth, async (req, res) => {
   }
 });
 
-// Warp-to: auto-path to a distant sector, costing 1 energy per hop
+// Warp-to: auto-path to a distant sector using BFS shortest path.
+// Costs 1 AP per hop (same as manual moves). Unlike manual move, warp does NOT
+// count toward mission progress — intentional design: missions reward exploration
+// effort, not fast-travel. Discovers all sectors along the route for fog-of-war.
 router.post("/warp-to/:sectorId", requireAuth, async (req, res) => {
   try {
     const player = await db("players")
@@ -661,7 +670,11 @@ router.post("/warp-to/:sectorId", requireAuth, async (req, res) => {
   }
 });
 
-// Current sector contents
+// Current sector contents — returns everything visible in the player's current
+// location: players, outposts, planets, deployables, events, warp gates, NPCs,
+// resource events, and caravans. This is the "look around" endpoint that populates
+// the sector view panel. Each entity type is loaded independently with try/catch
+// to gracefully handle tables that haven't been migrated yet.
 router.get("/sector", requireAuth, async (req, res) => {
   if (req.inTutorial) return handleTutorialSector(req, res);
   try {
@@ -826,7 +839,10 @@ router.get("/sector", requireAuth, async (req, res) => {
   }
 });
 
-// Player's explored map
+// Player's explored map — builds the galaxy map from the player's explored_sectors
+// array. Enriches each sector with ownership data, entity counts, planet/outpost
+// names, and commodity trade modes for map filters. Uses a single left-join query
+// for ownership instead of per-sector lookups.
 router.get("/map", requireAuth, async (req, res) => {
   if (req.inTutorial) return handleTutorialMap(req, res);
   try {
@@ -1043,7 +1059,10 @@ router.get("/map", requireAuth, async (req, res) => {
   }
 });
 
-// Scan adjacent sectors (requires planetary scanner)
+// Scan adjacent sectors — requires a planetary scanner (built into cruiser/battleship
+// or purchased as an upgrade). Reveals detailed planet stats (colonists, resources,
+// defenses) in neighboring sectors. Key intel-gathering mechanic: players can
+// identify vulnerable targets or rich trade opportunities before committing AP to move.
 router.post("/scan", requireAuth, async (req, res) => {
   if (req.inTutorial) return handleTutorialScan(req, res);
   try {
@@ -1251,7 +1270,10 @@ router.post("/use-scanner", requireAuth, async (req, res) => {
   }
 });
 
-// Dock at outpost
+// Dock at outpost — prerequisite for trading. Docking is free (no AP cost) to
+// encourage interaction with the economy. Returns current outpost prices so the
+// client can show the trade interface immediately. SP mode has mall-locking:
+// Star Malls unlock progressively as single-player missions are completed.
 router.post("/dock", requireAuth, async (req, res) => {
   if (req.inTutorial) return handleTutorialDock(req, res);
   try {
@@ -1418,7 +1440,11 @@ router.post("/seen-post-tutorial", requireAuth, async (req, res) => {
   }
 });
 
-// Transition from single player to multiplayer
+// Transition from single player to multiplayer — destructive operation that
+// migrates the player to the shared MP universe. Deletes their entire SP universe
+// (sectors, edges, outposts, planets, NPCs, etc.) and places them at a random
+// Star Mall. Player stats, ship, and progression are preserved. The --force flag
+// skips the "complete all SP missions" requirement for early transitions.
 router.post("/transition-to-mp", requireAuth, async (req, res) => {
   try {
     const player = await db("players")
@@ -1612,7 +1638,9 @@ router.post("/transition-to-sp", requireAuth, async (req, res) => {
   }
 });
 
-// Land on a planet in the current sector
+// Land on a planet in the current sector — required for colonist transfers and
+// food deposits (unless the player has a Mycelial Transporter item). Landing is
+// free but blocks movement (must liftoff first), creating a tactical commitment.
 router.post("/land", requireAuth, async (req, res) => {
   if (req.inTutorial) return handleTutorialLand(req, res);
   try {

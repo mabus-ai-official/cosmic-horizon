@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF, Html } from "@react-three/drei";
 import * as THREE from "three";
@@ -9,7 +9,7 @@ interface OtherShipProps {
   position: THREE.Vector3;
 }
 
-export default function OtherShip({
+function OtherShip({
   username,
   shipTypeId = "scout",
   position,
@@ -71,3 +71,5 @@ export default function OtherShip({
     </group>
   );
 }
+
+export default memo(OtherShip);

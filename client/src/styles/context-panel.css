@@ -1,0 +1,591 @@
+/* === Context Panel (Info Sidebar) === */
+.context-panel {
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  flex-shrink: 0;
+  background: linear-gradient(
+    270deg,
+    var(--bg-tertiary) 85%,
+    rgba(232, 71, 160, 0.03)
+  );
+}
+
+/* Player Profile */
+.profile-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--magenta);
+  border-radius: 6px;
+}
+
+.profile-portrait {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.profile-portrait__silhouette {
+  font-size: 1.385rem;
+  font-weight: 700;
+}
+
+.profile-section__info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.profile-section__name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-section__race {
+  font-size: 0.769rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.profile-section__credits {
+  font-size: 0.846rem;
+  color: var(--text-secondary);
+}
+
+/* XP / Level section */
+.xp-section {
+  padding: 6px 10px;
+  border-left: 3px solid var(--purple);
+  background: linear-gradient(90deg, rgba(163, 113, 247, 0.06), transparent);
+}
+.xp-section__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+.xp-section__level {
+  font-size: 0.923rem;
+  font-weight: bold;
+  color: var(--cyan);
+  text-shadow: 0 0 6px rgba(86, 212, 221, 0.4);
+}
+.xp-section__rank {
+  font-size: 0.769rem;
+  color: var(--purple);
+}
+.xp-section__detail {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.692rem;
+  color: var(--text-secondary);
+  margin-top: 3px;
+}
+.xp-section__next {
+  color: var(--yellow);
+  opacity: 0.7;
+}
+.xp-section__streak {
+  font-size: 0.692rem;
+  font-weight: bold;
+  color: var(--orange);
+  background: rgba(240, 136, 62, 0.15);
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+
+/* Compact bars for context panel */
+.ctx-bar-section {
+  padding: 4px 0;
+}
+
+.ctx-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.769rem;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+
+.ctx-bar {
+  height: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ctx-bar__fill {
+  height: 100%;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ctx-bar__fill--energy {
+  background: var(--cyan);
+}
+
+.ctx-bar__fill--cargo {
+  background: var(--cyan);
+}
+
+.ctx-bar__fill--xp {
+  background: linear-gradient(90deg, var(--cyan), var(--purple));
+}
+
+/* Ship Card in context panel */
+.ship-card {
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--cyan);
+  border-radius: 6px;
+}
+
+.ship-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ship-card__header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ship-card__type {
+  font-size: 0.923rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: capitalize;
+}
+
+.ship-card__stats-row {
+  display: flex;
+  gap: 12px;
+  font-size: 0.8rem;
+}
+
+.ship-card__cargo-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.769rem;
+  margin-top: 4px;
+}
+
+/* Self-Destruct Button */
+.btn-self-destruct {
+  width: 100%;
+  margin-top: 6px;
+  padding: 3px 0;
+  font-size: 0.692rem;
+  font-family: inherit;
+  letter-spacing: 1px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-self-destruct:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+.btn-self-destruct:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+.btn-self-destruct:disabled:hover {
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+.btn-self-destruct--active {
+  border-color: var(--red);
+  color: var(--red);
+  background: rgba(255, 85, 85, 0.1);
+  animation: destruct-pulse 0.8s ease-in-out infinite;
+}
+@keyframes destruct-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Mini Chat */
+/* Context panel section headers */
+.ctx-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 4px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ctx-section-header__label {
+  font-size: 0.692rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-secondary);
+}
+
+.ctx-section-header__channels {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.mini-chat {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--green);
+  border-radius: 6px;
+  min-height: 0;
+}
+
+.mini-chat__messages {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 200px;
+  max-height: 400px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--bg-primary);
+}
+
+.mini-chat__msg {
+  font-size: 0.769rem;
+  padding: 2px 0;
+  word-break: break-word;
+  color: var(--text-primary);
+}
+
+.mini-chat__msg--own {
+  color: var(--cyan);
+}
+
+.mini-chat__sender {
+  color: var(--green);
+  font-weight: bold;
+}
+
+.mini-chat__msg--own .mini-chat__sender {
+  color: var(--cyan);
+}
+
+.mini-chat__input {
+  margin-top: 6px;
+}
+
+.mini-chat__input input {
+  width: 100%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 5px 8px;
+  font-size: 0.769rem;
+  font-family: inherit;
+  border-radius: 4px;
+  outline: none;
+}
+
+.mini-chat__input input:focus {
+  border-color: var(--cyan);
+}
+
+.mini-chat__input-row {
+  display: flex;
+  gap: 4px;
+}
+
+.mini-chat__input-row input {
+  flex: 1;
+}
+
+.mini-chat__emoji-btn {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 2px 6px;
+  line-height: 1;
+}
+
+.mini-chat__emoji-btn:hover {
+  border-color: var(--cyan);
+}
+
+.mini-chat__emoji-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.mini-chat__emoji-item {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 2px 4px;
+  line-height: 1;
+}
+
+.mini-chat__emoji-item:hover {
+  background: var(--bg-secondary);
+  border-color: var(--border);
+}
+
+.mini-chat__discord-badge {
+  display: inline-block;
+  background: #5865f2;
+  color: #fff;
+  font-size: 7px;
+  font-weight: bold;
+  padding: 1px 3px;
+  border-radius: 2px;
+  margin-right: 3px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+/* Command Input */
+.cmd-input-section {
+  padding: 0;
+  margin-top: auto;
+  background: linear-gradient(to bottom, transparent, rgba(232, 71, 160, 0.03));
+}
+
+.cmd-input-row {
+  display: flex;
+  align-items: center;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 8px;
+  margin-top: 4px;
+  box-shadow: 0 -1px 4px rgba(232, 71, 160, 0.06);
+}
+
+.cmd-prompt {
+  color: var(--magenta);
+  margin-right: 6px;
+  font-size: 0.923rem;
+  user-select: none;
+}
+
+.cmd-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.923rem;
+  padding: 6px 0;
+  caret-color: var(--magenta);
+}
+
+.cmd-input::placeholder {
+  color: var(--text-muted);
+}
+
+.context-panel__subheader {
+  font-size: 0.769rem;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.btn-action {
+  padding: 4px 10px;
+  font-size: 0.846rem;
+  font-family: "IBM Plex Mono", monospace;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.btn-action:hover {
+  background: var(--bg-primary);
+  border-color: var(--cyan, #56d4dd);
+}
+.btn-action--dock {
+  color: var(--cyan, #56d4dd);
+  border-color: var(--cyan, #56d4dd);
+  animation: dock-glow 2s ease-in-out infinite;
+}
+.btn-action--undock {
+  color: var(--yellow);
+  border-color: var(--yellow);
+}
+.btn-action--combat {
+  color: var(--orange);
+  border-color: var(--orange);
+}
+
+.move-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.btn-move {
+  padding: 3px 8px;
+  font-size: 0.846rem;
+  font-family: "IBM Plex Mono", monospace;
+  background: var(--bg-secondary);
+  color: var(--cyan, #56d4dd);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.btn-move:hover {
+  border-color: var(--cyan, #56d4dd);
+  background: var(--bg-primary);
+}
+
+/* === Context Panel Enhancements === */
+
+/* Action button hover glow */
+.btn-action {
+  transition:
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+.btn-action:hover {
+  box-shadow: 0 0 8px rgba(86, 212, 221, 0.35);
+}
+.btn-action--combat:hover {
+  box-shadow: 0 0 8px rgba(240, 136, 62, 0.4);
+}
+.btn-action--undock:hover {
+  box-shadow: 0 0 8px rgba(210, 153, 34, 0.4);
+}
+
+/* Smooth stat bar fill transitions */
+.cargo-bar__fill {
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Context panel section headers subtle glow on hover */
+.context-panel__subheader {
+  transition: color 0.2s ease;
+}
+.context-panel__subheader:hover {
+  color: var(--magenta);
+}
+
+/* === Context Panel Alerts === */
+.context-panel__alerts {
+  padding: 0 8px 8px;
+}
+.alert-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.alert-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.846rem;
+  padding: 4px 6px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.alert-item:hover {
+  border-color: var(--cyan);
+}
+.alert-item--resource {
+  color: var(--green);
+  border-left: 2px solid var(--green);
+}
+.alert-item--danger {
+  color: var(--red);
+  border-left: 2px solid var(--red);
+}
+.alert-item--special {
+  color: var(--purple);
+  border-left: 2px solid var(--purple);
+}
+.alert-item--npc {
+  color: var(--cyan);
+  border-left: 2px solid var(--cyan);
+}
+.btn-action--harvest {
+  color: var(--green);
+  border-color: var(--green);
+}
+.btn-action--salvage {
+  color: var(--purple);
+  border-color: var(--purple);
+}
+.btn-action--attack {
+  color: var(--red);
+  border-color: var(--red);
+}
+
+/* Notes section in context panel */
+.ctx-notes-section {
+  max-height: 150px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--bg-primary);
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}

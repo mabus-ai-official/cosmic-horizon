@@ -1,4 +1,4 @@
-import { useRef, useMemo } from "react";
+import { memo, useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -8,7 +8,7 @@ interface EngineTrailProps {
   speed?: number;
 }
 
-export default function EngineTrail({
+function EngineTrail({
   color = "#e847a0",
   count = 80,
   speed = 1,
@@ -84,3 +84,5 @@ export default function EngineTrail({
     </points>
   );
 }
+
+export default memo(EngineTrail);

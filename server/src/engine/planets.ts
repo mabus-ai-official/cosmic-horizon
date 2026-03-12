@@ -1,7 +1,7 @@
-import { PLANET_TYPES, UPGRADE_REQUIREMENTS } from '../config/planet-types';
-import { GAME_CONFIG } from '../config/game';
-import { RACES, type RaceId } from '../config/races';
-import { type RacePopulation } from './happiness';
+import { PLANET_TYPES, UPGRADE_REQUIREMENTS } from "../config/planet-types";
+import { GAME_CONFIG } from "../config/game";
+import { RACES, type RaceId } from "../config/races";
+import { type RacePopulation } from "./happiness";
 
 export interface ProductionResult {
   cyrillium: number;
@@ -35,10 +35,14 @@ export function calculateProduction(
   // Happiness multiplier
   const tiers = GAME_CONFIG.HAPPINESS_TIERS;
   let happinessMultiplier = 0.75;
-  if (happiness <= tiers.miserable.max) happinessMultiplier = tiers.miserable.productionMultiplier;
-  else if (happiness <= tiers.unhappy.max) happinessMultiplier = tiers.unhappy.productionMultiplier;
-  else if (happiness <= tiers.content.max) happinessMultiplier = tiers.content.productionMultiplier;
-  else if (happiness <= tiers.happy.max) happinessMultiplier = tiers.happy.productionMultiplier;
+  if (happiness <= tiers.miserable.max)
+    happinessMultiplier = tiers.miserable.productionMultiplier;
+  else if (happiness <= tiers.unhappy.max)
+    happinessMultiplier = tiers.unhappy.productionMultiplier;
+  else if (happiness <= tiers.content.max)
+    happinessMultiplier = tiers.content.productionMultiplier;
+  else if (happiness <= tiers.happy.max)
+    happinessMultiplier = tiers.happy.productionMultiplier;
   else happinessMultiplier = tiers.thriving.productionMultiplier;
 
   let totalCyrillium = 0;
@@ -51,9 +55,24 @@ export function calculateProduction(
     const affinity = raceConfig?.planetAffinities?.[planetClass] ?? 1.0;
     const units = rp.count / 10;
 
-    totalCyrillium += config.productionRates.cyrillium * units * efficiency * happinessMultiplier * affinity;
-    totalTech += config.productionRates.tech * units * efficiency * happinessMultiplier * affinity;
-    totalDrones += config.productionRates.drones * units * efficiency * happinessMultiplier * affinity;
+    totalCyrillium +=
+      config.productionRates.cyrillium *
+      units *
+      efficiency *
+      happinessMultiplier *
+      affinity;
+    totalTech +=
+      config.productionRates.tech *
+      units *
+      efficiency *
+      happinessMultiplier *
+      affinity;
+    totalDrones +=
+      config.productionRates.drones *
+      units *
+      efficiency *
+      happinessMultiplier *
+      affinity;
   }
 
   return {
@@ -72,7 +91,11 @@ export function calculateProductionLegacy(
   colonists: number,
   happiness: number = 50,
 ): ProductionResult {
-  return calculateProduction(planetClass, [{ race: 'unknown', count: colonists }], happiness);
+  return calculateProduction(
+    planetClass,
+    [{ race: "unknown", count: colonists }],
+    happiness,
+  );
 }
 
 /**
@@ -90,10 +113,15 @@ export function calculateFoodConsumption(
   if (colonists <= 0) return 0;
 
   const baseConsumption = config.foodConsumptionRate * (colonists / 10);
-  const happinessScale = 1.0 + (happiness - 50) * GAME_CONFIG.FOOD_CONSUMPTION_HAPPINESS_SCALE;
-  const upgradeScale = 1.0 + upgradeLevel * GAME_CONFIG.FOOD_CONSUMPTION_UPGRADE_SCALE;
+  const happinessScale =
+    1.0 + (happiness - 50) * GAME_CONFIG.FOOD_CONSUMPTION_HAPPINESS_SCALE;
+  const upgradeScale =
+    1.0 + upgradeLevel * GAME_CONFIG.FOOD_CONSUMPTION_UPGRADE_SCALE;
 
-  return Math.max(0, Math.floor(baseConsumption * happinessScale * upgradeScale));
+  return Math.max(
+    0,
+    Math.floor(baseConsumption * happinessScale * upgradeScale),
+  );
 }
 
 /**
@@ -121,13 +149,18 @@ export function calculateColonistGrowth(
   upgradeLevel: number = 0,
 ): { newColonists: number; foodConsumed: number; foodProduced: number } {
   const config = PLANET_TYPES[planetClass];
-  if (!config) return { newColonists: currentColonists, foodConsumed: 0, foodProduced: 0 };
+  if (!config)
+    return { newColonists: currentColonists, foodConsumed: 0, foodProduced: 0 };
 
   // Seed planets: always grow, no food consumed or produced
-  if (planetClass === 'S') {
+  if (planetClass === "S") {
     const growthRate = config.colonistGrowthRate;
     const growth = Math.floor(currentColonists * growthRate);
-    return { newColonists: currentColonists + growth, foodConsumed: 0, foodProduced: 0 };
+    return {
+      newColonists: currentColonists + growth,
+      foodConsumed: 0,
+      foodProduced: 0,
+    };
   }
 
   // Food produced this tick
@@ -137,13 +170,27 @@ export function calculateColonistGrowth(
   const effectiveFoodStock = foodStock + foodProduced;
 
   // Calculate food consumption
-  const foodConsumption = calculateFoodConsumption(planetClass, currentColonists, happiness, upgradeLevel);
+  const foodConsumption = calculateFoodConsumption(
+    planetClass,
+    currentColonists,
+    happiness,
+    upgradeLevel,
+  );
   const actualFoodConsumed = Math.min(foodConsumption, effectiveFoodStock);
 
   // If no effective food and happiness below threshold: population decline
-  if (effectiveFoodStock <= 0 && happiness < GAME_CONFIG.POP_DECLINE_ZERO_FOOD_THRESHOLD) {
-    const loss = Math.floor(currentColonists * GAME_CONFIG.FOOD_STARVATION_POP_LOSS);
-    return { newColonists: Math.max(0, currentColonists - loss), foodConsumed: 0, foodProduced };
+  if (
+    effectiveFoodStock <= 0 &&
+    happiness < GAME_CONFIG.POP_DECLINE_ZERO_FOOD_THRESHOLD
+  ) {
+    const loss = Math.floor(
+      currentColonists * GAME_CONFIG.FOOD_STARVATION_POP_LOSS,
+    );
+    return {
+      newColonists: Math.max(0, currentColonists - loss),
+      foodConsumed: 0,
+      foodProduced,
+    };
   }
 
   // If food available and happiness > 40: grow
@@ -151,11 +198,19 @@ export function calculateColonistGrowth(
     const growthRate = config.colonistGrowthRate;
     const happinessBonus = happiness / 100; // scale growth by happiness
     const growth = Math.floor(currentColonists * growthRate * happinessBonus);
-    return { newColonists: currentColonists + growth, foodConsumed: actualFoodConsumed, foodProduced };
+    return {
+      newColonists: currentColonists + growth,
+      foodConsumed: actualFoodConsumed,
+      foodProduced,
+    };
   }
 
   // Otherwise: stagnation
-  return { newColonists: currentColonists, foodConsumed: actualFoodConsumed, foodProduced };
+  return {
+    newColonists: currentColonists,
+    foodConsumed: actualFoodConsumed,
+    foodProduced,
+  };
 }
 
 export interface UpgradeCheck {
@@ -167,6 +222,13 @@ export interface UpgradeCheck {
   ownerCredits: number;
 }
 
+/**
+ * Check if a planet meets all requirements for the next upgrade level.
+ * Requirements escalate non-linearly (defined in UPGRADE_REQUIREMENTS) to
+ * create meaningful progression milestones. Checks colonists, all three
+ * resource stocks, and owner credits — upgrading is an expensive commitment
+ * that signals a player's investment in that colony.
+ */
 export function canUpgrade(planet: UpgradeCheck): boolean {
   const nextLevel = planet.upgradeLevel + 1;
   const req = UPGRADE_REQUIREMENTS[nextLevel];
@@ -181,6 +243,12 @@ export function canUpgrade(planet: UpgradeCheck): boolean {
   );
 }
 
+/**
+ * Calculate production with an optional factory bonus (50% increase).
+ * Factory planets are a late-game specialization — players sacrifice
+ * flexibility for raw output. The bonus is flat across all resource types
+ * to keep the decision about planet class, not factory placement.
+ */
 export function calculateProductionWithFactoryBonus(
   planetClass: string,
   racePopulations: RacePopulation[],
@@ -189,7 +257,7 @@ export function calculateProductionWithFactoryBonus(
 ): ProductionResult {
   const base = calculateProduction(planetClass, racePopulations, happiness);
   if (!isFactory) return base;
-  const bonus = 0.50;
+  const bonus = 0.5;
   return {
     cyrillium: Math.floor(base.cyrillium * (1 + bonus)),
     tech: Math.floor(base.tech * (1 + bonus)),

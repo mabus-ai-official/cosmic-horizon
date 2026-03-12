@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { Toast } from "../hooks/useToast";
 
 const ICON_MAP: Record<string, string> = {
@@ -15,7 +16,7 @@ interface ToastManagerProps {
   onDismiss: (id: number) => void;
 }
 
-export default function ToastManager({ toasts, onDismiss }: ToastManagerProps) {
+function ToastManager({ toasts, onDismiss }: ToastManagerProps) {
   if (toasts.length === 0) return null;
 
   return (
@@ -35,3 +36,5 @@ export default function ToastManager({ toasts, onDismiss }: ToastManagerProps) {
     </div>
   );
 }
+
+export default memo(ToastManager);

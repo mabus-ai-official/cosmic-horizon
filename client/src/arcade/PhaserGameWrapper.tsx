@@ -2,17 +2,20 @@ import { useRef, useEffect, useCallback, useState } from "react";
 
 interface RoundStartData {
   round: number;
-  sweetSpotPositions: number[];
-  barSpeed: number;
+  sweetSpotPositions?: number[];
+  barSpeed?: number;
+  roundConfig?: any;
   effects: any[];
 }
 
 interface PhaserGameWrapperProps {
+  gameType: string;
   roundStart: RoundStartData;
-  onRoundComplete: (hitTimings: number[]) => Promise<any>;
+  onRoundComplete: (result: any) => Promise<any>;
 }
 
 export default function PhaserGameWrapper({
+  gameType,
   roundStart,
   onRoundComplete,
 }: PhaserGameWrapperProps) {
@@ -21,8 +24,8 @@ export default function PhaserGameWrapper({
   const [loading, setLoading] = useState(true);
 
   const handleRoundComplete = useCallback(
-    (hitTimings: number[]) => {
-      onRoundComplete(hitTimings);
+    (result: any) => {
+      onRoundComplete(result);
     },
     [onRoundComplete],
   );
@@ -34,8 +37,15 @@ export default function PhaserGameWrapper({
       if (!containerRef.current) return;
 
       const Phaser = await import("phaser");
-      const { AsteroidMiningScene } =
-        await import("./games/asteroid-mining/AsteroidMiningScene");
+
+      let SceneClass: any;
+      if (gameType === "turret_defense") {
+        const mod = await import("./games/turret-defense/TurretDefenseScene");
+        SceneClass = mod.TurretDefenseScene;
+      } else {
+        const mod = await import("./games/asteroid-mining/AsteroidMiningScene");
+        SceneClass = mod.AsteroidMiningScene;
+      }
 
       if (destroyed) return;
 
@@ -45,7 +55,7 @@ export default function PhaserGameWrapper({
         width: 800,
         height: 500,
         backgroundColor: "#0a0e14",
-        scene: [AsteroidMiningScene],
+        scene: [SceneClass],
         physics: { default: "arcade" },
         scale: {
           mode: Phaser.Scale.FIT,
@@ -57,7 +67,6 @@ export default function PhaserGameWrapper({
       const game = new Phaser.Game(config);
       gameRef.current = game;
 
-      // Pass round data to the scene via registry
       game.registry.set("roundStart", roundStart);
       game.registry.set("onRoundComplete", handleRoundComplete);
 
@@ -75,7 +84,6 @@ export default function PhaserGameWrapper({
     };
   }, []);
 
-  // Update round data when it changes (new round)
   useEffect(() => {
     if (gameRef.current) {
       gameRef.current.registry.set("roundStart", roundStart);

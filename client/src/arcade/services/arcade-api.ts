@@ -73,8 +73,56 @@ export async function claimReward(sessionId: string) {
   return data as {
     credits: number;
     xp: number;
+    tokens: number;
     totalXp: number;
     level: number;
     levelUp: any;
   };
+}
+
+export async function getShopItems() {
+  const { data } = await api.get("/shop");
+  return data as {
+    balance: number;
+    items: {
+      id: string;
+      name: string;
+      description: string;
+      slot: string;
+      stat_bonus: number;
+      token_price: number;
+      max_stack: number;
+    }[];
+  };
+}
+
+export async function buyShopItem(upgradeTypeId: string) {
+  const { data } = await api.post(`/shop/buy/${upgradeTypeId}`);
+  return data as {
+    installed: boolean;
+    installId: string;
+    name: string;
+    slot: string;
+    effectiveBonus: number;
+    newBalance: number;
+  };
+}
+
+export async function getTokenBalance() {
+  const { data } = await api.get("/shop/balance");
+  return data as { balance: number };
+}
+
+export async function submitTurretResult(
+  sessionId: string,
+  turretResult: {
+    wavesCompleted: number;
+    enemiesKilled: number;
+    baseHPRemaining: number;
+  },
+) {
+  const { data } = await api.post(`/session/${sessionId}/round-result`, {
+    turretResult,
+  });
+  return data;
 }

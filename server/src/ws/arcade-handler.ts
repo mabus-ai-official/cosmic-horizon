@@ -6,6 +6,7 @@ import {
   generateSweetSpotPositions,
   calculateBarSpeed,
 } from "../api/arcade/validation";
+import { generateTurretRoundConfig } from "../api/arcade/turret-validation";
 import { resolveDrinkEffects } from "../api/arcade/drinks";
 
 // Track ready state: sessionId -> Set of playerIds who are ready
@@ -36,14 +37,17 @@ export function setupArcadeSocket(
     socket.join(arcadeRoom(sessionId));
     playerSessions.set(playerId, sessionId);
 
-    // Track ready state
+    // For AI matches, the client calls startRound() via HTTP — don't duplicate here
+    const isAI = !session.player2_id;
+    if (isAI) return;
+
+    // Track ready state (PvP only)
     if (!readyPlayers.has(sessionId)) {
       readyPlayers.set(sessionId, new Set());
     }
     readyPlayers.get(sessionId)!.add(playerId);
 
-    const isAI = !session.player2_id;
-    const bothReady = isAI || readyPlayers.get(sessionId)!.size >= 2;
+    const bothReady = readyPlayers.get(sessionId)!.size >= 2;
 
     if (bothReady) {
       readyPlayers.delete(sessionId);
@@ -61,41 +65,78 @@ export function setupArcadeSocket(
         p2Drinks,
       );
 
-      const sweetSpotPositions = generateSweetSpotPositions(
-        ARCADE_CONFIG.HITS_PER_ROUND,
-      );
-
       const round = session.round || 1;
       const roundData = JSON.parse(session.round_data || "{}");
-      const p1BarSpeed = calculateBarSpeed(p1Self, p2OnP1);
-      const p2BarSpeed = calculateBarSpeed(p2Self, p1OnP2);
 
-      roundData[`round_${round}`] = {
-        sweetSpotPositions,
-        barSpeed: ARCADE_CONFIG.BASE_BAR_SPEED,
-        player1Hits: [],
-        player2Hits: [],
-        player1Score: 0,
-        player2Score: 0,
-      };
+      if (session.game_type === "turret_defense") {
+        const p1RoundConfig = generateTurretRoundConfig(round, p1Self, [
+          ...p2Self,
+          ...p2OnP1,
+        ]);
+        const p2RoundConfig = generateTurretRoundConfig(round, p2Self, [
+          ...p1Self,
+          ...p1OnP2,
+        ]);
 
-      await db("arcade_sessions")
-        .where({ id: sessionId })
-        .update({
-          status: "playing",
+        roundData[`round_${round}`] = {
+          roundConfig: p1RoundConfig,
+          player1Score: 0,
+          player2Score: 0,
+        };
+
+        await db("arcade_sessions")
+          .where({ id: sessionId })
+          .update({
+            status: "playing",
+            round,
+            round_data: JSON.stringify(roundData),
+            updated_at: new Date().toISOString(),
+          });
+
+        io.to(playerRoom(session.player1_id)).emit("arcade:round_start", {
           round,
-          round_data: JSON.stringify(roundData),
-          updated_at: new Date().toISOString(),
+          roundConfig: p1RoundConfig,
+          effects: p1Self,
         });
 
-      io.to(playerRoom(session.player1_id)).emit("arcade:round_start", {
-        round,
-        sweetSpotPositions,
-        barSpeed: p1BarSpeed,
-        effects: p1Self,
-      });
+        io.to(playerRoom(session.player2_id)).emit("arcade:round_start", {
+          round,
+          roundConfig: p2RoundConfig,
+          effects: p2Self,
+        });
+      } else {
+        // Asteroid mining (default)
+        const sweetSpotPositions = generateSweetSpotPositions(
+          ARCADE_CONFIG.HITS_PER_ROUND,
+        );
+        const p1BarSpeed = calculateBarSpeed(p1Self, p2OnP1);
+        const p2BarSpeed = calculateBarSpeed(p2Self, p1OnP2);
 
-      if (session.player2_id) {
+        roundData[`round_${round}`] = {
+          sweetSpotPositions,
+          barSpeed: ARCADE_CONFIG.BASE_BAR_SPEED,
+          player1Hits: [],
+          player2Hits: [],
+          player1Score: 0,
+          player2Score: 0,
+        };
+
+        await db("arcade_sessions")
+          .where({ id: sessionId })
+          .update({
+            status: "playing",
+            round,
+            round_data: JSON.stringify(roundData),
+            updated_at: new Date().toISOString(),
+          });
+
+        io.to(playerRoom(session.player1_id)).emit("arcade:round_start", {
+          round,
+          sweetSpotPositions,
+          barSpeed: p1BarSpeed,
+          effects: p1Self,
+        });
+
         io.to(playerRoom(session.player2_id)).emit("arcade:round_start", {
           round,
           sweetSpotPositions,

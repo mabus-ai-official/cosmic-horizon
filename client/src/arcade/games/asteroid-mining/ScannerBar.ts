@@ -56,7 +56,17 @@ export class ScannerBar {
   }
 
   getNormalizedPosition(): number {
-    return (this.bar.x - MINING_CONFIG.FIELD_X) / MINING_CONFIG.FIELD_WIDTH;
+    // Compensate for human reaction time + input lag (~50ms rewind)
+    const reactionCompensationMs = 50;
+    const pixelsPerMs = (this.speed * MINING_CONFIG.FIELD_WIDTH) / 1000;
+    const compensatedX =
+      this.bar.x - pixelsPerMs * reactionCompensationMs * this.direction;
+    const clampedX = Phaser.Math.Clamp(
+      compensatedX,
+      MINING_CONFIG.FIELD_X,
+      MINING_CONFIG.FIELD_X + MINING_CONFIG.FIELD_WIDTH,
+    );
+    return (clampedX - MINING_CONFIG.FIELD_X) / MINING_CONFIG.FIELD_WIDTH;
   }
 
   setSpeed(speed: number): void {

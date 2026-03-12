@@ -2,12 +2,14 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   startAIMatch,
   submitRoundResult,
+  submitTurretResult,
   selectDrink,
   startRound,
   claimReward,
   challengePlayer,
   acceptChallenge,
   declineChallenge,
+  getTokenBalance,
 } from "../services/arcade-api";
 import { setupArcadeListeners } from "../services/arcade-socket";
 
@@ -16,7 +18,8 @@ export type ArcadePhase =
   | "matchmaking"
   | "playing"
   | "between_rounds"
-  | "results";
+  | "results"
+  | "shop";
 
 interface SessionState {
   sessionId: string | null;
@@ -33,8 +36,9 @@ interface SessionState {
 
 interface RoundStartData {
   round: number;
-  sweetSpotPositions: number[];
-  barSpeed: number;
+  sweetSpotPositions?: number[];
+  barSpeed?: number;
+  roundConfig?: any;
   effects: any[];
 }
 
@@ -68,7 +72,15 @@ export function useArcadeSession(
   const [drinkMenu, setDrinkMenu] = useState<any[]>([]);
   const [roundResults, setRoundResults] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [tokenBalance, setTokenBalance] = useState(0);
   const challengeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load token balance on mount
+  useEffect(() => {
+    getTokenBalance()
+      .then((r) => setTokenBalance(r.balance))
+      .catch(() => {});
+  }, []);
 
   // Socket listeners
   useEffect(() => {
@@ -105,9 +117,7 @@ export function useArcadeSession(
         setSession((s) => ({ ...s, round: data.round }));
         setPhase("playing");
       },
-      onOpponentScore: () => {
-        // Opponent submitted; we'll get full results when we submit too
-      },
+      onOpponentScore: () => {},
       onRoundComplete: (data) => {
         setRoundResults((prev) => [...prev, data]);
         setSession((s) => ({
@@ -143,10 +153,12 @@ export function useArcadeSession(
   }, [on, emit]);
 
   const handlePlayAI = useCallback(
-    async (difficulty = "medium") => {
+    async (difficulty = "medium", gameType = "asteroid_mining") => {
       try {
         setError(null);
-        const result = await startAIMatch("asteroid_mining", difficulty);
+        console.log("[ARCADE] handlePlayAI args:", { difficulty, gameType });
+        const result = await startAIMatch(gameType, difficulty);
+        console.log("[ARCADE] startAIMatch result:", result);
         setSession((s) => ({
           ...s,
           sessionId: result.sessionId,
@@ -155,9 +167,9 @@ export function useArcadeSession(
           gameType: result.gameType,
         }));
         setPhase("playing");
-        // Signal ready and start first round
         emit("arcade:ready", { sessionId: result.sessionId });
         const roundData = await startRound(result.sessionId);
+        console.log("[ARCADE] startRound result:", roundData);
         setRoundStart(roundData);
         setSession((s) => ({ ...s, round: roundData.round }));
       } catch (err: any) {
@@ -167,19 +179,22 @@ export function useArcadeSession(
     [emit],
   );
 
-  const handleChallenge = useCallback(async (targetId: string) => {
-    try {
-      setError(null);
-      await challengePlayer(targetId);
-      setPhase("matchmaking");
-      challengeTimerRef.current = setTimeout(() => {
-        setPhase("menu");
-        setError("Challenge expired");
-      }, 60000);
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to send challenge");
-    }
-  }, []);
+  const handleChallenge = useCallback(
+    async (targetId: string, gameType = "asteroid_mining") => {
+      try {
+        setError(null);
+        await challengePlayer(targetId, gameType);
+        setPhase("matchmaking");
+        challengeTimerRef.current = setTimeout(() => {
+          setPhase("menu");
+          setError("Challenge expired");
+        }, 60000);
+      } catch (err: any) {
+        setError(err.response?.data?.error || "Failed to send challenge");
+      }
+    },
+    [],
+  );
 
   const handleAcceptChallenge = useCallback(async (challengeId: string) => {
     try {
@@ -231,6 +246,44 @@ export function useArcadeSession(
     [session.sessionId],
   );
 
+  const handleSubmitTurretResult = useCallback(
+    async (turretResult: {
+      wavesCompleted: number;
+      enemiesKilled: number;
+      baseHPRemaining: number;
+    }) => {
+      if (!session.sessionId) return null;
+      try {
+        const result = await submitTurretResult(
+          session.sessionId,
+          turretResult,
+        );
+        if (result.gameComplete) {
+          setSession((s) => ({
+            ...s,
+            myScore: result.myTotal,
+            opponentScore: result.opponentTotal,
+            winnerId: result.winnerId,
+          }));
+          setPhase("results");
+        } else if (result.drinkMenu) {
+          setDrinkMenu(result.drinkMenu);
+          setSession((s) => ({
+            ...s,
+            myScore: result.myTotal,
+            opponentScore: result.opponentTotal,
+          }));
+          setPhase("between_rounds");
+        }
+        return result;
+      } catch (err: any) {
+        setError(err.response?.data?.error || "Failed to submit round");
+        return null;
+      }
+    },
+    [session.sessionId],
+  );
+
   const handleSelectDrink = useCallback(
     async (drinkId: string) => {
       if (!session.sessionId) return;
@@ -253,6 +306,9 @@ export function useArcadeSession(
     try {
       const result = await claimReward(session.sessionId);
       setSession((s) => ({ ...s, rewardClaimed: true }));
+      if (result.tokens) {
+        setTokenBalance((b) => b + result.tokens);
+      }
       return result;
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to claim reward");
@@ -280,6 +336,14 @@ export function useArcadeSession(
     setError(null);
   }, []);
 
+  const handleOpenShop = useCallback(() => {
+    setPhase("shop");
+  }, []);
+
+  const handleCloseShop = useCallback(() => {
+    setPhase("menu");
+  }, []);
+
   return {
     phase,
     session,
@@ -288,13 +352,18 @@ export function useArcadeSession(
     drinkMenu,
     roundResults,
     error,
+    tokenBalance,
+    setTokenBalance,
     handlePlayAI,
     handleChallenge,
     handleAcceptChallenge,
     handleDeclineChallenge,
     handleSubmitHits,
+    handleSubmitTurretResult,
     handleSelectDrink,
     handleClaimReward,
     handleRematch,
+    handleOpenShop,
+    handleCloseShop,
   };
 }

@@ -5,6 +5,7 @@ import DrinkPhase from "./DrinkPhase";
 import ResultsView from "./ResultsView";
 import ScoreOverlay from "./ScoreOverlay";
 import PhaserGameWrapper from "./PhaserGameWrapper";
+import ArcadeShop from "./ArcadeShop";
 
 interface ArcadeContainerProps {
   on: (event: string, handler: (...args: any[]) => void) => () => void;
@@ -25,6 +26,12 @@ export default function ArcadeContainer({
 
   const opponentName = arcade.session.opponent?.username || "AI Opponent";
   const isAI = !arcade.session.opponent?.id;
+  const gameType = arcade.session.gameType;
+
+  const handleRoundComplete =
+    gameType === "turret_defense"
+      ? arcade.handleSubmitTurretResult
+      : arcade.handleSubmitHits;
 
   switch (arcade.phase) {
     case "menu":
@@ -34,7 +41,18 @@ export default function ArcadeContainer({
           playerId={playerId}
           onPlayAI={arcade.handlePlayAI}
           onChallenge={arcade.handleChallenge}
+          onOpenShop={arcade.handleOpenShop}
+          tokenBalance={arcade.tokenBalance}
           error={arcade.error}
+        />
+      );
+
+    case "shop":
+      return (
+        <ArcadeShop
+          tokenBalance={arcade.tokenBalance}
+          onBalanceChange={arcade.setTokenBalance}
+          onBack={arcade.handleCloseShop}
         />
       );
 
@@ -61,8 +79,9 @@ export default function ArcadeContainer({
           />
           {arcade.roundStart && (
             <PhaserGameWrapper
+              gameType={gameType}
               roundStart={arcade.roundStart}
-              onRoundComplete={arcade.handleSubmitHits}
+              onRoundComplete={handleRoundComplete}
             />
           )}
         </div>

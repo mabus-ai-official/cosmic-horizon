@@ -31,6 +31,11 @@ export const ARCADE_CONFIG = {
   LOSER_XP: 50,
   AI_REWARD_MULTIPLIER: 0.5,
 
+  // Token rewards
+  WINNER_TOKENS: 50,
+  LOSER_TOKENS: 15,
+  DRAW_TOKENS: 30,
+
   // AI difficulty
   AI_DIFFICULTY: {
     easy: { accuracyMean: 0.2, accuracyStdDev: 0.15 },
@@ -48,9 +53,48 @@ export const ARCADE_CONFIG = {
     double_or_nothing: 2.0,
     phantom_count: 3,
   },
+
+  // Turret Defense
+  TURRET_DEFENSE: {
+    WAVES_PER_ROUND: 5,
+    BASE_HP: 20,
+    STARTING_CURRENCY: 300,
+    KILL_REWARD: 10,
+    WAVE_BONUS: 50,
+    // Wave scaling
+    BASE_ENEMY_COUNT: 5,
+    ENEMY_COUNT_SCALE: 3,
+    BASE_ENEMY_HP: 1,
+    ENEMY_HP_SCALE: 0.5,
+    BASE_ENEMY_SPEED: 1.0,
+    ENEMY_SPEED_SCALE: 0.1,
+    // Turret types
+    TURRETS: {
+      basic: { cost: 100, damage: 1, range: 120, fireRate: 1.0 },
+      splash: {
+        cost: 250,
+        damage: 2,
+        range: 100,
+        fireRate: 1.5,
+        splashRadius: 60,
+      },
+      slow: {
+        cost: 200,
+        damage: 0,
+        range: 150,
+        fireRate: 0.5,
+        slowFactor: 0.5,
+      },
+      sniper: { cost: 400, damage: 5, range: 200, fireRate: 2.5 },
+    },
+    // Score calc
+    SCORE_PER_KILL: 10,
+    SCORE_PER_WAVE: 100,
+    SCORE_PER_HP: 25,
+  },
 } as const;
 
-export type GameType = "asteroid_mining";
+export type GameType = "asteroid_mining" | "turret_defense";
 export type SessionStatus = "lobby" | "playing" | "between_rounds" | "complete";
 export type ChallengeStatus = "pending" | "accepted" | "declined" | "expired";
 export type AIDifficulty = "easy" | "medium" | "hard";
@@ -79,3 +123,23 @@ export interface RoundState {
   player1Score: number;
   player2Score: number;
 }
+
+export interface TurretDefenseResult {
+  wavesCompleted: number;
+  enemiesKilled: number;
+  baseHPRemaining: number;
+  score: number;
+}
+
+export interface TurretRoundConfig {
+  waves: {
+    enemyCount: number;
+    enemyHP: number;
+    enemySpeed: number;
+  }[];
+  startingCurrency: number;
+  baseHP: number;
+  turrets: typeof ARCADE_CONFIG.TURRET_DEFENSE.TURRETS;
+}
+
+export type TurretType = "basic" | "splash" | "slow" | "sniper";

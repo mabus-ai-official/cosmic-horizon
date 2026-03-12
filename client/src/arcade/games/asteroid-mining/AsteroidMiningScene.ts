@@ -138,11 +138,11 @@ export class AsteroidMiningScene extends Phaser.Scene {
       const x = MINING_CONFIG.FIELD_X + timing * MINING_CONFIG.FIELD_WIDTH;
       const y = MINING_CONFIG.FIELD_Y + 60;
 
-      if (distance < 0.03) {
+      if (distance < 0.05) {
         this.ui.showFloatingText(x, y, "PERFECT!", MINING_CONFIG.PERFECT_COLOR);
         this.roundScore += 200;
         this.flashScreen(0x3fb950);
-      } else if (distance < 0.08) {
+      } else if (distance < 0.12) {
         this.ui.showFloatingText(x, y, "GOOD", MINING_CONFIG.GOOD_COLOR);
         this.roundScore += 100;
       } else {

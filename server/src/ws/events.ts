@@ -80,6 +80,40 @@ export interface ServerEvents {
   "sync:sector": void;
   "sync:map": void;
   "sync:full": void;
+  // Arcade events
+  "arcade:challenge": {
+    challengeId: string;
+    challengerName: string;
+    gameType: string;
+  };
+  "arcade:challenge_response": {
+    challengeId: string;
+    accepted: boolean;
+    sessionId?: string;
+  };
+  "arcade:session_start": {
+    sessionId: string;
+    opponent: { id: string | null; username: string };
+    gameType: string;
+    isPlayer1: boolean;
+  };
+  "arcade:round_start": {
+    round: number;
+    sweetSpotPositions: number[];
+    barSpeed: number;
+    effects: any[];
+  };
+  "arcade:opponent_score": { round: number; score: number };
+  "arcade:round_complete": {
+    round: number;
+    scores: { player1: number; player2: number };
+    standings: { player1: number; player2: number };
+  };
+  "arcade:drink_phase": { menu: any[]; timeLimit: number };
+  "arcade:game_complete": {
+    winnerId: string | null;
+    finalScores: { player1: number; player2: number };
+  };
 }
 
 // Client -> Server events
@@ -88,6 +122,8 @@ export interface ClientEvents {
   "chat:sector": { message: string };
   "chat:syndicate": { message: string };
   "chat:alliance": { message: string; allianceId?: string };
+  "arcade:ready": { sessionId: string };
+  "arcade:hit": { sessionId: string; timing: number; roundHitIndex: number };
 }
 
 // Room naming helpers
@@ -105,4 +141,8 @@ export function syndicateRoom(syndicateId: string): string {
 
 export function allianceRoom(allianceId: string): string {
   return `alliance:${allianceId}`;
+}
+
+export function arcadeRoom(sessionId: string): string {
+  return `arcade:${sessionId}`;
 }

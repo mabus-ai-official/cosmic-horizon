@@ -32,6 +32,8 @@ interface ModalLayerProps {
   onCommand: (input: string) => void;
   activePanel: string;
   selectPanel: (id: any) => void;
+  on: (event: string, handler: (...args: any[]) => void) => () => void;
+  emit: (event: string, data: any) => void;
 }
 
 export default function ModalLayer({
@@ -54,6 +56,8 @@ export default function ModalLayer({
   onCommand,
   activePanel,
   selectPanel,
+  on,
+  emit,
 }: ModalLayerProps) {
   return (
     <>
@@ -171,6 +175,10 @@ export default function ModalLayer({
         <ArcadeModal
           onClose={() => setShowArcade(false)}
           alerts={chatMessages}
+          on={on}
+          emit={emit}
+          playerId={game.player?.id ?? ""}
+          sectorPlayers={game.sector?.players ?? []}
         />
       )}
       <TutorialWelcomeOverlay

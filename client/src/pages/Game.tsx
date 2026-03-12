@@ -154,6 +154,8 @@ export default function Game({ onLogout }: GameProps) {
         onCommand={handlers.onCommand}
         activePanel={activePanel}
         selectPanel={selectPanel}
+        on={on}
+        emit={emit}
       />
       <StatusBar
         player={game.player}

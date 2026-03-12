@@ -1,12 +1,24 @@
 import { useState, useEffect, useCallback } from "react";
 import type { ChatMessage } from "./SectorChatPanel";
+import { ArcadeContainer } from "../arcade";
 
 interface ArcadeModalProps {
   onClose: () => void;
   alerts: ChatMessage[];
+  on: (event: string, handler: (...args: any[]) => void) => () => void;
+  emit: (event: string, data: any) => void;
+  playerId: string;
+  sectorPlayers: { id: string; username: string }[];
 }
 
-export default function ArcadeModal({ onClose, alerts }: ArcadeModalProps) {
+export default function ArcadeModal({
+  onClose,
+  alerts,
+  on,
+  emit,
+  playerId,
+  sectorPlayers,
+}: ArcadeModalProps) {
   const [confirmExit, setConfirmExit] = useState(false);
 
   const handleClose = useCallback(() => {
@@ -27,7 +39,6 @@ export default function ArcadeModal({ onClose, alerts }: ArcadeModalProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  // Last few alerts to show in the ticker
   const recentAlerts = alerts.slice(-5);
 
   return (
@@ -78,23 +89,13 @@ export default function ArcadeModal({ onClose, alerts }: ArcadeModalProps) {
               </div>
             </div>
           ) : (
-            <div className="arcade-modal__placeholder">
-              <div className="arcade-modal__placeholder-art">
-                {`
-   ╔══════════════════════════╗
-   ║   ░▒▓ ARCADE TERMINAL ▓▒░  ║
-   ║                          ║
-   ║    SELECT YOUR GAME      ║
-   ║                          ║
-   ║    ▸ Coming Soon...      ║
-   ║                          ║
-   ╚══════════════════════════╝
-              `.trim()}
-              </div>
-              <div className="arcade-modal__placeholder-text">
-                Games loading into this terminal...
-              </div>
-            </div>
+            <ArcadeContainer
+              on={on}
+              emit={emit}
+              playerId={playerId}
+              sectorPlayers={sectorPlayers}
+              onExit={onClose}
+            />
           )}
         </div>
 

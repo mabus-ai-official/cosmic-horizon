@@ -213,3 +213,519 @@
 .arcade-modal__confirm-btn--leave:hover {
   background: rgba(255, 0, 0, 0.1);
 }
+
+/* Game Selector */
+.arcade-selector {
+  width: 100%;
+  max-width: 500px;
+  text-align: center;
+}
+
+.arcade-selector__title {
+  color: var(--green);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  margin-bottom: 8px;
+}
+
+.arcade-selector__desc {
+  color: var(--text-secondary);
+  font-size: 11px;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.arcade-selector__error {
+  color: var(--red);
+  font-size: 11px;
+  margin-bottom: 12px;
+  padding: 6px 10px;
+  border: 1px solid rgba(248, 81, 73, 0.3);
+  background: rgba(248, 81, 73, 0.05);
+  border-radius: 2px;
+}
+
+.arcade-selector__section {
+  margin-bottom: 20px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--bg-secondary);
+}
+
+.arcade-selector__section-title {
+  color: var(--cyan);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+
+.arcade-selector__ai-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+.arcade-selector__difficulty {
+  font-family: inherit;
+  font-size: 11px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.arcade-selector__btn {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 16px;
+  cursor: pointer;
+  border-radius: 2px;
+  letter-spacing: 1px;
+}
+
+.arcade-selector__btn--ai {
+  background: none;
+  border: 1px solid var(--green);
+  color: var(--green);
+}
+
+.arcade-selector__btn--ai:hover {
+  background: rgba(0, 255, 0, 0.1);
+}
+
+.arcade-selector__btn--challenge {
+  background: none;
+  border: 1px solid var(--magenta);
+  color: var(--magenta);
+  font-size: 10px;
+  padding: 3px 10px;
+}
+
+.arcade-selector__btn--challenge:hover {
+  background: rgba(232, 71, 160, 0.1);
+}
+
+.arcade-selector__note {
+  color: var(--text-muted);
+  font-size: 9px;
+  margin-top: 6px;
+}
+
+.arcade-selector__player-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.arcade-selector__player {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid rgba(74, 42, 85, 0.3);
+  border-radius: 2px;
+}
+
+.arcade-selector__player-name {
+  color: var(--text-primary);
+  font-size: 11px;
+}
+
+/* Matchmaking */
+.arcade-matchmaking {
+  text-align: center;
+}
+
+.arcade-matchmaking__title {
+  color: var(--yellow);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  margin-bottom: 12px;
+}
+
+.arcade-matchmaking__timer {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.arcade-matchmaking__challenger {
+  color: var(--cyan);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.arcade-matchmaking__spinner {
+  color: var(--green);
+  font-size: 14px;
+  margin-bottom: 16px;
+  animation: arcade-blink 1s ease-in-out infinite;
+}
+
+.arcade-matchmaking__cancel {
+  font-family: inherit;
+  font-size: 10px;
+  background: none;
+  border: 1px solid var(--red);
+  color: var(--red);
+  padding: 4px 16px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.arcade-matchmaking__buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.arcade-matchmaking__btn {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 20px;
+  cursor: pointer;
+  border-radius: 2px;
+  letter-spacing: 1px;
+}
+
+.arcade-matchmaking__btn--accept {
+  background: none;
+  border: 1px solid var(--green);
+  color: var(--green);
+}
+
+.arcade-matchmaking__btn--accept:hover {
+  background: rgba(0, 255, 0, 0.1);
+}
+
+.arcade-matchmaking__btn--decline {
+  background: none;
+  border: 1px solid var(--red);
+  color: var(--red);
+}
+
+.arcade-matchmaking__btn--decline:hover {
+  background: rgba(255, 0, 0, 0.1);
+}
+
+/* Drink Phase */
+.arcade-drinks {
+  width: 100%;
+  max-width: 600px;
+}
+
+.arcade-drinks__header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.arcade-drinks__title {
+  color: var(--yellow);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.arcade-drinks__round {
+  color: var(--text-secondary);
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.arcade-drinks__timer {
+  color: var(--cyan);
+  font-size: 18px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.arcade-drinks__waiter {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.arcade-drinks__waiter-text {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-style: italic;
+}
+
+.arcade-drinks__menu {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.arcade-drinks__item {
+  font-family: inherit;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s;
+}
+
+.arcade-drinks__item:hover:not(:disabled) {
+  border-color: var(--green);
+}
+
+.arcade-drinks__item--selected {
+  border-color: var(--green) !important;
+  background: rgba(0, 255, 0, 0.05);
+}
+
+.arcade-drinks__item--disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.arcade-drinks__item-name {
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.arcade-drinks__item-flavor {
+  color: var(--text-muted);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.arcade-drinks__chosen {
+  text-align: center;
+  color: var(--cyan);
+  font-size: 11px;
+  margin-top: 12px;
+  animation: arcade-blink 1.5s ease-in-out infinite;
+}
+
+/* Results */
+.arcade-results {
+  text-align: center;
+  width: 100%;
+  max-width: 400px;
+}
+
+.arcade-results__title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  margin-bottom: 20px;
+  color: var(--green);
+}
+
+.arcade-results__scores {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.arcade-results__score-label {
+  color: var(--text-secondary);
+  font-size: 10px;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.arcade-results__score-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.arcade-results__score--mine .arcade-results__score-value {
+  color: var(--cyan);
+}
+
+.arcade-results__vs {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.arcade-results__breakdown {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.arcade-results__round {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.arcade-results__round-label {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.arcade-results__round-scores {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.arcade-results__btn {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 20px;
+  cursor: pointer;
+  border-radius: 2px;
+  letter-spacing: 1px;
+  margin: 4px;
+}
+
+.arcade-results__btn--claim {
+  background: none;
+  border: 1px solid var(--yellow);
+  color: var(--yellow);
+  margin-bottom: 12px;
+}
+
+.arcade-results__btn--claim:hover {
+  background: rgba(210, 153, 34, 0.1);
+}
+
+.arcade-results__btn--claim:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.arcade-results__reward {
+  margin-bottom: 16px;
+  padding: 10px;
+  border: 1px solid rgba(0, 255, 0, 0.2);
+  border-radius: 2px;
+  background: rgba(0, 255, 0, 0.03);
+}
+
+.arcade-results__reward-item {
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.arcade-results__reward-note {
+  color: var(--text-muted);
+  font-size: 9px;
+  margin-top: 4px;
+}
+
+.arcade-results__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.arcade-results__btn--rematch {
+  background: none;
+  border: 1px solid var(--green);
+  color: var(--green);
+}
+
+.arcade-results__btn--rematch:hover {
+  background: rgba(0, 255, 0, 0.1);
+}
+
+.arcade-results__btn--exit {
+  background: none;
+  border: 1px solid var(--text-muted);
+  color: var(--text-muted);
+}
+
+.arcade-results__btn--exit:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-secondary);
+}
+
+/* Score Overlay */
+.arcade-score-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.arcade-score-overlay__round {
+  color: var(--cyan);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.arcade-score-overlay__scores {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.arcade-score-overlay__my-score {
+  color: var(--green);
+  font-weight: 700;
+}
+
+.arcade-score-overlay__separator {
+  color: var(--text-muted);
+}
+
+.arcade-score-overlay__opp-score {
+  color: var(--text-secondary);
+}
+
+/* Phaser Container */
+.arcade-game-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.arcade-phaser-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.arcade-phaser-loading {
+  position: absolute;
+  color: var(--text-muted);
+  font-size: 11px;
+  animation: arcade-blink 1.5s ease-in-out infinite;
+}
+
+.arcade-phaser-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.arcade-phaser-canvas canvas {
+  display: block;
+  margin: 0 auto;
+}

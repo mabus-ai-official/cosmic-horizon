@@ -4,6 +4,7 @@ import db from "../db/connection";
 import { verifyJwt } from "../middleware/jwt";
 import { incrementStat } from "../engine/profile-stats";
 import { forwardToDiscord } from "../services/discord-bridge";
+import { setupArcadeSocket } from "./arcade-handler";
 
 // Track connected players: socketId -> playerId
 const connectedPlayers = new Map<string, string>();
@@ -62,6 +63,9 @@ export function setupWebSocket(io: SocketIOServer): void {
         username: player.username,
         sectorId: player.current_sector_id,
       });
+
+      // Wire arcade socket handlers
+      setupArcadeSocket(socket, io, playerId);
     });
 
     socket.on("chat:sector", async (data: { message: string }) => {

@@ -41,6 +41,7 @@ import planetCombatRouter from "./api/planet-combat";
 import dailyMissionsRouter from "./api/daily-missions";
 import tradeHistoryRouter from "./api/trade-history";
 import storyMissionsRouter from "./api/story-missions";
+import arcadeRouter from "./api/arcade";
 import { setupWebSocket } from "./ws/handlers";
 import { startGameTick } from "./engine/game-tick";
 import { startDiscordBridge } from "./services/discord-bridge";
@@ -310,6 +311,14 @@ app.use(
   blockDuringTutorial,
   loadSPContext,
   tradeHistoryRouter,
+);
+
+app.use(
+  "/api/arcade",
+  loadTutorialState,
+  blockDuringTutorial,
+  loadSPContext,
+  arcadeRouter,
 );
 
 // WebSocket

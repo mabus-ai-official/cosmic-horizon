@@ -10,6 +10,108 @@ import { buildDeployScene } from "../../config/scenes/deploy-scene";
 import { buildColonizeScene } from "../../config/scenes/colonize-scene";
 import { buildScannerScene } from "../../config/scenes/scanner-scene";
 
+// Items that need a target player (resolved by name → id on the server)
+const TARGET_ITEMS = new Set(["disruptor_torpedo"]);
+
+function sendUseItem(
+  itemId: string,
+  extra: Record<string, any>,
+  ctx: Parameters<CommandHandler>[1],
+) {
+  // If item needs a target and we have a target name, resolve it
+  const doUse = (body: Record<string, any>) => {
+    api
+      .useStoreItem(itemId, body)
+      .then(({ data: useData }) => {
+        ctx.enqueueScene?.(
+          buildScannerScene(ctx.player?.currentShip?.shipTypeId ?? "scout"),
+        );
+        if (useData.message) {
+          ctx.addLine(useData.message, "success");
+        } else {
+          ctx.addLine("Used item successfully", "success");
+        }
+        // Probe results
+        if (useData.sectorId) {
+          ctx.addLine(
+            `Sector ${useData.sectorId} [${useData.sectorType}]:`,
+            "system",
+          );
+          if (useData.players?.length)
+            ctx.addLine(`  Players: ${useData.players.join(", ")}`, "warning");
+          if (useData.outposts?.length)
+            ctx.addLine(`  Outposts: ${useData.outposts.join(", ")}`, "info");
+          if (useData.planets?.length)
+            ctx.addLine(
+              `  Planets: ${useData.planets.map((p: any) => `${p.name} [${p.class}]`).join(", ")}`,
+              "info",
+            );
+        }
+        // Scanner probe planet results
+        if (useData.planets && !useData.sectorId) {
+          for (const p of useData.planets) {
+            const owner = p.owner ? ` (${p.owner})` : "";
+            ctx.addLine(
+              `  ${p.name} [${p.class}] pop:${p.population}${owner}`,
+              "info",
+            );
+            if (p.resources?.length) {
+              ctx.addLine(
+                `    Resources: ${p.resources.map((r: any) => `${r.name} x${r.stock}`).join(", ")}`,
+                "trade",
+              );
+            }
+          }
+        }
+        // Torpedo result
+        if (useData.targetPlayer) {
+          ctx.addLine(
+            `Disruptor torpedo hit ${useData.targetPlayer}! Engines disabled for 5 minutes.`,
+            "combat",
+          );
+        }
+        // Cloak result
+        if (useData.cloaked) {
+          ctx.addLine("Cloaking device activated.", "success");
+        }
+        // Rache result
+        if (useData.shipsHit) {
+          for (const hit of useData.shipsHit) {
+            ctx.addLine(
+              `  ${hit.player}: ${hit.damage} damage${hit.destroyed ? " [DESTROYED]" : ""}`,
+              "combat",
+            );
+          }
+        }
+        ctx.refreshStatus();
+      })
+      .catch((err: any) =>
+        ctx.addLine(err.response?.data?.error || "Use failed", "error"),
+      );
+  };
+
+  if (TARGET_ITEMS.has(itemId) && extra.target) {
+    // Resolve player name to ID from sector state
+    const players = ctx.sector?.players || [];
+    const match = players.find(
+      (p: any) => p.username.toLowerCase() === extra.target.toLowerCase(),
+    );
+    if (!match) {
+      ctx.addLine(`Player "${extra.target}" not found in sector.`, "error");
+      return;
+    }
+    doUse({ targetPlayerId: match.id });
+  } else if (
+    TARGET_ITEMS.has(itemId) &&
+    !extra.target &&
+    !extra.targetPlayerId
+  ) {
+    ctx.addLine(`Usage: use torpedo <player_name>`, "error");
+  } else {
+    doUse(extra);
+  }
+}
+
 export const specialCommands: Record<string, CommandHandler> = {
   deploy: (args, ctx) => {
     if (args.length < 1) {
@@ -411,11 +513,11 @@ export const specialCommands: Record<string, CommandHandler> = {
 
   use: (args, ctx) => {
     if (args.length < 1) {
-      ctx.addLine("Usage: use <name or #> [args]", "error");
+      ctx.addLine("Usage: use <name or #> [target]", "error");
       return;
     }
-    // Separate extra args (e.g. sectorId) from the item query
-    // If last arg is a number and there are 2+ args, treat it as an extra arg
+    // Separate extra args from the item query
+    // Numeric last arg → sectorId (for probe), otherwise → target player name
     let itemQuery: string;
     let extra: Record<string, any> = {};
     if (args.length > 1 && !isNaN(parseInt(args[args.length - 1]))) {
@@ -433,6 +535,15 @@ export const specialCommands: Record<string, CommandHandler> = {
         }));
         const result = resolveItem(itemQuery, items, ctx);
         if (result === null) {
+          // Maybe the first word matched an item and the rest is a target
+          if (args.length > 1) {
+            const firstResult = resolveItem(args[0], items, ctx);
+            if (firstResult && firstResult !== "ambiguous") {
+              extra = { target: args.slice(1).join(" ") };
+              sendUseItem(firstResult.id, extra, ctx);
+              return;
+            }
+          }
           ctx.addLine(
             `No item matching "${itemQuery}". Type "inventory" to see your items.`,
             "error",
@@ -440,39 +551,7 @@ export const specialCommands: Record<string, CommandHandler> = {
           return;
         }
         if (result === "ambiguous") return;
-        api
-          .useStoreItem(result.id, extra)
-          .then(({ data: useData }) => {
-            ctx.enqueueScene?.(
-              buildScannerScene(ctx.player?.currentShip?.shipTypeId ?? "scout"),
-            );
-            ctx.addLine(`Used item successfully`, "success");
-            if (useData.sectorId) {
-              ctx.addLine(
-                `Sector ${useData.sectorId} [${useData.sectorType}]:`,
-                "system",
-              );
-              if (useData.players?.length)
-                ctx.addLine(
-                  `  Players: ${useData.players.join(", ")}`,
-                  "warning",
-                );
-              if (useData.outposts?.length)
-                ctx.addLine(
-                  `  Outposts: ${useData.outposts.join(", ")}`,
-                  "info",
-                );
-              if (useData.planets?.length)
-                ctx.addLine(
-                  `  Planets: ${useData.planets.map((p: any) => `${p.name} [${p.class}]`).join(", ")}`,
-                  "info",
-                );
-            }
-            ctx.refreshStatus();
-          })
-          .catch((err: any) =>
-            ctx.addLine(err.response?.data?.error || "Use failed", "error"),
-          );
+        sendUseItem(result.id, extra, ctx);
       })
       .catch((err: any) =>
         ctx.addLine(err.response?.data?.error || "Failed", "error"),

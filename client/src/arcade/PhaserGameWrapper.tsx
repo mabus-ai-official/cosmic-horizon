@@ -42,6 +42,12 @@ export default function PhaserGameWrapper({
       if (gameType === "turret_defense") {
         const mod = await import("./games/turret-defense/TurretDefenseScene");
         SceneClass = mod.TurretDefenseScene;
+      } else if (gameType === "nebula_runner") {
+        const mod = await import("./games/nebula-runner/NebulaRunnerScene");
+        SceneClass = mod.NebulaRunnerScene;
+      } else if (gameType === "cargo_tetris") {
+        const mod = await import("./games/cargo-tetris/CargoTetrisScene");
+        SceneClass = mod.CargoTetrisScene;
       } else {
         const mod = await import("./games/asteroid-mining/AsteroidMiningScene");
         SceneClass = mod.AsteroidMiningScene;

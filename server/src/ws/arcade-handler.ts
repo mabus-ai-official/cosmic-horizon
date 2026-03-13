@@ -7,6 +7,8 @@ import {
   calculateBarSpeed,
 } from "../api/arcade/validation";
 import { generateTurretRoundConfig } from "../api/arcade/turret-validation";
+import { generateNebulaRoundConfig } from "../api/arcade/nebula-validation";
+import { generateCargoTetrisRoundConfig } from "../api/arcade/cargo-tetris-validation";
 import { resolveDrinkEffects } from "../api/arcade/drinks";
 
 // Track ready state: sessionId -> Set of playerIds who are ready
@@ -74,6 +76,78 @@ export function setupArcadeSocket(
           ...p2OnP1,
         ]);
         const p2RoundConfig = generateTurretRoundConfig(round, p2Self, [
+          ...p1Self,
+          ...p1OnP2,
+        ]);
+
+        roundData[`round_${round}`] = {
+          roundConfig: p1RoundConfig,
+          player1Score: 0,
+          player2Score: 0,
+        };
+
+        await db("arcade_sessions")
+          .where({ id: sessionId })
+          .update({
+            status: "playing",
+            round,
+            round_data: JSON.stringify(roundData),
+            updated_at: new Date().toISOString(),
+          });
+
+        io.to(playerRoom(session.player1_id)).emit("arcade:round_start", {
+          round,
+          roundConfig: p1RoundConfig,
+          effects: p1Self,
+        });
+
+        io.to(playerRoom(session.player2_id)).emit("arcade:round_start", {
+          round,
+          roundConfig: p2RoundConfig,
+          effects: p2Self,
+        });
+      } else if (session.game_type === "nebula_runner") {
+        const p1RoundConfig = generateNebulaRoundConfig(round, p1Self, [
+          ...p2Self,
+          ...p2OnP1,
+        ]);
+        const p2RoundConfig = generateNebulaRoundConfig(round, p2Self, [
+          ...p1Self,
+          ...p1OnP2,
+        ]);
+
+        roundData[`round_${round}`] = {
+          roundConfig: p1RoundConfig,
+          player1Score: 0,
+          player2Score: 0,
+        };
+
+        await db("arcade_sessions")
+          .where({ id: sessionId })
+          .update({
+            status: "playing",
+            round,
+            round_data: JSON.stringify(roundData),
+            updated_at: new Date().toISOString(),
+          });
+
+        io.to(playerRoom(session.player1_id)).emit("arcade:round_start", {
+          round,
+          roundConfig: p1RoundConfig,
+          effects: p1Self,
+        });
+
+        io.to(playerRoom(session.player2_id)).emit("arcade:round_start", {
+          round,
+          roundConfig: p2RoundConfig,
+          effects: p2Self,
+        });
+      } else if (session.game_type === "cargo_tetris") {
+        const p1RoundConfig = generateCargoTetrisRoundConfig(round, p1Self, [
+          ...p2Self,
+          ...p2OnP1,
+        ]);
+        const p2RoundConfig = generateCargoTetrisRoundConfig(round, p2Self, [
           ...p1Self,
           ...p1OnP2,
         ]);

@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   startAIMatch,
+  startSoloMatch,
   submitRoundResult,
   submitTurretResult,
+  submitNebulaResult,
+  submitCargoTetrisResult,
   selectDrink,
   startRound,
   claimReward,
@@ -156,9 +159,7 @@ export function useArcadeSession(
     async (difficulty = "medium", gameType = "asteroid_mining") => {
       try {
         setError(null);
-        console.log("[ARCADE] handlePlayAI args:", { difficulty, gameType });
         const result = await startAIMatch(gameType, difficulty);
-        console.log("[ARCADE] startAIMatch result:", result);
         setSession((s) => ({
           ...s,
           sessionId: result.sessionId,
@@ -169,11 +170,34 @@ export function useArcadeSession(
         setPhase("playing");
         emit("arcade:ready", { sessionId: result.sessionId });
         const roundData = await startRound(result.sessionId);
-        console.log("[ARCADE] startRound result:", roundData);
         setRoundStart(roundData);
         setSession((s) => ({ ...s, round: roundData.round }));
       } catch (err: any) {
         setError(err.response?.data?.error || "Failed to start AI match");
+      }
+    },
+    [emit],
+  );
+
+  const handlePlaySolo = useCallback(
+    async (gameType = "asteroid_mining") => {
+      try {
+        setError(null);
+        const result = await startSoloMatch(gameType);
+        setSession((s) => ({
+          ...s,
+          sessionId: result.sessionId,
+          opponent: null,
+          isPlayer1: true,
+          gameType: result.gameType,
+        }));
+        setPhase("playing");
+        emit("arcade:ready", { sessionId: result.sessionId });
+        const roundData = await startRound(result.sessionId);
+        setRoundStart(roundData);
+        setSession((s) => ({ ...s, round: roundData.round }));
+      } catch (err: any) {
+        setError(err.response?.data?.error || "Failed to start solo match");
       }
     },
     [emit],
@@ -284,6 +308,83 @@ export function useArcadeSession(
     [session.sessionId],
   );
 
+  const handleSubmitNebulaResult = useCallback(
+    async (nebulaResult: {
+      crystalsCollected: number;
+      distanceSurvived: number;
+      nearMisses: number;
+      livesRemaining: number;
+      asteroidsDestroyed: number;
+    }) => {
+      if (!session.sessionId) return null;
+      try {
+        const result = await submitNebulaResult(
+          session.sessionId,
+          nebulaResult,
+        );
+        if (result.gameComplete) {
+          setSession((s) => ({
+            ...s,
+            myScore: result.myTotal,
+            opponentScore: result.opponentTotal,
+            winnerId: result.winnerId,
+          }));
+          setPhase("results");
+        } else if (result.drinkMenu) {
+          setDrinkMenu(result.drinkMenu);
+          setSession((s) => ({
+            ...s,
+            myScore: result.myTotal,
+            opponentScore: result.opponentTotal,
+          }));
+          setPhase("between_rounds");
+        }
+        return result;
+      } catch (err: any) {
+        setError(err.response?.data?.error || "Failed to submit round");
+        return null;
+      }
+    },
+    [session.sessionId],
+  );
+
+  const handleSubmitCargoTetrisResult = useCallback(
+    async (cargoTetrisResult: {
+      linesCleared: number;
+      piecesPlaced: number;
+    }) => {
+      if (!session.sessionId) return null;
+      try {
+        const result = await submitCargoTetrisResult(
+          session.sessionId,
+          cargoTetrisResult,
+        );
+        if (result.gameComplete) {
+          setSession((s) => ({
+            ...s,
+            myScore: result.myTotal,
+            opponentScore: result.opponentTotal,
+            winnerId: result.winnerId,
+          }));
+          setPhase("results");
+        } else if (result.drinkMenu) {
+          setDrinkMenu(result.drinkMenu);
+          setSession((s) => ({
+            ...s,
+            myScore: result.myTotal,
+            opponentScore: result.opponentTotal,
+          }));
+          setPhase("between_rounds");
+        }
+        return result;
+      } catch (err: any) {
+        setError(err.response?.data?.error || "Failed to submit round");
+        return null;
+      }
+    },
+    [session.sessionId],
+  );
+
   const handleSelectDrink = useCallback(
     async (drinkId: string) => {
       if (!session.sessionId) return;
@@ -355,11 +456,14 @@ export function useArcadeSession(
     tokenBalance,
     setTokenBalance,
     handlePlayAI,
+    handlePlaySolo,
     handleChallenge,
     handleAcceptChallenge,
     handleDeclineChallenge,
     handleSubmitHits,
     handleSubmitTurretResult,
+    handleSubmitNebulaResult,
+    handleSubmitCargoTetrisResult,
     handleSelectDrink,
     handleClaimReward,
     handleRematch,

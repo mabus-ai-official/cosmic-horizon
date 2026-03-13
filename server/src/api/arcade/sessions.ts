@@ -16,6 +16,16 @@ import {
   generateTurretRoundConfig,
 } from "./turret-validation";
 import { generateAITurretResult } from "./turret-ai";
+import {
+  validateNebulaRunnerScore,
+  generateNebulaRoundConfig,
+} from "./nebula-validation";
+import { generateAINebulaResult } from "./nebula-ai";
+import {
+  validateCargoTetrisScore,
+  generateCargoTetrisRoundConfig,
+} from "./cargo-tetris-validation";
+import { generateAICargoTetrisResult } from "./cargo-tetris-ai";
 
 const router = Router();
 
@@ -79,6 +89,28 @@ router.post("/session/:id/round-result", requireAuth, async (req, res) => {
   // Branch by game type
   if (session.game_type === "turret_defense") {
     return handleTurretDefenseResult(
+      req,
+      res,
+      session,
+      playerId,
+      isPlayer1,
+      isPlayer2,
+    );
+  }
+
+  if (session.game_type === "nebula_runner") {
+    return handleNebulaRunnerResult(
+      req,
+      res,
+      session,
+      playerId,
+      isPlayer1,
+      isPlayer2,
+    );
+  }
+
+  if (session.game_type === "cargo_tetris") {
+    return handleCargoTetrisResult(
       req,
       res,
       session,
@@ -168,6 +200,26 @@ async function handleAsteroidMiningResult(
   const isAI = !session.player2_id;
 
   if (isAI) {
+    const isSolo = roundData.solo === true;
+
+    if (isSolo) {
+      // Solo mode — no AI opponent, mark complete
+      const updates: Record<string, any> = {
+        round_data: JSON.stringify(roundData),
+        status: "complete",
+        winner_id: playerId,
+        round: session.round + 1,
+        updated_at: new Date().toISOString(),
+      };
+      await db("arcade_sessions").where({ id: session.id }).update(updates);
+      return res.json({
+        roundScore: totalScore,
+        myTotal: newTotal,
+        gameComplete: true,
+        winnerId: playerId,
+      });
+    }
+
     const aiDifficulty = roundData.aiDifficulty || "medium";
     const player = await db("players").where({ id: playerId }).first();
     const difficulty = chooseAIDifficulty(player?.level || 1);
@@ -381,6 +433,26 @@ async function handleTurretDefenseResult(
   const isAI = !session.player2_id;
 
   if (isAI) {
+    const isSolo = roundData.solo === true;
+
+    if (isSolo) {
+      // Solo mode — no AI opponent, mark complete
+      const updates: Record<string, any> = {
+        round_data: JSON.stringify(roundData),
+        status: "complete",
+        winner_id: playerId,
+        round: session.round + 1,
+        updated_at: new Date().toISOString(),
+      };
+      await db("arcade_sessions").where({ id: session.id }).update(updates);
+      return res.json({
+        roundScore: totalScore,
+        myTotal: newTotal,
+        gameComplete: true,
+        winnerId: playerId,
+      });
+    }
+
     const aiDifficulty = roundData.aiDifficulty || "medium";
     const aiResult = generateAITurretResult(
       currentRound.roundConfig,
@@ -514,6 +586,457 @@ async function handleTurretDefenseResult(
   res.json({ roundScore: totalScore, turretResult });
 }
 
+// --- Nebula Runner round result handler ---
+async function handleNebulaRunnerResult(
+  req: any,
+  res: any,
+  session: any,
+  playerId: string,
+  isPlayer1: boolean,
+  isPlayer2: boolean,
+) {
+  const { nebulaResult } = req.body;
+
+  if (
+    !nebulaResult ||
+    typeof nebulaResult.crystalsCollected !== "number" ||
+    typeof nebulaResult.distanceSurvived !== "number" ||
+    typeof nebulaResult.nearMisses !== "number" ||
+    typeof nebulaResult.livesRemaining !== "number" ||
+    typeof nebulaResult.asteroidsDestroyed !== "number"
+  ) {
+    return res.status(400).json({ error: "Invalid nebula runner result" });
+  }
+
+  const roundData = JSON.parse(session.round_data || "{}");
+  const currentRound = roundData[`round_${session.round}`];
+  if (!currentRound || !currentRound.roundConfig) {
+    return res.status(400).json({ error: "No round data available" });
+  }
+
+  // Resolve drink effects
+  const myDrinks = JSON.parse(
+    isPlayer1 ? session.player1_drinks : session.player2_drinks,
+  );
+  const oppDrinks = JSON.parse(
+    isPlayer1 ? session.player2_drinks : session.player1_drinks,
+  );
+  const { selfEffects } = resolveDrinkEffects(myDrinks, oppDrinks);
+  const { opponentEffects: effectsOnMe } = resolveDrinkEffects(
+    oppDrinks,
+    myDrinks,
+  );
+
+  const { totalScore, validated } = validateNebulaRunnerScore(
+    nebulaResult,
+    currentRound.roundConfig,
+    selfEffects,
+    effectsOnMe,
+  );
+
+  if (!validated) {
+    return res.status(400).json({ error: "Invalid nebula runner score" });
+  }
+
+  const scoreKey = isPlayer1 ? "player1Score" : "player2Score";
+  const resultKey = isPlayer1 ? "player1Result" : "player2Result";
+  currentRound[scoreKey] = totalScore;
+  currentRound[resultKey] = nebulaResult;
+  roundData[`round_${session.round}`] = currentRound;
+
+  const cumulativeKey = isPlayer1 ? "player1_score" : "player2_score";
+  const newTotal =
+    (isPlayer1 ? session.player1_score : session.player2_score) + totalScore;
+
+  await db("arcade_sessions")
+    .where({ id: session.id })
+    .update({
+      [cumulativeKey]: newTotal,
+      round_data: JSON.stringify(roundData),
+      updated_at: new Date().toISOString(),
+    });
+
+  const io = req.app.get("io");
+  const isAI = !session.player2_id;
+
+  if (isAI) {
+    const isSolo = roundData.solo === true;
+
+    if (isSolo) {
+      // Solo mode — no AI opponent, mark complete
+      const updates: Record<string, any> = {
+        round_data: JSON.stringify(roundData),
+        status: "complete",
+        winner_id: playerId,
+        round: session.round + 1,
+        updated_at: new Date().toISOString(),
+      };
+      await db("arcade_sessions").where({ id: session.id }).update(updates);
+      return res.json({
+        roundScore: totalScore,
+        myTotal: newTotal,
+        gameComplete: true,
+        winnerId: playerId,
+      });
+    }
+
+    const aiDifficulty = roundData.aiDifficulty || "medium";
+    const aiResult = generateAINebulaResult(
+      currentRound.roundConfig,
+      aiDifficulty,
+    );
+    const aiScore = aiResult.score;
+
+    currentRound.player2Score = aiScore;
+    currentRound.player2Result = aiResult;
+    roundData[`round_${session.round}`] = currentRound;
+
+    const aiNewTotal = session.player2_score + aiScore;
+    const nextRound = session.round + 1;
+    const isLastRound = nextRound > session.max_rounds;
+
+    const updates: Record<string, any> = {
+      player2_score: aiNewTotal,
+      round_data: JSON.stringify(roundData),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (isLastRound) {
+      updates.status = "complete";
+      updates.winner_id =
+        newTotal > aiNewTotal ? playerId : newTotal < aiNewTotal ? "ai" : null;
+      updates.round = nextRound;
+    } else {
+      updates.status = "between_rounds";
+      updates.round = nextRound;
+    }
+
+    await db("arcade_sessions").where({ id: session.id }).update(updates);
+
+    if (isLastRound) {
+      return res.json({
+        roundScore: totalScore,
+        nebulaResult,
+        opponentRoundScore: aiScore,
+        opponentResult: aiResult,
+        myTotal: newTotal,
+        opponentTotal: aiNewTotal,
+        gameComplete: true,
+        winnerId: updates.winner_id,
+      });
+    }
+
+    return res.json({
+      roundScore: totalScore,
+      nebulaResult,
+      opponentRoundScore: aiScore,
+      opponentResult: aiResult,
+      myTotal: newTotal,
+      opponentTotal: aiNewTotal,
+      gameComplete: false,
+      drinkMenu: getDrinkMenu(),
+    });
+  }
+
+  // PvP: check if both submitted
+  const opponentResultKey = isPlayer1 ? "player2Result" : "player1Result";
+  if (currentRound[opponentResultKey]) {
+    const nextRound = session.round + 1;
+    const isLastRound = nextRound > session.max_rounds;
+
+    const p1Total = isPlayer1
+      ? newTotal
+      : session.player1_score + (currentRound.player1Score || 0);
+    const p2Total = isPlayer2
+      ? newTotal
+      : session.player2_score + (currentRound.player2Score || 0);
+
+    const updates: Record<string, any> = {
+      round_data: JSON.stringify(roundData),
+      updated_at: new Date().toISOString(),
+      round: nextRound,
+    };
+
+    if (isLastRound) {
+      updates.status = "complete";
+      updates.winner_id =
+        p1Total > p2Total
+          ? session.player1_id
+          : p2Total > p1Total
+            ? session.player2_id
+            : null;
+    } else {
+      updates.status = "between_rounds";
+    }
+
+    await db("arcade_sessions").where({ id: session.id }).update(updates);
+
+    const opponentId = isPlayer1 ? session.player2_id : session.player1_id;
+    const roundComplete = {
+      round: session.round,
+      scores: {
+        player1: currentRound.player1Score,
+        player2: currentRound.player2Score,
+      },
+      standings: { player1: p1Total, player2: p2Total },
+    };
+
+    notifyPlayer(io, playerId, "arcade:round_complete", roundComplete);
+    notifyPlayer(io, opponentId, "arcade:round_complete", roundComplete);
+
+    if (isLastRound) {
+      const gameComplete = {
+        winnerId: updates.winner_id,
+        finalScores: { player1: p1Total, player2: p2Total },
+      };
+      notifyPlayer(io, playerId, "arcade:game_complete", gameComplete);
+      notifyPlayer(io, opponentId, "arcade:game_complete", gameComplete);
+    } else {
+      const menu = getDrinkMenu();
+      notifyPlayer(io, playerId, "arcade:drink_phase", {
+        menu,
+        timeLimit: ARCADE_CONFIG.DRINK_PHASE_SEC,
+      });
+      notifyPlayer(io, opponentId, "arcade:drink_phase", {
+        menu,
+        timeLimit: ARCADE_CONFIG.DRINK_PHASE_SEC,
+      });
+    }
+  } else {
+    const opponentId = isPlayer1 ? session.player2_id : session.player1_id;
+    notifyPlayer(io, opponentId, "arcade:opponent_score", {
+      round: session.round,
+      score: totalScore,
+    });
+  }
+
+  res.json({ roundScore: totalScore, nebulaResult });
+}
+
+// --- Cargo Tetris round result handler ---
+async function handleCargoTetrisResult(
+  req: any,
+  res: any,
+  session: any,
+  playerId: string,
+  isPlayer1: boolean,
+  isPlayer2: boolean,
+) {
+  const { cargoTetrisResult } = req.body;
+
+  if (
+    !cargoTetrisResult ||
+    typeof cargoTetrisResult.linesCleared !== "number" ||
+    typeof cargoTetrisResult.piecesPlaced !== "number"
+  ) {
+    return res.status(400).json({ error: "Invalid cargo tetris result" });
+  }
+
+  const roundData = JSON.parse(session.round_data || "{}");
+  const currentRound = roundData[`round_${session.round}`];
+  if (!currentRound || !currentRound.roundConfig) {
+    return res.status(400).json({ error: "No round data available" });
+  }
+
+  // Resolve drink effects
+  const myDrinks = JSON.parse(
+    isPlayer1 ? session.player1_drinks : session.player2_drinks,
+  );
+  const oppDrinks = JSON.parse(
+    isPlayer1 ? session.player2_drinks : session.player1_drinks,
+  );
+  const { selfEffects } = resolveDrinkEffects(myDrinks, oppDrinks);
+  const { opponentEffects: effectsOnMe } = resolveDrinkEffects(
+    oppDrinks,
+    myDrinks,
+  );
+
+  const { totalScore, validated } = validateCargoTetrisScore(
+    cargoTetrisResult,
+    currentRound.roundConfig,
+    selfEffects,
+    effectsOnMe,
+  );
+
+  if (!validated) {
+    return res.status(400).json({ error: "Invalid cargo tetris score" });
+  }
+
+  const scoreKey = isPlayer1 ? "player1Score" : "player2Score";
+  const resultKey = isPlayer1 ? "player1Result" : "player2Result";
+  currentRound[scoreKey] = totalScore;
+  currentRound[resultKey] = cargoTetrisResult;
+  roundData[`round_${session.round}`] = currentRound;
+
+  const cumulativeKey = isPlayer1 ? "player1_score" : "player2_score";
+  const newTotal =
+    (isPlayer1 ? session.player1_score : session.player2_score) + totalScore;
+
+  await db("arcade_sessions")
+    .where({ id: session.id })
+    .update({
+      [cumulativeKey]: newTotal,
+      round_data: JSON.stringify(roundData),
+      updated_at: new Date().toISOString(),
+    });
+
+  const io = req.app.get("io");
+  const isAI = !session.player2_id;
+
+  if (isAI) {
+    const isSolo = roundData.solo === true;
+
+    if (isSolo) {
+      // Solo mode — no AI opponent, mark complete
+      const updates: Record<string, any> = {
+        round_data: JSON.stringify(roundData),
+        status: "complete",
+        winner_id: playerId,
+        round: session.round + 1,
+        updated_at: new Date().toISOString(),
+      };
+      await db("arcade_sessions").where({ id: session.id }).update(updates);
+      return res.json({
+        roundScore: totalScore,
+        myTotal: newTotal,
+        gameComplete: true,
+        winnerId: playerId,
+      });
+    }
+
+    const aiDifficulty = roundData.aiDifficulty || "medium";
+    const aiResult = generateAICargoTetrisResult(
+      currentRound.roundConfig,
+      aiDifficulty,
+    );
+    const aiScore = aiResult.score;
+
+    currentRound.player2Score = aiScore;
+    currentRound.player2Result = aiResult;
+    roundData[`round_${session.round}`] = currentRound;
+
+    const aiNewTotal = session.player2_score + aiScore;
+    const nextRound = session.round + 1;
+    const isLastRound = nextRound > session.max_rounds;
+
+    const updates: Record<string, any> = {
+      player2_score: aiNewTotal,
+      round_data: JSON.stringify(roundData),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (isLastRound) {
+      updates.status = "complete";
+      updates.winner_id =
+        newTotal > aiNewTotal ? playerId : newTotal < aiNewTotal ? "ai" : null;
+      updates.round = nextRound;
+    } else {
+      updates.status = "between_rounds";
+      updates.round = nextRound;
+    }
+
+    await db("arcade_sessions").where({ id: session.id }).update(updates);
+
+    if (isLastRound) {
+      return res.json({
+        roundScore: totalScore,
+        cargoTetrisResult,
+        opponentRoundScore: aiScore,
+        opponentResult: aiResult,
+        myTotal: newTotal,
+        opponentTotal: aiNewTotal,
+        gameComplete: true,
+        winnerId: updates.winner_id,
+      });
+    }
+
+    return res.json({
+      roundScore: totalScore,
+      cargoTetrisResult,
+      opponentRoundScore: aiScore,
+      opponentResult: aiResult,
+      myTotal: newTotal,
+      opponentTotal: aiNewTotal,
+      gameComplete: false,
+      drinkMenu: getDrinkMenu(),
+    });
+  }
+
+  // PvP: check if both submitted
+  const opponentResultKey = isPlayer1 ? "player2Result" : "player1Result";
+  if (currentRound[opponentResultKey]) {
+    const nextRound = session.round + 1;
+    const isLastRound = nextRound > session.max_rounds;
+
+    const p1Total = isPlayer1
+      ? newTotal
+      : session.player1_score + (currentRound.player1Score || 0);
+    const p2Total = isPlayer2
+      ? newTotal
+      : session.player2_score + (currentRound.player2Score || 0);
+
+    const updates: Record<string, any> = {
+      round_data: JSON.stringify(roundData),
+      updated_at: new Date().toISOString(),
+      round: nextRound,
+    };
+
+    if (isLastRound) {
+      updates.status = "complete";
+      updates.winner_id =
+        p1Total > p2Total
+          ? session.player1_id
+          : p2Total > p1Total
+            ? session.player2_id
+            : null;
+    } else {
+      updates.status = "between_rounds";
+    }
+
+    await db("arcade_sessions").where({ id: session.id }).update(updates);
+
+    const opponentId = isPlayer1 ? session.player2_id : session.player1_id;
+    const roundComplete = {
+      round: session.round,
+      scores: {
+        player1: currentRound.player1Score,
+        player2: currentRound.player2Score,
+      },
+      standings: { player1: p1Total, player2: p2Total },
+    };
+
+    notifyPlayer(io, playerId, "arcade:round_complete", roundComplete);
+    notifyPlayer(io, opponentId, "arcade:round_complete", roundComplete);
+
+    if (isLastRound) {
+      const gameComplete = {
+        winnerId: updates.winner_id,
+        finalScores: { player1: p1Total, player2: p2Total },
+      };
+      notifyPlayer(io, playerId, "arcade:game_complete", gameComplete);
+      notifyPlayer(io, opponentId, "arcade:game_complete", gameComplete);
+    } else {
+      const menu = getDrinkMenu();
+      notifyPlayer(io, playerId, "arcade:drink_phase", {
+        menu,
+        timeLimit: ARCADE_CONFIG.DRINK_PHASE_SEC,
+      });
+      notifyPlayer(io, opponentId, "arcade:drink_phase", {
+        menu,
+        timeLimit: ARCADE_CONFIG.DRINK_PHASE_SEC,
+      });
+    }
+  } else {
+    const opponentId = isPlayer1 ? session.player2_id : session.player1_id;
+    notifyPlayer(io, opponentId, "arcade:opponent_score", {
+      round: session.round,
+      score: totalScore,
+    });
+  }
+
+  res.json({ roundScore: totalScore, cargoTetrisResult });
+}
+
 // Select a drink between rounds
 router.post("/session/:id/drink", requireAuth, async (req, res) => {
   const playerId = req.session.playerId!;
@@ -570,6 +1093,69 @@ router.post("/session/:id/drink", requireAuth, async (req, res) => {
         ...p2Self,
         ...p2OnP1,
       ]);
+
+      roundData[`round_${session.round}`] = {
+        roundConfig,
+        player1Score: 0,
+        player2Score: 0,
+      };
+
+      await db("arcade_sessions")
+        .where({ id: session.id })
+        .update({
+          player2_drinks: JSON.stringify(aiDrinks),
+          status: "playing",
+          round_data: JSON.stringify(roundData),
+          updated_at: new Date().toISOString(),
+        });
+
+      return res.json({
+        ok: true,
+        roundStart: {
+          round: session.round,
+          roundConfig,
+          effects: p1Self,
+        },
+      });
+    }
+
+    if (session.game_type === "nebula_runner") {
+      const roundConfig = generateNebulaRoundConfig(session.round, p1Self, [
+        ...p2Self,
+        ...p2OnP1,
+      ]);
+
+      roundData[`round_${session.round}`] = {
+        roundConfig,
+        player1Score: 0,
+        player2Score: 0,
+      };
+
+      await db("arcade_sessions")
+        .where({ id: session.id })
+        .update({
+          player2_drinks: JSON.stringify(aiDrinks),
+          status: "playing",
+          round_data: JSON.stringify(roundData),
+          updated_at: new Date().toISOString(),
+        });
+
+      return res.json({
+        ok: true,
+        roundStart: {
+          round: session.round,
+          roundConfig,
+          effects: p1Self,
+        },
+      });
+    }
+
+    if (session.game_type === "cargo_tetris") {
+      const roundConfig = generateCargoTetrisRoundConfig(
+        session.round,
+        p1Self,
+        [...p2Self, ...p2OnP1],
+      );
 
       roundData[`round_${session.round}`] = {
         roundConfig,
@@ -678,6 +1264,102 @@ router.post("/session/:id/start-round", requireAuth, async (req, res) => {
     ]);
 
     // Store canonical config (p1's perspective for storage)
+    roundData[`round_${round}`] = {
+      roundConfig: p1RoundConfig,
+      player1Score: 0,
+      player2Score: 0,
+    };
+
+    await db("arcade_sessions")
+      .where({ id: session.id })
+      .update({
+        status: "playing",
+        round: round,
+        round_data: JSON.stringify(roundData),
+        updated_at: new Date().toISOString(),
+      });
+
+    notifyPlayer(io, session.player1_id, "arcade:round_start", {
+      round,
+      roundConfig: p1RoundConfig,
+      effects: p1Self,
+    });
+
+    if (session.player2_id) {
+      notifyPlayer(io, session.player2_id, "arcade:round_start", {
+        round,
+        roundConfig: p2RoundConfig,
+        effects: p2Self,
+      });
+    }
+
+    return res.json({
+      round,
+      roundConfig: isPlayer1 ? p1RoundConfig : p2RoundConfig,
+    });
+  }
+
+  if (session.game_type === "nebula_runner") {
+    const p1RoundConfig = generateNebulaRoundConfig(round, p1Self, [
+      ...p2Self,
+      ...p2OnP1,
+    ]);
+    const p2RoundConfig = generateNebulaRoundConfig(round, p2Self, [
+      ...p1Self,
+      ...p1OnP2,
+    ]);
+
+    // Store canonical config (p1's perspective for storage)
+    roundData[`round_${round}`] = {
+      roundConfig: p1RoundConfig,
+      player1Score: 0,
+      player2Score: 0,
+    };
+
+    await db("arcade_sessions")
+      .where({ id: session.id })
+      .update({
+        status: "playing",
+        round: round,
+        round_data: JSON.stringify(roundData),
+        updated_at: new Date().toISOString(),
+      });
+
+    notifyPlayer(io, session.player1_id, "arcade:round_start", {
+      round,
+      roundConfig: p1RoundConfig,
+      effects: p1Self,
+    });
+
+    if (session.player2_id) {
+      notifyPlayer(io, session.player2_id, "arcade:round_start", {
+        round,
+        roundConfig: p2RoundConfig,
+        effects: p2Self,
+      });
+    }
+
+    return res.json({
+      round,
+      roundConfig: isPlayer1 ? p1RoundConfig : p2RoundConfig,
+    });
+  }
+
+  if (session.game_type === "cargo_tetris") {
+    const isSolo = !!roundData.solo;
+    const p1RoundConfig = generateCargoTetrisRoundConfig(
+      round,
+      p1Self,
+      [...p2Self, ...p2OnP1],
+      isSolo,
+    );
+    const p2RoundConfig = generateCargoTetrisRoundConfig(
+      round,
+      p2Self,
+      [...p1Self, ...p1OnP2],
+      isSolo,
+    );
+
     roundData[`round_${round}`] = {
       roundConfig: p1RoundConfig,
       player1Score: 0,

@@ -24,7 +24,7 @@ export type GroupId =
   | "helm"
   | "ship"
   | "ops"
-  | "market"
+  | "starmall"
   | "social"
   | "database";
 
@@ -98,8 +98,8 @@ export const PANEL_GROUPS: PanelGroupDef[] = [
     ],
   },
   {
-    id: "market",
-    label: "MARKET",
+    id: "starmall",
+    label: "STARMALL",
     description: "Trade & economy",
     spriteKey: "icon_trade",
     hotkey: "M",

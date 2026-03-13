@@ -92,9 +92,61 @@ export const ARCADE_CONFIG = {
     SCORE_PER_WAVE: 100,
     SCORE_PER_HP: 25,
   },
+
+  // Nebula Runner
+  NEBULA_RUNNER: {
+    ROUND_DURATION_SEC: 30,
+    BASE_SCROLL_SPEED: 200,
+    MIN_SCROLL_SPEED: 120,
+    MAX_SCROLL_SPEED: 350,
+    SHIP_HITBOX_RADIUS: 12,
+    MIN_HITBOX_RADIUS: 6,
+    MAX_HITBOX_RADIUS: 24,
+    LIVES: 3,
+    BASE_OBSTACLE_INTERVAL: 0.8,
+    MIN_OBSTACLE_INTERVAL: 0.3,
+    ASTEROID_SIZES: [16, 24, 32, 40],
+    ASTEROID_SPEED_VARIANCE: 0.3,
+    CRYSTAL_INTERVAL: 1.2,
+    CRYSTAL_VALUE: 50,
+    DISTANCE_POINTS_PER_SEC: 10,
+    NEAR_MISS_THRESHOLD: 8,
+    NEAR_MISS_BONUS: 25,
+    CRYSTAL_MULTIPLIER_DEFAULT: 1,
+    MAX_CRYSTALS_PER_ROUND: 30,
+    MAX_NEAR_MISSES_PER_ROUND: 50,
+    KILL_BONUS: 75,
+    MAX_ASTEROIDS_DESTROYED: 40,
+  },
+
+  // Cargo Tetris
+  CARGO_TETRIS: {
+    ROUND_DURATIONS: [120, 90, 60] as readonly number[],
+    BOARD_WIDTH: 10,
+    BOARD_HEIGHT: 20,
+    BASE_DROP_INTERVAL: 800,
+    MIN_DROP_INTERVAL: 100,
+    MAX_DROP_INTERVAL: 2000,
+    SPEED_INCREASE: 5,
+    DROP_INTERVAL_RAMP: 50,
+    POINTS_PER_LINE: 100,
+    POINTS_PER_PIECE: 10,
+    MAX_LINES_PER_ROUND: 40,
+    MAX_PIECES_PER_ROUND: 80,
+    // Solo level-based mode
+    LINES_PER_LEVEL: 10,
+    SOLO_LEVEL_DROP_RAMP: 60,
+    SOLO_MIN_CREDITS_LEVEL: 5,
+    SOLO_BASE_CREDITS: 50,
+    SOLO_CREDITS_PER_LEVEL: 25,
+  },
 } as const;
 
-export type GameType = "asteroid_mining" | "turret_defense";
+export type GameType =
+  | "asteroid_mining"
+  | "turret_defense"
+  | "nebula_runner"
+  | "cargo_tetris";
 export type SessionStatus = "lobby" | "playing" | "between_rounds" | "complete";
 export type ChallengeStatus = "pending" | "accepted" | "declined" | "expired";
 export type AIDifficulty = "easy" | "medium" | "hard";
@@ -143,3 +195,34 @@ export interface TurretRoundConfig {
 }
 
 export type TurretType = "basic" | "splash" | "slow" | "sniper";
+
+export interface NebulaRunnerResult {
+  crystalsCollected: number;
+  distanceSurvived: number;
+  nearMisses: number;
+  livesRemaining: number;
+  asteroidsDestroyed: number;
+  score: number;
+}
+
+export interface NebulaRoundConfig {
+  seed: number;
+  scrollSpeed: number;
+  hitboxRadius: number;
+  crystalMultiplier: number;
+  obstacleDensity: number;
+  roundDuration: number;
+}
+
+export interface CargoTetrisResult {
+  linesCleared: number;
+  piecesPlaced: number;
+  score: number;
+}
+
+export interface CargoTetrisRoundConfig {
+  seed: number;
+  dropInterval: number;
+  speedIncrease: number;
+  roundDuration: number;
+}

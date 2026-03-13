@@ -150,6 +150,35 @@ router.post("/challenge/:id/decline", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Start solo match (no opponent)
+router.post("/challenge/solo", requireAuth, async (req, res) => {
+  const playerId = req.session.playerId!;
+  const { gameType = "asteroid_mining" } = req.body;
+
+  const player = await db("players").where({ id: playerId }).first();
+  if (!player) {
+    return res.status(404).json({ error: "Player not found" });
+  }
+
+  const [session] = await db("arcade_sessions")
+    .insert({
+      game_type: gameType,
+      player1_id: playerId,
+      player2_id: null,
+      status: "lobby",
+      max_rounds: 1,
+      round_data: JSON.stringify({ solo: true }),
+    })
+    .returning("*");
+
+  res.json({
+    sessionId: session.id,
+    opponent: null,
+    gameType,
+    isPlayer1: true,
+  });
+});
+
 // Start AI match
 router.post("/challenge/ai", requireAuth, async (req, res) => {
   const playerId = req.session.playerId!;

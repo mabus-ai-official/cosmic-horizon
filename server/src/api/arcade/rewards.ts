@@ -35,30 +35,45 @@ router.post("/session/:id/claim", requireAuth, async (req, res) => {
   let xp: number;
   let tokens: number;
 
+  // No in-game credits from arcade — only arcade tokens and minimal XP
+  credits = 0;
+
   if (isDraw) {
-    credits = Math.round(
-      (ARCADE_CONFIG.WINNER_CREDITS + ARCADE_CONFIG.LOSER_CREDITS) / 2,
-    );
     xp = Math.round((ARCADE_CONFIG.WINNER_XP + ARCADE_CONFIG.LOSER_XP) / 2);
     tokens = ARCADE_CONFIG.DRAW_TOKENS;
   } else if (isWinner) {
-    credits = ARCADE_CONFIG.WINNER_CREDITS;
     xp = ARCADE_CONFIG.WINNER_XP;
     tokens = ARCADE_CONFIG.WINNER_TOKENS;
   } else {
-    credits = ARCADE_CONFIG.LOSER_CREDITS;
     xp = ARCADE_CONFIG.LOSER_XP;
     tokens = ARCADE_CONFIG.LOSER_TOKENS;
   }
 
-  // AI matches give reduced rewards
-  if (isAI) {
-    credits = Math.round(credits * ARCADE_CONFIG.AI_REWARD_MULTIPLIER);
-    xp = Math.round(xp * ARCADE_CONFIG.AI_REWARD_MULTIPLIER);
+  // Solo mode: reduced rewards
+  const roundData = JSON.parse(session.round_data || "{}");
+  const isSolo = roundData.solo === true;
+
+  if (isSolo) {
+    if (session.game_type === "cargo_tetris") {
+      const ct = ARCADE_CONFIG.CARGO_TETRIS;
+      const p1Result = roundData.round_1?.player1Result;
+      const linesCleared = p1Result?.linesCleared || 0;
+      const level = Math.floor(linesCleared / ct.LINES_PER_LEVEL) + 1;
+      tokens = level >= ct.SOLO_MIN_CREDITS_LEVEL ? 10 : 0;
+    } else {
+      tokens = 10;
+    }
+    xp = Math.round(ARCADE_CONFIG.WINNER_XP * 0.1);
+  } else {
+    // XP is 10% of base for all arcade (farmable but slow)
+    xp = Math.round(xp * 0.1);
+  }
+
+  // AI matches give reduced token rewards
+  if (isAI && !isSolo) {
     tokens = Math.round(tokens * ARCADE_CONFIG.AI_REWARD_MULTIPLIER);
   }
 
-  await db("players").where({ id: playerId }).increment("credits", credits);
   await db("players")
     .where({ id: playerId })
     .increment("arcade_tokens", tokens);

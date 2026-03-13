@@ -30,6 +30,16 @@ export async function declineChallenge(challengeId: string) {
   await api.post(`/challenge/${challengeId}/decline`);
 }
 
+export async function startSoloMatch(gameType = "asteroid_mining") {
+  const { data } = await api.post("/challenge/solo", { gameType });
+  return data as {
+    sessionId: string;
+    opponent: null;
+    gameType: string;
+    isPlayer1: boolean;
+  };
+}
+
 export async function startAIMatch(
   gameType = "asteroid_mining",
   difficulty = "medium",
@@ -123,6 +133,35 @@ export async function submitTurretResult(
 ) {
   const { data } = await api.post(`/session/${sessionId}/round-result`, {
     turretResult,
+  });
+  return data;
+}
+
+export async function submitNebulaResult(
+  sessionId: string,
+  nebulaResult: {
+    crystalsCollected: number;
+    distanceSurvived: number;
+    nearMisses: number;
+    livesRemaining: number;
+    asteroidsDestroyed: number;
+  },
+) {
+  const { data } = await api.post(`/session/${sessionId}/round-result`, {
+    nebulaResult,
+  });
+  return data;
+}
+
+export async function submitCargoTetrisResult(
+  sessionId: string,
+  cargoTetrisResult: {
+    linesCleared: number;
+    piecesPlaced: number;
+  },
+) {
+  const { data } = await api.post(`/session/${sessionId}/round-result`, {
+    cargoTetrisResult,
   });
   return data;
 }

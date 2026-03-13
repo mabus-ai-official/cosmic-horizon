@@ -31,11 +31,16 @@ type LineType =
   | "combat"
   | "trade";
 
+// Items that require a target player to use
+const TARGET_ITEMS = new Set(["disruptor_torpedo"]);
+
 interface Props {
   refreshKey?: number;
   onAddLine?: (text: string, type?: LineType) => void;
   onRefreshStatus?: () => void;
   colonistsByRace?: { race: string; count: number }[];
+  sectorPlayers?: { id: string; username: string }[];
+  playerId?: string;
 }
 
 type TabView = "items" | "resources" | "colonists";
@@ -144,12 +149,18 @@ export default function InventoryResourcePanel({
   onAddLine,
   onRefreshStatus,
   colonistsByRace,
+  sectorPlayers,
+  playerId,
 }: Props) {
   const [tab, setTab] = useState<TabView>("items");
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [resources, setResources] = useState<PlayerResource[]>([]);
   const [loading, setLoading] = useState(true);
   const [usingItem, setUsingItem] = useState<string | null>(null);
+  const [targetPicker, setTargetPicker] = useState<{
+    itemId: string;
+    players: { id: string; username: string }[];
+  } | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -163,15 +174,61 @@ export default function InventoryResourcePanel({
     ]).finally(() => setLoading(false));
   }, [refreshKey]);
 
-  const handleUse = async (item: InventoryItem) => {
+  const handleUse = async (item: InventoryItem, targetPlayerId?: string) => {
+    // If item needs a target and we don't have one, show picker
+    if (TARGET_ITEMS.has(item.itemId) && !targetPlayerId) {
+      const otherPlayers = (sectorPlayers || []).filter(
+        (p) => p.id !== playerId,
+      );
+      if (otherPlayers.length === 0) {
+        onAddLine?.("No targets in this sector", "error");
+        return;
+      }
+      setTargetPicker({ itemId: item.itemId, players: otherPlayers });
+      return;
+    }
+
     setUsingItem(item.itemId);
+    setTargetPicker(null);
     try {
       if (item.category === "deployable") {
         await deploy(item.itemId);
         onAddLine?.(`Deployed ${item.name}`, "success");
       } else {
-        await useStoreItem(item.itemId);
-        onAddLine?.(`Used ${item.name}`, "success");
+        const body = targetPlayerId ? { targetPlayerId } : undefined;
+        const { data: useData } = await useStoreItem(item.itemId, body);
+        if (useData.message) {
+          onAddLine?.(useData.message, "success");
+        } else {
+          onAddLine?.(`Used ${item.name}`, "success");
+        }
+        // Extra feedback for specific items
+        if (useData.targetPlayer) {
+          onAddLine?.(
+            `Disruptor torpedo hit ${useData.targetPlayer}! Engines disabled for 5 minutes.`,
+            "combat",
+          );
+        }
+        if (useData.cloaked) {
+          onAddLine?.("Cloaking device activated.", "success");
+        }
+        if (useData.planets && !useData.sectorId) {
+          for (const p of useData.planets) {
+            const owner = p.owner ? ` (${p.owner})` : "";
+            onAddLine?.(
+              `  ${p.name} [${p.class}] pop:${p.population}${owner}`,
+              "info",
+            );
+          }
+        }
+        if (useData.shipsHit) {
+          for (const hit of useData.shipsHit) {
+            onAddLine?.(
+              `  ${hit.player}: ${hit.damage} dmg${hit.destroyed ? " [DESTROYED]" : ""}`,
+              "combat",
+            );
+          }
+        }
       }
       onRefreshStatus?.();
       const { data } = await getInventory();
@@ -298,49 +355,100 @@ export default function InventoryResourcePanel({
                       const hint = ITEM_HINTS[item.itemId];
                       const actionLabel =
                         item.category === "deployable" ? "DEPLOY" : "USE";
+                      const showPicker = targetPicker?.itemId === item.itemId;
                       return (
-                        <div
-                          key={item.itemId}
-                          className="inventory-item"
-                          title={hint}
-                          style={{ cursor: hint ? "help" : undefined }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div className="inventory-item__name">
-                              <PixelSprite
-                                spriteKey={`item_${item.itemId}`}
-                                size={16}
-                              />
-                              {item.name}
-                              {item.quantity > 1 && (
-                                <span className="inventory-item__count">
-                                  {" "}
-                                  x{item.quantity}
-                                </span>
+                        <div key={item.itemId}>
+                          <div
+                            className="inventory-item"
+                            title={hint}
+                            style={{ cursor: hint ? "help" : undefined }}
+                          >
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div className="inventory-item__name">
+                                <PixelSprite
+                                  spriteKey={`item_${item.itemId}`}
+                                  size={16}
+                                />
+                                {item.name}
+                                {item.quantity > 1 && (
+                                  <span className="inventory-item__count">
+                                    {" "}
+                                    x{item.quantity}
+                                  </span>
+                                )}
+                              </div>
+                              {hint && (
+                                <div
+                                  style={{
+                                    fontSize: "9px",
+                                    color: "#6e7681",
+                                    paddingLeft: 20,
+                                    marginTop: 1,
+                                  }}
+                                >
+                                  {hint}
+                                </div>
                               )}
                             </div>
-                            {hint && (
+                            {item.category !== "equipment" && (
+                              <button
+                                className="btn-sm btn-use"
+                                onClick={() =>
+                                  showPicker
+                                    ? setTargetPicker(null)
+                                    : handleUse(item)
+                                }
+                                disabled={usingItem === item.itemId}
+                                style={{ flexShrink: 0 }}
+                              >
+                                {usingItem === item.itemId
+                                  ? "..."
+                                  : showPicker
+                                    ? "CANCEL"
+                                    : actionLabel}
+                              </button>
+                            )}
+                          </div>
+                          {showPicker && (
+                            <div
+                              style={{
+                                padding: "4px 0 4px 20px",
+                                borderLeft: "2px solid #f85149",
+                              }}
+                            >
                               <div
                                 style={{
                                   fontSize: "9px",
-                                  color: "#6e7681",
-                                  paddingLeft: 20,
-                                  marginTop: 1,
+                                  color: "#f85149",
+                                  marginBottom: 3,
                                 }}
                               >
-                                {hint}
+                                SELECT TARGET:
                               </div>
-                            )}
-                          </div>
-                          {item.category !== "equipment" && (
-                            <button
-                              className="btn-sm btn-use"
-                              onClick={() => handleUse(item)}
-                              disabled={usingItem === item.itemId}
-                              style={{ flexShrink: 0 }}
-                            >
-                              {usingItem === item.itemId ? "..." : actionLabel}
-                            </button>
+                              {targetPicker.players.map((p) => (
+                                <div
+                                  key={p.id}
+                                  onClick={() => handleUse(item, p.id)}
+                                  style={{
+                                    cursor: "pointer",
+                                    padding: "2px 6px",
+                                    fontSize: "11px",
+                                    color: "#f0883e",
+                                    borderBottom: "1px solid #21262d",
+                                  }}
+                                  onMouseEnter={(e) =>
+                                    (e.currentTarget.style.background =
+                                      "#21262d")
+                                  }
+                                  onMouseLeave={(e) =>
+                                    (e.currentTarget.style.background =
+                                      "transparent")
+                                  }
+                                >
+                                  {p.username}
+                                </div>
+                              ))}
+                            </div>
                           )}
                         </div>
                       );

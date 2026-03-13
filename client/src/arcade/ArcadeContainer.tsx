@@ -31,7 +31,11 @@ export default function ArcadeContainer({
   const handleRoundComplete =
     gameType === "turret_defense"
       ? arcade.handleSubmitTurretResult
-      : arcade.handleSubmitHits;
+      : gameType === "nebula_runner"
+        ? arcade.handleSubmitNebulaResult
+        : gameType === "cargo_tetris"
+          ? arcade.handleSubmitCargoTetrisResult
+          : arcade.handleSubmitHits;
 
   switch (arcade.phase) {
     case "menu":
@@ -39,6 +43,7 @@ export default function ArcadeContainer({
         <GameSelector
           sectorPlayers={sectorPlayers}
           playerId={playerId}
+          onPlaySolo={arcade.handlePlaySolo}
           onPlayAI={arcade.handlePlayAI}
           onChallenge={arcade.handleChallenge}
           onOpenShop={arcade.handleOpenShop}
@@ -106,6 +111,7 @@ export default function ArcadeContainer({
           playerId={playerId}
           opponentName={opponentName}
           isAI={isAI}
+          isSolo={!arcade.session.opponent}
           rewardClaimed={arcade.session.rewardClaimed}
           roundResults={arcade.roundResults}
           onClaim={arcade.handleClaimReward}

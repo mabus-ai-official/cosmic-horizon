@@ -347,6 +347,8 @@ export default function PanelRouter({
           onAddLine={game.addLine}
           onRefreshStatus={game.refreshStatus}
           colonistsByRace={game.player?.currentShip?.colonistsByRace}
+          sectorPlayers={game.sector?.players}
+          playerId={game.player?.id}
         />
       );
     case "comms":

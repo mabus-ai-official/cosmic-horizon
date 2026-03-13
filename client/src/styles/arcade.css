@@ -329,6 +329,27 @@
   margin-bottom: 12px;
 }
 
+.arcade-selector__play-options {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin: 20px 0 12px;
+}
+
+.arcade-selector__btn--play {
+  background: var(--cyan);
+  border: 1px solid var(--cyan);
+  color: var(--bg-primary);
+  font-size: 16px;
+  padding: 10px 48px;
+  letter-spacing: 2px;
+}
+
+.arcade-selector__btn--play:hover {
+  background: rgba(86, 212, 221, 0.85);
+}
+
 .arcade-selector__ai-row {
   display: flex;
   gap: 10px;
@@ -380,9 +401,11 @@
 }
 
 .arcade-selector__note {
-  color: var(--text-muted);
-  font-size: 12px;
-  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-top: 4px;
+  text-align: center;
+  letter-spacing: 0.5px;
 }
 
 .arcade-selector__player-list {

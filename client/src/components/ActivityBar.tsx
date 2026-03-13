@@ -12,7 +12,7 @@ interface ActivityBarProps {
   groupBadge: (id: GroupId) => number;
 }
 
-const SEPARATOR_AFTER: GroupId[] = ["ship", "market"];
+const SEPARATOR_AFTER: GroupId[] = ["ship", "starmall"];
 
 export default function ActivityBar({
   activePanel,

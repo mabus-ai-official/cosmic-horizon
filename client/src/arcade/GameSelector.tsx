@@ -11,11 +11,22 @@ const GAMES = [
     name: "TURRET DEFENSE",
     desc: "Defend your ship from drone waves. Place turrets, survive 5 waves per round.",
   },
+  {
+    id: "nebula_runner",
+    name: "NEBULA RUNNER",
+    desc: "Dodge asteroids and collect crystals in a 30-second sprint through the nebula.",
+  },
+  {
+    id: "cargo_tetris",
+    name: "CARGO TETRIS",
+    desc: "Pack cargo tetrominoes into your ship's hold. Clear lines in 60-second rounds.",
+  },
 ];
 
 interface GameSelectorProps {
   sectorPlayers: { id: string; username: string }[];
   playerId: string;
+  onPlaySolo: (gameType: string) => void;
   onPlayAI: (difficulty: string, gameType: string) => void;
   onChallenge: (targetId: string, gameType: string) => void;
   onOpenShop: () => void;
@@ -26,6 +37,7 @@ interface GameSelectorProps {
 export default function GameSelector({
   sectorPlayers,
   playerId,
+  onPlaySolo,
   onPlayAI,
   onChallenge,
   onOpenShop,
@@ -61,9 +73,20 @@ export default function GameSelector({
         ))}
       </div>
 
-      <div className="arcade-selector__section">
-        <div className="arcade-selector__section-title">SOLO MATCH</div>
+      <div className="arcade-selector__play-options">
+        <button
+          className="arcade-selector__btn arcade-selector__btn--play"
+          onClick={() => onPlaySolo(selectedGame)}
+        >
+          PLAY
+        </button>
         <div className="arcade-selector__ai-row">
+          <button
+            className="arcade-selector__btn arcade-selector__btn--ai"
+            onClick={() => onPlayAI(difficulty, selectedGame)}
+          >
+            VS AI
+          </button>
           <select
             className="arcade-selector__difficulty"
             value={difficulty}
@@ -73,21 +96,17 @@ export default function GameSelector({
             <option value="medium">Medium</option>
             <option value="hard">Hard</option>
           </select>
-          <button
-            className="arcade-selector__btn arcade-selector__btn--ai"
-            onClick={() => onPlayAI(difficulty, selectedGame)}
-          >
-            PLAY VS AI
-          </button>
         </div>
-        <div className="arcade-selector__note">
-          AI matches award 50% rewards
-        </div>
+      </div>
+      <div className="arcade-selector__note">
+        Solo: 30% rewards | AI: 50% rewards | PvP: full rewards
       </div>
 
       {otherPlayers.length > 0 && (
         <div className="arcade-selector__section">
-          <div className="arcade-selector__section-title">PILOTS IN SECTOR</div>
+          <div className="arcade-selector__section-title">
+            CHALLENGE A PILOT
+          </div>
           <div className="arcade-selector__player-list">
             {otherPlayers.map((p) => (
               <div key={p.id} className="arcade-selector__player">

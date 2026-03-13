@@ -74,6 +74,65 @@ export class TurretDefenseScene extends Phaser.Scene {
     super({ key: "TurretDefense" });
   }
 
+  preload(): void {
+    this.load.image(
+      "td_turret_base",
+      "/assets/arcade/turret-defense/turret_base.png",
+    );
+    this.load.image(
+      "td_turret_basic",
+      "/assets/arcade/turret-defense/turret_basic_gun.png",
+    );
+    this.load.image(
+      "td_turret_splash",
+      "/assets/arcade/turret-defense/turret_splash_gun.png",
+    );
+    this.load.image(
+      "td_turret_slow",
+      "/assets/arcade/turret-defense/turret_slow_gun.png",
+    );
+    this.load.image(
+      "td_turret_sniper",
+      "/assets/arcade/turret-defense/turret_sniper_gun.png",
+    );
+    this.load.image(
+      "td_enemy_basic",
+      "/assets/arcade/turret-defense/enemy_basic.png",
+    );
+    this.load.image(
+      "td_enemy_fast",
+      "/assets/arcade/turret-defense/enemy_fast.png",
+    );
+    this.load.image(
+      "td_enemy_heavy",
+      "/assets/arcade/turret-defense/enemy_heavy.png",
+    );
+    this.load.image(
+      "td_enemy_boss",
+      "/assets/arcade/turret-defense/enemy_boss.png",
+    );
+    this.load.image(
+      "td_projectile_basic",
+      "/assets/arcade/turret-defense/projectile_basic.png",
+    );
+    this.load.image(
+      "td_projectile_splash",
+      "/assets/arcade/turret-defense/projectile_splash.png",
+    );
+    this.load.image(
+      "td_projectile_slow",
+      "/assets/arcade/turret-defense/projectile_slow.png",
+    );
+    this.load.image(
+      "td_projectile_sniper",
+      "/assets/arcade/turret-defense/projectile_sniper.png",
+    );
+    this.load.image(
+      "td_explosion",
+      "/assets/arcade/turret-defense/effect_explosion.png",
+    );
+  }
+
   create(): void {
     // Field background
     this.add
@@ -114,14 +173,8 @@ export class TurretDefenseScene extends Phaser.Scene {
       | ((result: any) => void)
       | null;
 
-    console.log("[TD] create() roundStart:", JSON.stringify(roundStart));
-    console.log("[TD] onRoundComplete:", !!this.onRoundComplete);
-
     if (roundStart?.roundConfig) {
-      console.log("[TD] calling startRound");
       this.startRound(roundStart);
-    } else {
-      console.warn("[TD] no roundConfig in roundStart, game won't start");
     }
 
     // Click to place turret
@@ -136,7 +189,6 @@ export class TurretDefenseScene extends Phaser.Scene {
 
     // Listen for new round events
     this.game.events.on("newRound", (data: RoundStartData) => {
-      console.log("[TD] newRound event:", JSON.stringify(data));
       this.startRound(data);
     });
   }
@@ -283,11 +335,6 @@ export class TurretDefenseScene extends Phaser.Scene {
 
   private handlePlacement(px: number, py: number): void {
     if (!this.roundActive || !this.selectedTurretType || !this.roundConfig) {
-      console.log("[TD] placement blocked:", {
-        roundActive: this.roundActive,
-        selectedType: this.selectedTurretType,
-        hasConfig: !!this.roundConfig,
-      });
       return;
     }
 

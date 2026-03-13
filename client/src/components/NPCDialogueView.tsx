@@ -316,9 +316,7 @@ export default function NPCDialogueView({
                 {opt.text}
               </button>
             ))}
-            <button className="npc-dialogue__option" onClick={openShop}>
-              [Shop]
-            </button>
+            {/* Vendor shop hidden until vendor items have working use effects */}
           </div>
         </>
       )}

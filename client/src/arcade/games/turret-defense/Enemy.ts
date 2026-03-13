@@ -6,11 +6,20 @@ interface Waypoint {
   y: number;
 }
 
+/** Pick enemy texture based on HP thresholds */
+function getEnemyTexture(hp: number, speed: number): string {
+  if (hp >= 200) return "td_enemy_boss";
+  if (hp >= 80) return "td_enemy_heavy";
+  if (speed >= 1.5) return "td_enemy_fast";
+  return "td_enemy_basic";
+}
+
 export class Enemy {
   private scene: Phaser.Scene;
-  private circle: Phaser.GameObjects.Arc;
+  private sprite: Phaser.GameObjects.Image;
   private hpBar: Phaser.GameObjects.Rectangle;
   private hpBarBg: Phaser.GameObjects.Rectangle;
+  private slowTint: boolean = false;
 
   public hp: number;
   public maxHP: number;
@@ -41,27 +50,31 @@ export class Enemy {
     this.value = value;
 
     const start = waypoints[0];
-    this.circle = scene.add
-      .circle(start.x, start.y, TD_CONFIG.ENEMY_RADIUS, TD_CONFIG.ENEMY_COLOR)
+    const texture = getEnemyTexture(hp, speed);
+    const spriteSize = hp >= 200 ? 18 : hp >= 80 ? 16 : 14;
+
+    this.sprite = scene.add
+      .image(start.x, start.y, texture)
+      .setDisplaySize(spriteSize, spriteSize)
       .setDepth(5);
 
     // HP bar background
     this.hpBarBg = scene.add
-      .rectangle(start.x, start.y - 12, 16, 3, 0x333333)
+      .rectangle(start.x, start.y - 14, 16, 3, 0x333333)
       .setDepth(6);
 
     // HP bar fill
     this.hpBar = scene.add
-      .rectangle(start.x, start.y - 12, 16, 3, 0x3fb950)
+      .rectangle(start.x, start.y - 14, 16, 3, 0x3fb950)
       .setDepth(7);
   }
 
   get x(): number {
-    return this.circle.x;
+    return this.sprite.x;
   }
 
   get y(): number {
-    return this.circle.y;
+    return this.sprite.y;
   }
 
   /** Fraction of total path traversed (0=start, 1=end) */
@@ -78,7 +91,10 @@ export class Enemy {
       this.slowTimer -= delta;
       if (this.slowTimer <= 0) {
         this.speed = this.baseSpeed;
-        this.circle.setFillStyle(TD_CONFIG.ENEMY_COLOR);
+        if (this.slowTint) {
+          this.sprite.clearTint();
+          this.slowTint = false;
+        }
       }
     }
 
@@ -94,7 +110,7 @@ export class Enemy {
     const dy = to.y - from.y;
     const segmentLen = Math.sqrt(dx * dx + dy * dy);
 
-    // speed is in "field-widths per second" — scale to pixels
+    // speed is in "field-widths per second" -- scale to pixels
     const pixelsPerSec = this.speed * TD_CONFIG.FIELD_WIDTH * 0.3;
     this.progress += (pixelsPerSec * delta) / 1000 / segmentLen;
 
@@ -113,9 +129,14 @@ export class Enemy {
     const cx = curr.x + (next.x - curr.x) * this.progress;
     const cy = curr.y + (next.y - curr.y) * this.progress;
 
-    this.circle.setPosition(cx, cy);
-    this.hpBarBg.setPosition(cx, cy - 12);
-    this.hpBar.setPosition(cx, cy - 12);
+    // Rotate sprite to face movement direction
+    const moveDx = next.x - curr.x;
+    const moveDy = next.y - curr.y;
+    this.sprite.setRotation(Math.atan2(moveDy, moveDx));
+
+    this.sprite.setPosition(cx, cy);
+    this.hpBarBg.setPosition(cx, cy - 14);
+    this.hpBar.setPosition(cx, cy - 14);
     this.hpBar.setDisplaySize(16 * (this.hp / this.maxHP), 3);
   }
 
@@ -131,12 +152,13 @@ export class Enemy {
   applySlow(factor: number, durationMs: number): void {
     this.speed = this.baseSpeed * factor;
     this.slowTimer = durationMs;
-    this.circle.setFillStyle(0x56d4dd);
+    this.sprite.setTint(0x56d4dd);
+    this.slowTint = true;
   }
 
   private deathAnimation(): void {
     this.scene.tweens.add({
-      targets: [this.circle, this.hpBar, this.hpBarBg],
+      targets: [this.sprite, this.hpBar, this.hpBarBg],
       alpha: 0,
       scaleX: 1.5,
       scaleY: 1.5,
@@ -146,7 +168,7 @@ export class Enemy {
   }
 
   destroy(): void {
-    this.circle.destroy();
+    this.sprite.destroy();
     this.hpBar.destroy();
     this.hpBarBg.destroy();
   }

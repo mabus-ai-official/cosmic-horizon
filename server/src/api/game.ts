@@ -223,6 +223,25 @@ router.post("/move/:sectorId", requireAuth, async (req, res) => {
         .status(400)
         .json({ error: "You must liftoff before traveling" });
 
+    // Check engine disable (disruptor torpedo effect)
+    if (player.current_ship_id) {
+      const moveShip = await db("ships")
+        .where({ id: player.current_ship_id })
+        .first();
+      if (
+        moveShip?.engines_disabled_until &&
+        new Date(moveShip.engines_disabled_until) > new Date()
+      ) {
+        const remaining = Math.ceil(
+          (new Date(moveShip.engines_disabled_until).getTime() - Date.now()) /
+            60000,
+        );
+        return res.status(400).json({
+          error: `Engines disabled! ${remaining} minute${remaining !== 1 ? "s" : ""} remaining.`,
+        });
+      }
+    }
+
     if (!canAffordAction(player.energy, "move")) {
       return res
         .status(400)

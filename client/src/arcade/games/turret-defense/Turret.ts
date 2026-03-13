@@ -5,6 +5,13 @@ import type { Enemy } from "./Enemy";
 
 export type TurretType = "basic" | "splash" | "slow" | "sniper";
 
+const TURRET_GUN_TEXTURES: Record<TurretType, string> = {
+  basic: "td_turret_basic",
+  splash: "td_turret_splash",
+  slow: "td_turret_slow",
+  sniper: "td_turret_sniper",
+};
+
 interface TurretStats {
   cost: number;
   damage: number;
@@ -16,8 +23,10 @@ interface TurretStats {
 
 export class Turret {
   private scene: Phaser.Scene;
-  private body: Phaser.GameObjects.Arc;
+  private baseSprite: Phaser.GameObjects.Image;
+  private gunSprite: Phaser.GameObjects.Image;
   private rangeCircle: Phaser.GameObjects.Arc;
+  private hitArea: Phaser.GameObjects.Rectangle;
   private cooldown: number = 0;
 
   public type: TurretType;
@@ -53,27 +62,37 @@ export class Turret {
 
     const color = TD_CONFIG.TURRET_COLORS[type] || 0xffffff;
 
-    this.body = scene.add
-      .circle(worldX, worldY, TD_CONFIG.TURRET_RADIUS, color, 0.9)
-      .setDepth(4)
-      .setInteractive();
+    // Base platform sprite
+    this.baseSprite = scene.add
+      .image(worldX, worldY, "td_turret_base")
+      .setDisplaySize(24, 24)
+      .setDepth(3);
 
-    // Inner marker for type
-    const markerSize = 4;
-    scene.add.circle(worldX, worldY, markerSize, 0x0a0e14, 0.6).setDepth(4);
+    // Gun sprite on top — rotates to face enemies
+    const gunTexture = TURRET_GUN_TEXTURES[type];
+    this.gunSprite = scene.add
+      .image(worldX, worldY, gunTexture)
+      .setDisplaySize(24, 24)
+      .setDepth(4);
 
+    // Invisible hit area for hover interaction
+    this.hitArea = scene.add
+      .rectangle(worldX, worldY, 24, 24, 0x000000, 0)
+      .setDepth(5)
+      .setInteractive({ useHandCursor: true });
+
+    // Range circle indicator (gameplay UI — keep as graphic)
     this.rangeCircle = scene.add
       .circle(worldX, worldY, stats.range, color, TD_CONFIG.RANGE_ALPHA)
       .setDepth(2)
       .setVisible(false);
 
-    this.body.on("pointerover", () => this.rangeCircle.setVisible(true));
-    this.body.on("pointerout", () => this.rangeCircle.setVisible(false));
+    this.hitArea.on("pointerover", () => this.rangeCircle.setVisible(true));
+    this.hitArea.on("pointerout", () => this.rangeCircle.setVisible(false));
   }
 
   update(delta: number): void {
     this.cooldown -= delta / 1000;
-    if (this.cooldown > 0) return;
 
     // Find target: enemy farthest along path that's in range
     let target: Enemy | null = null;
@@ -93,18 +112,28 @@ export class Turret {
       }
     }
 
-    if (!target) return;
+    // Rotate gun toward target (even while on cooldown for visual feedback)
+    if (target) {
+      const angle = Phaser.Math.Angle.Between(
+        this.x,
+        this.y,
+        target.x,
+        target.y,
+      );
+      this.gunSprite.setRotation(angle);
+    }
+
+    if (this.cooldown > 0 || !target) return;
 
     this.cooldown = this.stats.fireRate;
 
-    const color = TD_CONFIG.TURRET_COLORS[this.type] || 0xffffff;
     const proj = new Projectile(
       this.scene,
       this.x,
       this.y,
       target,
       this.stats.damage,
-      color,
+      this.type,
       this.enemies,
       this.stats.splashRadius || 0,
       this.stats.slowFactor || 0,
@@ -113,7 +142,9 @@ export class Turret {
   }
 
   destroy(): void {
-    this.body.destroy();
+    this.baseSprite.destroy();
+    this.gunSprite.destroy();
+    this.hitArea.destroy();
     this.rangeCircle.destroy();
   }
 }

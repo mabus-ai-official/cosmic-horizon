@@ -26,7 +26,8 @@ import {
   type CharacterData,
   type EquipmentData,
 } from "./client";
-import { isChainEnabled } from "./config";
+import { isChainEnabled, isSettlementEnabled } from "./config";
+import db from "../db/connection";
 
 // ---------------------------------------------------------------------------
 // Queue types
@@ -169,6 +170,64 @@ export function enqueueAndWait<T = unknown>(op: ChainOp): Promise<T> {
       resolve: resolve as (result: unknown) => void,
       reject,
     });
+  });
+}
+
+/**
+ * Convenience: credit a player's MemberContract with game credits.
+ * Looks up member_contract_address from DB, enqueues if found.
+ * Call from any game system that awards credits.
+ */
+export async function settleCreditPlayer(
+  playerId: string,
+  amount: number,
+  settlementType:
+    | "trade"
+    | "combat"
+    | "store"
+    | "progression"
+    | "syndicate" = "progression",
+): Promise<void> {
+  if (!isChainEnabled() || !isSettlementEnabled(settlementType) || amount <= 0)
+    return;
+  const player = await db("players")
+    .where({ id: playerId })
+    .select("member_contract_address")
+    .first();
+  if (!player?.member_contract_address) return;
+  enqueue({
+    type: "creditMember",
+    memberAddress: player.member_contract_address as Address,
+    resource: "credits",
+    amount: BigInt(amount) * 10n ** 18n,
+  });
+}
+
+/**
+ * Convenience: debit a player's MemberContract credits.
+ */
+export async function settleDebitPlayer(
+  playerId: string,
+  amount: number,
+  settlementType:
+    | "trade"
+    | "combat"
+    | "store"
+    | "progression"
+    | "syndicate" = "progression",
+): Promise<void> {
+  if (!isChainEnabled() || !isSettlementEnabled(settlementType) || amount <= 0)
+    return;
+  const player = await db("players")
+    .where({ id: playerId })
+    .select("member_contract_address")
+    .first();
+  if (!player?.member_contract_address) return;
+  enqueue({
+    type: "debitMember",
+    memberAddress: player.member_contract_address as Address,
+    resource: "credits",
+    amount: BigInt(amount) * 10n ** 18n,
   });
 }
 

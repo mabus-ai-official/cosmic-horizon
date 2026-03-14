@@ -11,7 +11,7 @@ import { getDefaultTutorialState } from "../config/tutorial-sandbox";
 import { generateSPUniverse } from "../engine/sp-universe";
 import { assignInitialSPMissions } from "../db/seeds/011_sp_missions";
 import { awardXP } from "../engine/progression";
-import { enqueue } from "../chain/tx-queue";
+import { enqueue, settleCreditPlayer } from "../chain/tx-queue";
 import { isChainEnabled } from "../chain/config";
 import type { Address } from "viem";
 import { createPlayerWallet } from "../chain/wallet-provider";
@@ -311,6 +311,7 @@ router.post("/login", async (req, res) => {
         .update({
           credits: db.raw(`credits + ${streakCredits}`),
         });
+      await settleCreditPlayer(player.id, streakCredits);
 
       streakReward = { xp: streakXp, credits: streakCredits };
     }

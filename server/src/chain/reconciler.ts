@@ -5,7 +5,7 @@
 import { type Address, parseAbi } from "viem";
 import { publicClient } from "./client";
 import { contractAddresses, resourceToToken } from "./addresses";
-import { characterNftAbi, shipNftAbi } from "./abis";
+import { characterNftAbi, shipNftAbi, memberContractAbi } from "./abis";
 import db from "../db/connection";
 
 // ---------------------------------------------------------------------------
@@ -54,6 +54,19 @@ async function readTokenBalance(
   }) as Promise<bigint>;
 }
 
+/** Read MemberContract's internal fungible ledger for a given token */
+async function readMemberLedgerBalance(
+  memberContract: Address,
+  tokenAddr: Address,
+): Promise<bigint> {
+  return publicClient.readContract({
+    address: memberContract,
+    abi: parseAbi(memberContractAbi),
+    functionName: "fungibleLedger",
+    args: [tokenAddr],
+  }) as Promise<bigint>;
+}
+
 // ---------------------------------------------------------------------------
 // Per-player reconciliation
 // ---------------------------------------------------------------------------
@@ -92,21 +105,27 @@ export async function reconcilePlayer(
     };
   }
 
+  const memberContract = player.member_contract_address as Address | null;
   const discrepancies: Discrepancy[] = [];
 
-  // 1. Token balances
+  // 1. Token balances — compare DB credits against MemberContract's fungible ledger
   for (const [resource, tokenAddr] of Object.entries(resourceToToken)) {
     try {
-      const chainBalance = await readTokenBalance(tokenAddr as Address, wallet);
+      // Read from MemberContract ledger (game-relevant balance), fallback to ERC-20 balanceOf
+      const chainBalance = memberContract
+        ? await readMemberLedgerBalance(memberContract, tokenAddr as Address)
+        : await readTokenBalance(tokenAddr as Address, wallet);
+      // Convert from 18 decimals to game units
+      const chainGameUnits = chainBalance / 10n ** 18n;
       // DB stores credits as a number on the players table
       const dbBalance =
         resource === "credits" ? BigInt(player.credits || 0) : 0n;
 
-      if (resource === "credits" && chainBalance !== dbBalance) {
+      if (resource === "credits" && chainGameUnits !== dbBalance) {
         const diff =
-          chainBalance > dbBalance
-            ? chainBalance - dbBalance
-            : dbBalance - chainBalance;
+          chainGameUnits > dbBalance
+            ? chainGameUnits - dbBalance
+            : dbBalance - chainGameUnits;
         const pctDiff =
           dbBalance > 0n ? Number((diff * 100n) / dbBalance) : 100;
 
@@ -114,9 +133,9 @@ export async function reconcilePlayer(
           playerId,
           field: `token:${resource}`,
           dbValue: dbBalance.toString(),
-          chainValue: chainBalance.toString(),
+          chainValue: chainGameUnits.toString(),
           severity: pctDiff > 1 ? "WARNING" : "INFO",
-          message: `${resource} balance mismatch: DB=${dbBalance} chain=${chainBalance} (${pctDiff}% diff)`,
+          message: `${resource} balance mismatch: DB=${dbBalance} chain=${chainGameUnits} (${pctDiff}% diff)`,
         });
       }
     } catch {

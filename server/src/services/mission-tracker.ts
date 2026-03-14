@@ -8,6 +8,7 @@ import {
 import { awardXP } from "../engine/progression";
 import { checkAchievements } from "../engine/achievements";
 import { GAME_CONFIG } from "../config/game";
+import { settleCreditPlayer } from "../chain/tx-queue";
 import {
   incrementStat,
   logActivity,
@@ -37,6 +38,7 @@ export async function awardMissionRewards(
     await db("players")
       .where({ id: playerId })
       .increment("credits", mission.reward_credits);
+    await settleCreditPlayer(playerId, mission.reward_credits);
     creditsAwarded = mission.reward_credits;
   }
 

@@ -145,11 +145,20 @@ async function handleCharacterMinted(log: Log): Promise<void> {
     race: string;
   };
 
-  await db("players")
-    .whereRaw("LOWER(wallet_address) = ?", [owner.toLowerCase()])
+  const updated = await db("players")
+    .whereRaw("LOWER(member_contract_address) = ?", [owner.toLowerCase()])
     .update({ character_nft_id: Number(tokenId) });
 
-  console.log(`[indexer] CharacterMinted: tokenId=${tokenId} owner=${owner}`);
+  // Fallback: try wallet_address if member_contract_address didn't match
+  if (!updated) {
+    await db("players")
+      .whereRaw("LOWER(wallet_address) = ?", [owner.toLowerCase()])
+      .update({ character_nft_id: Number(tokenId) });
+  }
+
+  console.log(
+    `[indexer] CharacterMinted: tokenId=${tokenId} owner=${owner} (${updated} rows)`,
+  );
 }
 
 async function handleCharacterUpdated(log: Log): Promise<void> {
@@ -247,10 +256,16 @@ async function handleShipMinted(log: Log): Promise<void> {
     shipType: string;
   };
 
-  // Link ship in DB to chain token ID — match by owner wallet, most recent unlinked ship
-  const player = await db("players")
-    .whereRaw("LOWER(wallet_address) = ?", [owner.toLowerCase()])
+  // Link ship in DB to chain token ID — match by member contract (NFTs are held by MemberContract)
+  let player = await db("players")
+    .whereRaw("LOWER(member_contract_address) = ?", [owner.toLowerCase()])
     .first();
+  // Fallback: try wallet_address
+  if (!player) {
+    player = await db("players")
+      .whereRaw("LOWER(wallet_address) = ?", [owner.toLowerCase()])
+      .first();
+  }
   if (player) {
     await db("ships")
       .where({ owner_id: player.id })

@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { requireAuth } from "../middleware/auth";
 import { awardXP } from "../engine/progression";
 import db from "../db/connection";
+import { settleCreditPlayer } from "../chain/tx-queue";
 
 const router = Router();
 
@@ -183,6 +184,7 @@ router.post("/:id/claim", requireAuth, async (req, res) => {
     await db("players")
       .where({ id: playerId })
       .update({ credits: db.raw(`credits + ${mission.credit_reward}`) });
+    await settleCreditPlayer(playerId, mission.credit_reward);
 
     res.json({
       claimed: true,

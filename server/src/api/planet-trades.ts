@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { requireAuth } from "../middleware/auth";
 import db from "../db/connection";
 import { notifyPlayer } from "../ws/handlers";
+import { settleCreditPlayer, settleDebitPlayer } from "../chain/tx-queue";
 
 const router = Router();
 
@@ -80,11 +81,9 @@ router.post("/offer", requireAuth, async (req, res) => {
         })
         .first();
       if (existing)
-        return res
-          .status(400)
-          .json({
-            error: "You already have a pending offer for this resource",
-          });
+        return res.status(400).json({
+          error: "You already have a pending offer for this resource",
+        });
 
       const id = crypto.randomUUID();
       await db("planet_trade_requests").insert({
@@ -130,11 +129,9 @@ router.post("/offer", requireAuth, async (req, res) => {
         })
         .first();
       if (existing)
-        return res
-          .status(400)
-          .json({
-            error: "You already have a pending transfer for this planet",
-          });
+        return res.status(400).json({
+          error: "You already have a pending transfer for this planet",
+        });
 
       const id = crypto.randomUUID();
       await db("planet_trade_requests").insert({
@@ -356,9 +353,11 @@ router.post("/:offerId/accept", requireAuth, async (req, res) => {
       await db("players")
         .where({ id: playerId })
         .decrement("credits", offer.price);
+      await settleDebitPlayer(playerId, offer.price, "trade");
       await db("players")
         .where({ id: offer.sender_id })
         .increment("credits", offer.price);
+      await settleCreditPlayer(offer.sender_id, offer.price, "trade");
     }
 
     await db("planet_trade_requests")

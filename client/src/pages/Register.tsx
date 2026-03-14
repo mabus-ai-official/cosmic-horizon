@@ -87,7 +87,7 @@ export default function Register({ onRegister }: RegisterProps) {
     setLoading(true);
     try {
       await onRegister(username, email, password, selectedRace, gameMode);
-      setStep(3);
+      navigate("/game");
     } catch (err: any) {
       setError(err.response?.data?.error || "Registration failed");
     } finally {

@@ -7,6 +7,9 @@ import {
   getLevelUpBonusStat,
 } from "../config/progression";
 import { logActivity } from "./profile-stats";
+import { enqueue } from "../chain/tx-queue";
+import { isSettlementEnabled } from "../chain/config";
+import type { Address } from "viem";
 
 export interface LevelUpResult {
   levelsGained: number;
@@ -90,6 +93,41 @@ export async function awardXP(
   await db("player_progression")
     .where({ player_id: playerId })
     .update(updateData);
+
+  // Chain settlement: update CharacterNFT on level-up (or significant XP thresholds)
+  if (isSettlementEnabled("progression") && levelUp) {
+    try {
+      const player = await db("players")
+        .where({ id: playerId })
+        .select("character_nft_id", "race")
+        .first();
+      if (player?.character_nft_id != null) {
+        enqueue({
+          type: "updateCharacter",
+          tokenId: BigInt(player.character_nft_id),
+          data: {
+            race: player.race || "muscarian",
+            level: newLevel,
+            xp: BigInt(newXp),
+            totalCombatXp: BigInt(
+              updateData.total_combat_xp ?? prog.total_combat_xp ?? 0,
+            ),
+            totalMissionXp: BigInt(
+              updateData.total_mission_xp ?? prog.total_mission_xp ?? 0,
+            ),
+            totalTradeXp: BigInt(
+              updateData.total_trade_xp ?? prog.total_trade_xp ?? 0,
+            ),
+            totalExploreXp: BigInt(
+              updateData.total_explore_xp ?? prog.total_explore_xp ?? 0,
+            ),
+          },
+        });
+      }
+    } catch {
+      /* chain sync failure is non-critical */
+    }
+  }
 
   return {
     xpAwarded: amount,

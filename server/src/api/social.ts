@@ -9,8 +9,60 @@ import {
   handleSyndicateLeave,
   notifyPlayer,
 } from "../ws/handlers";
+import { isSettlementEnabled } from "../chain/config";
+import { enqueue } from "../chain/tx-queue";
+import type { Address } from "viem";
 
 const router = Router();
+
+// --- Chain settlement helpers for syndicate membership ---
+
+async function chainAddSyndicateMember(playerId: string, syndicateId: string) {
+  if (!isSettlementEnabled("syndicate")) return;
+  try {
+    const player = await db("players")
+      .where({ id: playerId })
+      .select("wallet_address")
+      .first();
+    const syndicate = await db("syndicates")
+      .where({ id: syndicateId })
+      .select("chain_index")
+      .first();
+    if (!player?.wallet_address || syndicate?.chain_index == null) return;
+    enqueue({
+      type: "addSyndicateMember",
+      syndicateIndex: BigInt(syndicate.chain_index),
+      member: player.wallet_address as Address,
+    });
+  } catch (err) {
+    console.warn("Chain addSyndicateMember enqueue failed:", err);
+  }
+}
+
+async function chainRemoveSyndicateMember(
+  playerId: string,
+  syndicateId: string,
+) {
+  if (!isSettlementEnabled("syndicate")) return;
+  try {
+    const player = await db("players")
+      .where({ id: playerId })
+      .select("wallet_address")
+      .first();
+    const syndicate = await db("syndicates")
+      .where({ id: syndicateId })
+      .select("chain_index")
+      .first();
+    if (!player?.wallet_address || syndicate?.chain_index == null) return;
+    enqueue({
+      type: "removeSyndicateMember",
+      syndicateIndex: BigInt(syndicate.chain_index),
+      member: player.wallet_address as Address,
+    });
+  } catch (err) {
+    console.warn("Chain removeSyndicateMember enqueue failed:", err);
+  }
+}
 
 // Send alliance request (pending) or cancel existing alliance
 router.post("/alliance/:playerId", requireAuth, async (req, res) => {
@@ -279,6 +331,29 @@ router.post("/syndicate/create", requireAuth, async (req, res) => {
       // Governance tables may not exist yet — syndicate still created successfully
     }
 
+    // --- Chain settlement: deploy syndicate DAO on-chain ---
+    if (isSettlementEnabled("syndicate") && player.wallet_address) {
+      try {
+        const settings = await db("syndicate_settings")
+          .where({ syndicate_id: syndicateId })
+          .first();
+        const voteDurationSecs = BigInt(
+          (settings?.vote_duration_hours || 48) * 3600,
+        );
+        const quorum = BigInt(settings?.quorum_percent || 60);
+
+        enqueue({
+          type: "createSyndicate",
+          name,
+          founder: player.wallet_address as Address,
+          votingPeriod: voteDurationSecs,
+          quorumPercent: quorum,
+        });
+      } catch (chainErr) {
+        console.warn("Syndicate chain deployment enqueue failed:", chainErr);
+      }
+    }
+
     res.status(201).json({ syndicateId, name });
   } catch (err: any) {
     if (err.message?.includes("UNIQUE constraint failed") || err.constraint) {
@@ -474,6 +549,7 @@ router.post("/syndicate/kick/:playerId", requireAuth, async (req, res) => {
       handleSyndicateLeave(io, targetId, membership.syndicate_id);
       syncPlayer(io, targetId, "sync:status");
     }
+    chainRemoveSyndicateMember(targetId, membership.syndicate_id);
 
     res.json({ kicked: targetId });
   } catch (err) {
@@ -517,6 +593,7 @@ router.post("/syndicate/leave", requireAuth, async (req, res) => {
         req.headers["x-socket-id"] as string | undefined,
       );
     }
+    chainRemoveSyndicateMember(player.id, syndicateId);
 
     res.json({ left: syndicateId });
   } catch (err) {
@@ -1283,6 +1360,7 @@ router.post("/syndicate/:id/join", requireAuth, async (req, res) => {
           req.headers["x-socket-id"] as string | undefined,
         );
       }
+      chainAddSyndicateMember(player.id, syndicateId);
       return res.json({ action: "joined", syndicateId });
     }
 
@@ -1361,6 +1439,7 @@ router.post("/syndicate/join-code", requireAuth, async (req, res) => {
       );
     }
 
+    chainAddSyndicateMember(player.id, invite.syndicate_id);
     res.json({ action: "joined", syndicateId: invite.syndicate_id });
   } catch (err) {
     console.error("Join by code error:", err);
@@ -1465,6 +1544,7 @@ router.post(
           handleSyndicateJoin(io, request.player_id, request.syndicate_id);
           syncPlayer(io, request.player_id, "sync:status");
         }
+        chainAddSyndicateMember(request.player_id, request.syndicate_id);
         res.json({ action: "accepted", playerId: request.player_id });
       } else {
         await db("syndicate_join_requests")

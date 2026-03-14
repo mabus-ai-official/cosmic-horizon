@@ -28,6 +28,9 @@ import {
 import { syncPlayer } from "../ws/sync";
 import { handleSectorChange, notifyPlayer } from "../ws/handlers";
 import { isStoryNPC, cleanupDestroyedNPC } from "../engine/story-npcs";
+import { enqueue } from "../chain/tx-queue";
+import { isSettlementEnabled } from "../chain/config";
+import type { Address } from "viem";
 
 const router = Router();
 
@@ -294,6 +297,33 @@ router.post("/fire", requireAuth, async (req, res) => {
           "bounty_claimed",
           `Claimed ${activeBounties.length} bounty(ies) on ${target.username} for ${totalBountyReward} credits`,
         );
+      }
+    }
+
+    // Chain settlement: ship destruction + bounty rewards
+    if (result.defenderDestroyed && isSettlementEnabled("combat")) {
+      // Destroy ship NFT on-chain
+      const destroyedShip = await db("ships")
+        .where({ id: defenderShip.id })
+        .first();
+      if (destroyedShip?.chain_token_id != null) {
+        enqueue({
+          type: "destroyShip",
+          tokenId: BigInt(destroyedShip.chain_token_id),
+        });
+      }
+      // Bounty rewards on-chain
+      if (bountiesClaimed.length > 0 && player.member_contract_address) {
+        const totalReward = bountiesClaimed.reduce(
+          (sum, b) => sum + b.reward,
+          0,
+        );
+        enqueue({
+          type: "creditMember",
+          memberAddress: player.member_contract_address as Address,
+          resource: "credits",
+          amount: BigInt(totalReward) * 10n ** 18n,
+        });
       }
     }
 

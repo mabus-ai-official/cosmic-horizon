@@ -11,6 +11,10 @@ import { getDefaultTutorialState } from "../config/tutorial-sandbox";
 import { generateSPUniverse } from "../engine/sp-universe";
 import { assignInitialSPMissions } from "../db/seeds/011_sp_missions";
 import { awardXP } from "../engine/progression";
+import { enqueue } from "../chain/tx-queue";
+import { isChainEnabled } from "../chain/config";
+import type { Address } from "viem";
+import { createPlayerWallet } from "../chain/wallet-provider";
 
 const router = Router();
 
@@ -165,6 +169,61 @@ router.post("/register", async (req, res) => {
       total_trade_xp: 0,
       total_explore_xp: 0,
     });
+
+    // ── Chain Registration (async, non-blocking) ──
+    if (isChainEnabled()) {
+      try {
+        // Create embedded wallet for the player
+        const walletResult = await createPlayerWallet(playerId, email);
+        if (walletResult.wallet) {
+          const wallet = walletResult.wallet as Address;
+          await db("players")
+            .where({ id: playerId })
+            .update({
+              wallet_address: wallet,
+              wallet_provider_user_id: walletResult.providerUserId || null,
+            });
+
+          // Enqueue on-chain identity creation (all async via tx-queue)
+          // registerMember deploys the MemberContract, then initMemberAssets
+          // mints all starting assets INTO the MemberContract (not the wallet).
+          // Player must withdraw from the contract to move assets to their wallet.
+          enqueue({ type: "registerMember", playerWallet: wallet });
+          enqueue({
+            type: "initMemberAssets",
+            playerWallet: wallet,
+            resource: "credits",
+            amount: BigInt(startingCredits) * 10n ** 18n,
+            characterData: {
+              race,
+              level: 1,
+              xp: 0n,
+              totalCombatXp: 0n,
+              totalMissionXp: 0n,
+              totalTradeXp: 0n,
+              totalExploreXp: 0n,
+            },
+            shipData: {
+              shipType: raceConfig.starterShipType,
+              hullHp: shipTypeConfig.baseHullHp,
+              maxHullHp: shipTypeConfig.maxHullHp,
+              weaponEnergy: starterWeapon,
+              engineEnergy: starterEngine,
+              cargoBays: shipTypeConfig.baseCargoHolds,
+              hasCloakDevice: false,
+              hasRacheDevice: false,
+              hasJumpDrive: false,
+            },
+          });
+        }
+      } catch (chainErr) {
+        // Chain registration failure should not block account creation
+        console.error(
+          "[auth] Chain registration failed (non-fatal):",
+          chainErr,
+        );
+      }
+    }
 
     req.session.playerId = playerId;
     res.status(201).json({

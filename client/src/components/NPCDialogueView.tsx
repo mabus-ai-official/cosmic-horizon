@@ -115,6 +115,7 @@ export default function NPCDialogueView({
       setShopBusy(false);
     }
   };
+  void openShop;
 
   const handleBuy = async (itemId: string) => {
     setShopBusy(true);

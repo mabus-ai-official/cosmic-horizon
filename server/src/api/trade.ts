@@ -30,6 +30,9 @@ import {
 } from "../engine/profile-stats";
 import { syncPlayer } from "../ws/sync";
 import { notifyPlayer } from "../ws/handlers";
+import { enqueue } from "../chain/tx-queue";
+import { isSettlementEnabled } from "../chain/config";
+import type { Address } from "viem";
 
 const router = Router();
 
@@ -225,6 +228,23 @@ router.post("/buy", requireAuth, async (req, res) => {
       total_price: adjustedCost,
       direction: "buy",
     });
+
+    // Chain settlement: debit credits, credit commodity
+    if (isSettlementEnabled("trade") && player.member_contract_address) {
+      const memberAddr = player.member_contract_address as Address;
+      enqueue({
+        type: "debitMember",
+        memberAddress: memberAddr,
+        resource: "credits",
+        amount: BigInt(adjustedCost) * 10n ** 18n,
+      });
+      enqueue({
+        type: "creditMember",
+        memberAddress: memberAddr,
+        resource: commodity,
+        amount: BigInt(result.quantity) * 10n ** 18n,
+      });
+    }
 
     // Mission progress: trade (buy)
     const io = req.app.get("io");
@@ -440,6 +460,23 @@ router.post("/sell", requireAuth, async (req, res) => {
       total_price: adjustedRevenue,
       direction: "sell",
     });
+
+    // Chain settlement: credit credits, debit commodity
+    if (isSettlementEnabled("trade") && player.member_contract_address) {
+      const memberAddr = player.member_contract_address as Address;
+      enqueue({
+        type: "creditMember",
+        memberAddress: memberAddr,
+        resource: "credits",
+        amount: BigInt(adjustedRevenue) * 10n ** 18n,
+      });
+      enqueue({
+        type: "debitMember",
+        memberAddress: memberAddr,
+        resource: commodity,
+        amount: BigInt(result.quantity) * 10n ** 18n,
+      });
+    }
 
     // Mission progress: trade (sell) + deliver_cargo
     const io = req.app.get("io");

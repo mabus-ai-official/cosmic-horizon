@@ -8,6 +8,9 @@ import db from "../db/connection";
 import { syncPlayer } from "../ws/sync";
 import { handleSectorChange, notifyPlayer } from "../ws/handlers";
 import { sendPushToPlayer } from "../services/push";
+import { enqueue } from "../chain/tx-queue";
+import { isSettlementEnabled } from "../chain/config";
+import type { Address } from "viem";
 import { pickFlavor, outpostNpcRace } from "../config/flavor-text";
 import type { RaceId } from "../config/races";
 
@@ -183,6 +186,16 @@ router.post("/buy/:itemId", requireAuth, async (req, res) => {
       .update({
         credits: Number(player.credits) - item.price,
       });
+
+    // Chain settlement: debit credits for purchase
+    if (isSettlementEnabled("store") && player.member_contract_address) {
+      enqueue({
+        type: "debitMember",
+        memberAddress: player.member_contract_address as Address,
+        resource: "credits",
+        amount: BigInt(item.price) * 10n ** 18n,
+      });
+    }
 
     // Multi-session sync
     const io = req.app.get("io");

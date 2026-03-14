@@ -332,6 +332,18 @@ startDiscordBridge(io).catch((err) =>
   console.error("Discord bridge startup failed:", err),
 );
 
+// Chain indexer + tx-queue (non-blocking — server starts even if chain is unavailable)
+import { startIndexer } from "./chain/indexer";
+import { startTxQueue } from "./chain/tx-queue";
+import { isChainEnabled } from "./chain/config";
+
+if (isChainEnabled()) {
+  startIndexer().catch((err) =>
+    console.error("Chain indexer startup failed:", err),
+  );
+  startTxQueue();
+}
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Cosmic Horizon server running on port ${PORT}`);

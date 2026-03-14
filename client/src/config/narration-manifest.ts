@@ -72,3 +72,29 @@ export function getNarrationUrl(
 ): string | null {
   return NARRATION[storyOrder]?.[event] ?? null;
 }
+
+/** Intro sequence beat narration URLs (0-indexed) */
+export const INTRO_NARRATION: string[] = [
+  "/audio/narration/intro_01.mp3",
+  "/audio/narration/intro_02.mp3",
+  "/audio/narration/intro_03.mp3",
+  "/audio/narration/intro_04.mp3",
+  "/audio/narration/intro_05.mp3",
+  "/audio/narration/intro_06.mp3",
+  "/audio/narration/intro_07.mp3",
+  "/audio/narration/intro_08.mp3",
+  "/audio/narration/intro_09.mp3",
+  "/audio/narration/intro_10.mp3",
+];
+
+/** Post-tutorial beat narration URLs (0-indexed) */
+export const POST_TUTORIAL_NARRATION: string[] = [
+  "/audio/narration/posttut_01.mp3",
+  "/audio/narration/posttut_02.mp3",
+  "/audio/narration/posttut_03.mp3",
+  "/audio/narration/posttut_04.mp3",
+  "/audio/narration/posttut_05.mp3",
+  "/audio/narration/posttut_06.mp3",
+  "/audio/narration/posttut_07.mp3",
+  "/audio/narration/posttut_08.mp3",
+];

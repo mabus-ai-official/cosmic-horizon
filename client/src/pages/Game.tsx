@@ -33,6 +33,10 @@ import { useGameEffects } from "../hooks/useGameEffects";
 import { useGameHandlers } from "../hooks/useGameHandlers";
 import { useKeybindings } from "../hooks/useKeybindings";
 import { useNarration } from "../hooks/useNarration";
+import {
+  INTRO_NARRATION,
+  POST_TUTORIAL_NARRATION,
+} from "../config/narration-manifest";
 
 interface GameProps {
   onLogout?: () => void;
@@ -115,6 +119,10 @@ export default function Game({ onLogout }: GameProps) {
         trackId="intro"
         onTrackRequest={handlers.handleTrackRequest}
         onAudioResume={audio.resume}
+        narrationUrls={INTRO_NARRATION}
+        narrationEnabled={narration.narrationEnabled}
+        narrationVolume={narration.narrationVolume}
+        setVolumeMultiplier={audio.setVolumeMultiplier}
       />
     );
   }
@@ -144,6 +152,10 @@ export default function Game({ onLogout }: GameProps) {
         trackId="post-tutorial"
         onTrackRequest={handlers.handleTrackRequest}
         onAudioResume={audio.resume}
+        narrationUrls={POST_TUTORIAL_NARRATION}
+        narrationEnabled={narration.narrationEnabled}
+        narrationVolume={narration.narrationVolume}
+        setVolumeMultiplier={audio.setVolumeMultiplier}
       />
     );
   }

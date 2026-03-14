@@ -128,7 +128,67 @@ async function generateTTS(text: string): Promise<Buffer> {
   return Buffer.from(await response.arrayBuffer());
 }
 
+// ── Intro beats (10 beats) ────────────────────────────────────────────────────
+
+const INTRO_TEXTS: string[] = [
+  "On the other side of the Cosmos, in a corner of the Agaricalis system, lived an advanced race of humanoids known as the Muscarians.",
+  "After picking up a curious signal from their home planet, the Muscarians launched a mission to investigate. The source: an artificial wormhole, created by an alien race of avid explorers known as the Vedic.",
+  "The Vedic introduced them to cyrillium — a power source capable of providing a great leap forward to Muscarian space travel. Within years, ships capable of traversing galaxies were built.",
+  "The Vedic invited the Muscarians to use their wormhole to access the Calvatian Galaxy, where cyrillium is plentiful. With good money to be made, those with the resources headed through in private ships.",
+  "In the massive Calvatian Galaxy, the Muscarians were not alone. Kalin warships and Tar'ri merchant caravans also traversed this space, collecting cyrillium and transporting it to their homeworlds.",
+  "Tensions escalated when a Kalin ship discovered the wormhole to Agaricalis. The Muscarian Central Authority hatched a plan: destroy the Kalin wormhole and fortify their own.",
+  "The Kalin retaliated. A partisan pilot flew a captured freighter overloaded with volatile cyrillium into the Muscarian wormhole and detonated it. Both connections home were severed.",
+  "Decades of conflict followed. The Muscarian Central Authority weakened. The Tar'ri established outposts and trade routes. The Vedic settled into quiet observation. The Kalin splintered into rival clans.",
+  "A ceasefire was established — not from peace, but exhaustion. Syndicates rose where governments fell. Only a handful of protected sectors remain under Central Authority patrol.",
+  "Today all races coexist in the Calvatian quadrant together, with an expected mixture of conflict and alliance. Stranded in this strange new world, you set out to carve a piece of the galaxy for yourself.",
+];
+
+// ── Post-tutorial beats (8 beats) ────────────────────────────────────────────
+
+const POST_TUTORIAL_TEXTS: string[] = [
+  "You've learned the basics, pilot. But the basics won't keep you alive out here.",
+  "You begin at a Star Mall, where you can purchase and equip ships. Once equipped, you may explore the vast, uncharted reaches of the galaxy.",
+  "As you travel to new sectors, your navigational computer logs your path, gradually constructing a cosmic map. Through exploration, you'll discover profitable outposts and strategically significant sectors.",
+  "Outposts value commodities differently based on supply and demand. By buying low and selling high between ports — celestial arbitrage — you can build a fortune.",
+  "Planets can be claimed and developed. Collect colonists from seed planets, deposit them on your worlds, and upgrade them into fortified strongholds producing valuable resources.",
+  "You will encounter other pilots. Attack them, ignore them, or form syndicates — alliances that collectively hold planets, funds, and strategic defenses.",
+  "The galaxy has no ruler. Will you dominate through force, trade your way to fortune, build a planetary empire, or forge alliances that reshape the frontier?",
+  "The ceasefire holds. For now.",
+];
+
 // ── Main ─────────────────────────────────────────────────────────────────────
+
+async function generateBatch(
+  texts: Record<number, string> | string[],
+  prefix: string,
+  label: string,
+) {
+  const entries = Array.isArray(texts)
+    ? texts.map((t, i) => [i, t] as [number, string])
+    : Object.entries(texts).map(([k, v]) => [Number(k), v] as [number, string]);
+
+  for (const [idx, text] of entries) {
+    const num = Array.isArray(texts)
+      ? String(idx + 1).padStart(2, "0")
+      : String(idx).padStart(2, "0");
+    const filename = `${prefix}${num}.mp3`;
+    const filePath = path.join(OUTPUT_DIR, filename);
+
+    // Skip if already exists
+    if (fs.existsSync(filePath)) {
+      console.log(`  [skip] ${filename} already exists`);
+      continue;
+    }
+
+    console.log(`  ${label} ${num}: generating (${text.length} chars)...`);
+    const start = Date.now();
+    const audio = await generateTTS(text);
+    fs.writeFileSync(filePath, audio);
+    const sizeMB = (audio.length / (1024 * 1024)).toFixed(2);
+    const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+    console.log(`    → ${filename} (${sizeMB} MB, ${elapsed}s)`);
+  }
+}
 
 async function main() {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -136,43 +196,61 @@ async function main() {
   console.log(`Voice ID: ${VOICE_ID}`);
   console.log(`Model: ${MODEL}`);
   console.log(`Output: ${OUTPUT_DIR}`);
-  console.log();
 
+  // Mission accept narration (m01_accept .. m10_accept)
+  console.log("\n── Mission Accept Narration ──");
   for (let i = 1; i <= 10; i++) {
     const num = String(i).padStart(2, "0");
-
-    // Accept narration
-    const acceptText = ACCEPT_TEXTS[i];
-    if (acceptText) {
-      const acceptPath = path.join(OUTPUT_DIR, `m${num}_accept.mp3`);
-      console.log(
-        `[${i}/10] Generating accept narration (${acceptText.length} chars)...`,
-      );
-      const start = Date.now();
-      const audio = await generateTTS(acceptText);
-      fs.writeFileSync(acceptPath, audio);
-      const sizeMB = (audio.length / (1024 * 1024)).toFixed(2);
-      const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-      console.log(`  → ${acceptPath} (${sizeMB} MB, ${elapsed}s)`);
+    const filename = `m${num}_accept.mp3`;
+    const filePath = path.join(OUTPUT_DIR, filename);
+    if (fs.existsSync(filePath)) {
+      console.log(`  [skip] ${filename} already exists`);
+      continue;
     }
-
-    // Claim narration
-    const claimText = CLAIM_TEXTS[i];
-    if (claimText) {
-      const claimPath = path.join(OUTPUT_DIR, `m${num}_claim.mp3`);
-      console.log(
-        `[${i}/10] Generating claim narration (${claimText.length} chars)...`,
-      );
-      const start = Date.now();
-      const audio = await generateTTS(claimText);
-      fs.writeFileSync(claimPath, audio);
-      const sizeMB = (audio.length / (1024 * 1024)).toFixed(2);
-      const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-      console.log(`  → ${claimPath} (${sizeMB} MB, ${elapsed}s)`);
-    }
+    const text = ACCEPT_TEXTS[i];
+    if (!text) continue;
+    console.log(`  accept ${num}: generating (${text.length} chars)...`);
+    const start = Date.now();
+    const audio = await generateTTS(text);
+    fs.writeFileSync(filePath, audio);
+    const sizeMB = (audio.length / (1024 * 1024)).toFixed(2);
+    const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+    console.log(`    → ${filename} (${sizeMB} MB, ${elapsed}s)`);
   }
 
-  console.log("\nDone! Generated 20 narration MP3s.");
+  // Mission claim narration (m01_claim .. m10_claim)
+  console.log("\n── Mission Claim Narration ──");
+  for (let i = 1; i <= 10; i++) {
+    const num = String(i).padStart(2, "0");
+    const filename = `m${num}_claim.mp3`;
+    const filePath = path.join(OUTPUT_DIR, filename);
+    if (fs.existsSync(filePath)) {
+      console.log(`  [skip] ${filename} already exists`);
+      continue;
+    }
+    const text = CLAIM_TEXTS[i];
+    if (!text) continue;
+    console.log(`  claim ${num}: generating (${text.length} chars)...`);
+    const start = Date.now();
+    const audio = await generateTTS(text);
+    fs.writeFileSync(filePath, audio);
+    const sizeMB = (audio.length / (1024 * 1024)).toFixed(2);
+    const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+    console.log(`    → ${filename} (${sizeMB} MB, ${elapsed}s)`);
+  }
+
+  // Intro beats (intro_01 .. intro_10)
+  console.log("\n── Intro Narration ──");
+  await generateBatch(INTRO_TEXTS, "intro_", "intro");
+
+  // Post-tutorial beats (posttut_01 .. posttut_08)
+  console.log("\n── Post-Tutorial Narration ──");
+  await generateBatch(POST_TUTORIAL_TEXTS, "posttut_", "posttut");
+
+  const count = fs
+    .readdirSync(OUTPUT_DIR)
+    .filter((f) => f.endsWith(".mp3")).length;
+  console.log(`\nDone! ${count} narration MP3s in ${OUTPUT_DIR}`);
 }
 
 main().catch((err) => {

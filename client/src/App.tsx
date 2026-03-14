@@ -9,8 +9,20 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [checking, setChecking] = useState(true);
 
-  // Check for existing valid token on mount
+  // Check for existing valid token on mount, or accept a matrixToken query param
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const matrixToken = params.get('matrixToken');
+
+    // If arriving from the Matrix widget with a fresh JWT, store it and clean URL
+    if (matrixToken) {
+      api.loginWithToken(matrixToken);
+      // Remove the token from the URL to prevent leaking in history/referrer
+      const url = new URL(window.location.href);
+      url.searchParams.delete('matrixToken');
+      window.history.replaceState({}, '', url.pathname + url.search);
+    }
+
     const token = localStorage.getItem('token');
     if (token) {
       api.getStatus()

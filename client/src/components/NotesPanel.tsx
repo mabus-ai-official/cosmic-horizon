@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import CollapsiblePanel from './CollapsiblePanel';
-import { getNotes, createNote, deleteNote } from '../services/api';
+import { useState, useEffect } from "react";
+import CollapsiblePanel from "./CollapsiblePanel";
+import { getNotes, createNote, deleteNote } from "../services/api";
 
 interface Note {
   id: string;
@@ -15,8 +15,8 @@ interface Props {
 
 export default function NotesPanel({ refreshKey, bare }: Props) {
   const [notes, setNotes] = useState<Note[]>([]);
-  const [input, setInput] = useState('');
-  const [search, setSearch] = useState('');
+  const [input, setInput] = useState("");
+  const [search, setSearch] = useState("");
 
   const fetchNotes = (searchTerm?: string) => {
     getNotes(searchTerm || undefined)
@@ -33,7 +33,7 @@ export default function NotesPanel({ refreshKey, bare }: Props) {
     if (!trimmed) return;
     createNote(trimmed)
       .then(() => {
-        setInput('');
+        setInput("");
         fetchNotes(search);
       })
       .catch(() => {});
@@ -51,44 +51,73 @@ export default function NotesPanel({ refreshKey, bare }: Props) {
   };
 
   const content = (
-    <>
-      <div className="notes-panel__input-row">
-        <input
-          className="notes-panel__input"
-          type="text"
-          placeholder="Add a note..."
-          value={input}
-          maxLength={500}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') handleCreate(); }}
-        />
-        <button className="btn-sm btn-buy" onClick={handleCreate}>Save</button>
+    <div className="panel-sections">
+      <div className="panel-section panel-section--accent">
+        <div className="panel-section__header">New Note</div>
+        <div className="notes-panel__input-row">
+          <input
+            className="notes-panel__input"
+            type="text"
+            placeholder="Add a note..."
+            value={input}
+            maxLength={500}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleCreate();
+            }}
+          />
+          <button className="btn-sm btn-buy" onClick={handleCreate}>
+            Save
+          </button>
+        </div>
       </div>
-      <div className="notes-panel__input-row">
-        <input
-          className="notes-panel__input"
-          type="text"
-          placeholder="Search notes..."
-          value={search}
-          onChange={e => handleSearch(e.target.value)}
-        />
+      <div className="panel-section">
+        <div className="panel-section__header panel-section__header--muted">
+          Search
+        </div>
+        <div className="notes-panel__input-row">
+          <input
+            className="notes-panel__input"
+            type="text"
+            placeholder="Search notes..."
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+          />
+        </div>
       </div>
-      {notes.length === 0 ? (
-        <div className="text-muted">No notes</div>
-      ) : (
-        notes.map(n => (
-          <div key={n.id} className="note-entry">
-            <div className="note-entry__content">
-              {n.content.length > 60 ? n.content.slice(0, 60) + '...' : n.content}
-              <div className="note-entry__id">{n.id.slice(0, 8)}</div>
+      <div className="panel-section">
+        <div className="panel-section__header panel-section__header--muted">
+          Notes ({notes.length})
+        </div>
+        {notes.length === 0 ? (
+          <div className="text-muted">No notes</div>
+        ) : (
+          notes.map((n) => (
+            <div key={n.id} className="note-entry">
+              <div className="note-entry__content">
+                {n.content}
+                <div className="note-entry__id">
+                  {new Date(n.createdAt).toLocaleDateString()}
+                </div>
+              </div>
+              <button
+                className="note-entry__delete"
+                onClick={() => handleDelete(n.id)}
+                title="Delete note"
+              >
+                X
+              </button>
             </div>
-            <button className="note-entry__delete" onClick={() => handleDelete(n.id)} title="Delete note">X</button>
-          </div>
-        ))
-      )}
-    </>
+          ))
+        )}
+      </div>
+    </div>
   );
 
   if (bare) return <div className="panel-content">{content}</div>;
-  return <CollapsiblePanel title="NOTES" badge={notes.length || null}>{content}</CollapsiblePanel>;
+  return (
+    <CollapsiblePanel title="NOTES" badge={notes.length || null}>
+      {content}
+    </CollapsiblePanel>
+  );
 }

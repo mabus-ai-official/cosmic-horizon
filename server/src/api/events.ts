@@ -1,34 +1,37 @@
-import { Router } from 'express';
-import { requireAuth } from '../middleware/auth';
-import { canAffordAction, deductEnergy } from '../engine/energy';
-import { resolveEvent, EventType } from '../engine/events';
-import { applyUpgradesToShip } from '../engine/upgrades';
-import { grantRandomTablet } from '../engine/tablets';
-import { awardXP } from '../engine/progression';
-import { checkAchievements } from '../engine/achievements';
-import { GAME_CONFIG } from '../config/game';
+import { Router } from "express";
+import { requireAuth } from "../middleware/auth";
+import { canAffordAction, deductEnergy } from "../engine/energy";
+import { resolveEvent, EventType } from "../engine/events";
+import { applyUpgradesToShip } from "../engine/upgrades";
+import { grantRandomTablet } from "../engine/tablets";
+import { awardXP } from "../engine/progression";
+import { checkAchievements } from "../engine/achievements";
+import { GAME_CONFIG } from "../config/game";
 import {
   getResourceEventsInSector,
   harvestResourceEvent,
   salvageDerelict,
   attackGuardian,
-} from '../engine/rare-spawns';
-import db from '../db/connection';
+} from "../engine/rare-spawns";
+import db from "../db/connection";
+import { settleCreditPlayer, settleDebitPlayer } from "../chain/tx-queue";
 
 const router = Router();
 
 // Get active events in player's current sector
-router.get('/sector', requireAuth, async (req, res) => {
+router.get("/sector", requireAuth, async (req, res) => {
   try {
-    const player = await db('players').where({ id: req.session.playerId }).first();
-    if (!player) return res.status(404).json({ error: 'Player not found' });
+    const player = await db("players")
+      .where({ id: req.session.playerId })
+      .first();
+    if (!player) return res.status(404).json({ error: "Player not found" });
 
-    const events = await db('sector_events')
-      .where({ sector_id: player.current_sector_id, status: 'active' })
-      .select('id', 'event_type', 'created_at', 'expires_at');
+    const events = await db("sector_events")
+      .where({ sector_id: player.current_sector_id, status: "active" })
+      .select("id", "event_type", "created_at", "expires_at");
 
     res.json({
-      events: events.map(e => ({
+      events: events.map((e) => ({
         id: e.id,
         eventType: e.event_type,
         createdAt: e.created_at,
@@ -36,78 +39,107 @@ router.get('/sector', requireAuth, async (req, res) => {
       })),
     });
   } catch (err) {
-    console.error('Sector events error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Sector events error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // Investigate an event
-router.post('/investigate/:eventId', requireAuth, async (req, res) => {
+router.post("/investigate/:eventId", requireAuth, async (req, res) => {
   try {
-    const player = await db('players').where({ id: req.session.playerId }).first();
-    if (!player) return res.status(404).json({ error: 'Player not found' });
+    const player = await db("players")
+      .where({ id: req.session.playerId })
+      .first();
+    if (!player) return res.status(404).json({ error: "Player not found" });
 
-    if (!canAffordAction(player.energy, 'investigate')) {
-      return res.status(400).json({ error: 'Not enough energy' });
+    if (!canAffordAction(player.energy, "investigate")) {
+      return res.status(400).json({ error: "Not enough energy" });
     }
 
-    const event = await db('sector_events')
-      .where({ id: req.params.eventId, status: 'active' })
+    const event = await db("sector_events")
+      .where({ id: req.params.eventId, status: "active" })
       .first();
 
-    if (!event) return res.status(404).json({ error: 'Event not found or already resolved' });
+    if (!event)
+      return res
+        .status(404)
+        .json({ error: "Event not found or already resolved" });
     if (event.sector_id !== player.current_sector_id) {
-      return res.status(400).json({ error: 'Event is not in your sector' });
+      return res.status(400).json({ error: "Event is not in your sector" });
     }
 
-    const eventData = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+    const eventData =
+      typeof event.data === "string" ? JSON.parse(event.data) : event.data;
     const outcome = resolveEvent(event.event_type as EventType, eventData);
 
-    const newEnergy = deductEnergy(player.energy, 'investigate');
+    const newEnergy = deductEnergy(player.energy, "investigate");
     let finalEnergy = newEnergy;
 
     // Apply outcome
     if (outcome.creditsGained) {
-      await db('players').where({ id: player.id }).increment('credits', outcome.creditsGained);
+      await db("players")
+        .where({ id: player.id })
+        .increment("credits", outcome.creditsGained);
+      await settleCreditPlayer(player.id, outcome.creditsGained);
     }
     if (outcome.creditsLost) {
-      await db('players').where({ id: player.id }).decrement('credits', outcome.creditsLost);
+      await db("players")
+        .where({ id: player.id })
+        .decrement("credits", outcome.creditsLost);
+      await settleDebitPlayer(player.id, outcome.creditsLost);
     }
     if (outcome.energyGained) {
-      finalEnergy = Math.min(player.max_energy, finalEnergy + outcome.energyGained);
+      finalEnergy = Math.min(
+        player.max_energy,
+        finalEnergy + outcome.energyGained,
+      );
     }
     if (outcome.energyLost) {
       finalEnergy = Math.max(0, finalEnergy - outcome.energyLost);
     }
 
-    await db('players').where({ id: player.id }).update({ energy: finalEnergy });
+    await db("players")
+      .where({ id: player.id })
+      .update({ energy: finalEnergy });
 
     // Add cargo to ship if applicable
     if (outcome.cargoGained && player.current_ship_id) {
-      const ship = await db('ships').where({ id: player.current_ship_id }).first();
+      const ship = await db("ships")
+        .where({ id: player.current_ship_id })
+        .first();
       if (ship) {
         const upgrades = await applyUpgradesToShip(ship.id);
-        const currentCargo = (ship.cyrillium_cargo || 0) + (ship.food_cargo || 0) +
-          (ship.tech_cargo || 0) + (ship.colonist_cargo || 0);
-        const freeSpace = (ship.max_cargo_holds + upgrades.cargoBonus) - currentCargo;
+        const currentCargo =
+          (ship.cyrillium_cargo || 0) +
+          (ship.food_cargo || 0) +
+          (ship.tech_cargo || 0) +
+          (ship.colonist_cargo || 0);
+        const freeSpace =
+          ship.max_cargo_holds + upgrades.cargoBonus - currentCargo;
         const toAdd = Math.min(outcome.cargoGained.quantity, freeSpace);
         if (toAdd > 0) {
           const cargoField = `${outcome.cargoGained.commodity}_cargo`;
-          await db('ships').where({ id: ship.id }).update({
-            [cargoField]: (ship[cargoField] || 0) + toAdd,
-          });
+          await db("ships")
+            .where({ id: ship.id })
+            .update({
+              [cargoField]: (ship[cargoField] || 0) + toAdd,
+            });
         }
       }
     }
 
     // Mark event as resolved
-    await db('sector_events').where({ id: event.id }).update({
-      status: 'resolved',
+    await db("sector_events").where({ id: event.id }).update({
+      status: "resolved",
       resolved_by_id: player.id,
     });
 
     // Award XP for investigating
-    const xpResult = await awardXP(player.id, GAME_CONFIG.XP_INVESTIGATE_EVENT, 'explore');
+    const xpResult = await awardXP(
+      player.id,
+      GAME_CONFIG.XP_INVESTIGATE_EVENT,
+      "explore",
+    );
 
     // Tablet drop chance
     let tabletDrop: { name: string; rarity: string } | null = null;
@@ -117,7 +149,9 @@ router.post('/investigate/:eventId', requireAuth, async (req, res) => {
         if (!dropResult.overflow) {
           tabletDrop = { name: dropResult.name!, rarity: dropResult.rarity! };
         }
-      } catch { /* tablet system may not be ready */ }
+      } catch {
+        /* tablet system may not be ready */
+      }
     }
 
     res.json({
@@ -128,28 +162,36 @@ router.post('/investigate/:eventId', requireAuth, async (req, res) => {
       energyLost: outcome.energyLost || 0,
       cargoGained: outcome.cargoGained || null,
       energy: finalEnergy,
-      xp: { awarded: xpResult.xpAwarded, total: xpResult.totalXp, level: xpResult.level, rank: xpResult.rank, levelUp: xpResult.levelUp },
+      xp: {
+        awarded: xpResult.xpAwarded,
+        total: xpResult.totalXp,
+        level: xpResult.level,
+        rank: xpResult.rank,
+        levelUp: xpResult.levelUp,
+      },
       tabletDrop,
     });
   } catch (err) {
-    console.error('Investigate event error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Investigate event error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // === Resource Events ===
 
 // Get active resource events in player's current sector
-router.get('/resource-events', requireAuth, async (req, res) => {
+router.get("/resource-events", requireAuth, async (req, res) => {
   try {
-    const player = await db('players').where({ id: req.session.playerId }).first();
-    if (!player) return res.status(404).json({ error: 'Player not found' });
+    const player = await db("players")
+      .where({ id: req.session.playerId })
+      .first();
+    if (!player) return res.status(404).json({ error: "Player not found" });
 
     const events = await getResourceEventsInSector(player.current_sector_id);
     const now = Date.now();
 
     res.json({
-      resourceEvents: events.map(e => ({
+      resourceEvents: events.map((e) => ({
         id: e.id,
         eventType: e.eventType,
         resources: e.resources,
@@ -162,26 +204,33 @@ router.get('/resource-events', requireAuth, async (req, res) => {
       })),
     });
   } catch (err) {
-    console.error('Resource events error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Resource events error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // Harvest a node from an asteroid field or anomaly
-router.post('/harvest/:eventId', requireAuth, async (req, res) => {
+router.post("/harvest/:eventId", requireAuth, async (req, res) => {
   try {
-    const player = await db('players').where({ id: req.session.playerId }).first();
-    if (!player) return res.status(404).json({ error: 'Player not found' });
+    const player = await db("players")
+      .where({ id: req.session.playerId })
+      .first();
+    if (!player) return res.status(404).json({ error: "Player not found" });
 
-    if (!canAffordAction(player.energy, 'harvest')) {
-      return res.status(400).json({ error: 'Not enough energy' });
+    if (!canAffordAction(player.energy, "harvest")) {
+      return res.status(400).json({ error: "Not enough energy" });
     }
 
-    const nodeIndex = typeof req.body.nodeIndex === 'number' ? req.body.nodeIndex : 0;
-    const newEnergy = deductEnergy(player.energy, 'harvest');
-    await db('players').where({ id: player.id }).update({ energy: newEnergy });
+    const nodeIndex =
+      typeof req.body.nodeIndex === "number" ? req.body.nodeIndex : 0;
+    const newEnergy = deductEnergy(player.energy, "harvest");
+    await db("players").where({ id: player.id }).update({ energy: newEnergy });
 
-    const result = await harvestResourceEvent(player.id, req.params.eventId as string, nodeIndex);
+    const result = await harvestResourceEvent(
+      player.id,
+      req.params.eventId as string,
+      nodeIndex,
+    );
 
     res.json({
       resource: result.resource,
@@ -189,28 +238,33 @@ router.post('/harvest/:eventId', requireAuth, async (req, res) => {
       energy: newEnergy,
     });
   } catch (err: any) {
-    if (err.message && !err.message.includes('Internal')) {
+    if (err.message && !err.message.includes("Internal")) {
       return res.status(400).json({ error: err.message });
     }
-    console.error('Harvest error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Harvest error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // Salvage a derelict ship
-router.post('/salvage/:eventId', requireAuth, async (req, res) => {
+router.post("/salvage/:eventId", requireAuth, async (req, res) => {
   try {
-    const player = await db('players').where({ id: req.session.playerId }).first();
-    if (!player) return res.status(404).json({ error: 'Player not found' });
+    const player = await db("players")
+      .where({ id: req.session.playerId })
+      .first();
+    if (!player) return res.status(404).json({ error: "Player not found" });
 
-    if (!canAffordAction(player.energy, 'salvage')) {
-      return res.status(400).json({ error: 'Not enough energy' });
+    if (!canAffordAction(player.energy, "salvage")) {
+      return res.status(400).json({ error: "Not enough energy" });
     }
 
-    const newEnergy = deductEnergy(player.energy, 'salvage');
-    await db('players').where({ id: player.id }).update({ energy: newEnergy });
+    const newEnergy = deductEnergy(player.energy, "salvage");
+    await db("players").where({ id: player.id }).update({ energy: newEnergy });
 
-    const result = await salvageDerelict(player.id, req.params.eventId as string);
+    const result = await salvageDerelict(
+      player.id,
+      req.params.eventId as string,
+    );
 
     res.json({
       credits: result.credits,
@@ -219,28 +273,33 @@ router.post('/salvage/:eventId', requireAuth, async (req, res) => {
       energy: newEnergy,
     });
   } catch (err: any) {
-    if (err.message && !err.message.includes('Internal')) {
+    if (err.message && !err.message.includes("Internal")) {
       return res.status(400).json({ error: err.message });
     }
-    console.error('Salvage error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Salvage error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // Attack alien cache guardian
-router.post('/attack-guardian/:eventId', requireAuth, async (req, res) => {
+router.post("/attack-guardian/:eventId", requireAuth, async (req, res) => {
   try {
-    const player = await db('players').where({ id: req.session.playerId }).first();
-    if (!player) return res.status(404).json({ error: 'Player not found' });
+    const player = await db("players")
+      .where({ id: req.session.playerId })
+      .first();
+    if (!player) return res.status(404).json({ error: "Player not found" });
 
-    if (!canAffordAction(player.energy, 'combat_volley')) {
-      return res.status(400).json({ error: 'Not enough energy' });
+    if (!canAffordAction(player.energy, "combat_volley")) {
+      return res.status(400).json({ error: "Not enough energy" });
     }
 
-    const newEnergy = deductEnergy(player.energy, 'combat_volley');
-    await db('players').where({ id: player.id }).update({ energy: newEnergy });
+    const newEnergy = deductEnergy(player.energy, "combat_volley");
+    await db("players").where({ id: player.id }).update({ energy: newEnergy });
 
-    const result = await attackGuardian(player.id, req.params.eventId as string);
+    const result = await attackGuardian(
+      player.id,
+      req.params.eventId as string,
+    );
 
     res.json({
       defeated: result.defeated,
@@ -251,11 +310,11 @@ router.post('/attack-guardian/:eventId', requireAuth, async (req, res) => {
       energy: newEnergy,
     });
   } catch (err: any) {
-    if (err.message && !err.message.includes('Internal')) {
+    if (err.message && !err.message.includes("Internal")) {
       return res.status(400).json({ error: err.message });
     }
-    console.error('Attack guardian error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Attack guardian error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

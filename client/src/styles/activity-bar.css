@@ -1,0 +1,275 @@
+/* === Activity Bar === */
+/* === Activity Bar (Floating Overlay) === */
+.activity-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 180px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 6px 8px 6px;
+  background: transparent;
+  z-index: 10;
+  overflow-y: auto;
+  overflow-x: hidden;
+  pointer-events: none;
+  max-height: calc(100% - 45vh - 16px);
+}
+
+/* Groups container */
+.activity-bar__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  pointer-events: auto;
+}
+
+/* Individual group item — floating glassmorphism card over the map */
+.activity-bar__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 6px;
+  background: rgba(13, 17, 23, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  cursor: pointer;
+  position: relative;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
+  font-family: "IBM Plex Mono", monospace;
+  text-align: left;
+  width: 100%;
+}
+.activity-bar__item:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-left-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.activity-bar__item--active {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 12%, rgba(13, 17, 23, 0.85)),
+    rgba(13, 17, 23, 0.8)
+  );
+  border-color: color-mix(in srgb, var(--accent) 30%, rgba(255, 255, 255, 0.1));
+  border-left: 3px solid var(--accent);
+  box-shadow:
+    0 0 14px color-mix(in srgb, var(--accent) 20%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--accent) 5%, transparent);
+  animation: activity-item-select 0.25s ease-out;
+}
+
+.activity-bar__item-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activity-bar__item:not(.activity-bar__item--active) .pixel-sprite {
+  filter: grayscale(0.3) brightness(0.9);
+  transition: filter 0.2s;
+}
+.activity-bar__item:hover .pixel-sprite {
+  filter: grayscale(0) brightness(1.15);
+}
+.activity-bar__item--active .pixel-sprite {
+  filter: brightness(1.2)
+    drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 40%, transparent));
+}
+
+.activity-bar__item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.activity-bar__item-label {
+  font-size: 0.96rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.2s;
+}
+.activity-bar__item:hover .activity-bar__item-label {
+  color: var(--text-primary);
+}
+.activity-bar__item--active .activity-bar__item-label {
+  color: var(--accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* Tooltip */
+.activity-bar__tooltip {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(13, 17, 23, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 400;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.1s;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+.activity-bar__item:hover .activity-bar__tooltip {
+  opacity: 1;
+}
+
+/* Badge */
+.activity-bar__badge {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  background: var(--cyan, #56d4dd);
+  color: var(--bg-primary);
+  font-size: 0.62rem;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+/* Separator */
+.activity-bar__sep {
+  width: 60%;
+  height: 1px;
+  background: var(--border);
+  margin: 4px auto;
+  opacity: 0.4;
+}
+
+/* Active card with expanded tabs: square off bottom corners so they connect */
+.activity-bar__item--expanded {
+  border-radius: 6px 6px 0 0;
+  border-bottom-color: transparent;
+}
+
+/* Inline tabs under active group (tree-style) */
+.activity-bar__inline-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 8px 6px 20px;
+  margin: 0 0 2px 0;
+  border-left: none;
+  margin-left: 0;
+  background: rgba(13, 17, 23, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  animation: inline-tabs-expand 0.15s ease-out;
+  pointer-events: auto;
+}
+
+@keyframes inline-tabs-expand {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.activity-bar__inline-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  font-family: "IBM Plex Mono", monospace;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  position: relative;
+}
+.activity-bar__inline-tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+.activity-bar__inline-tab--active {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.activity-bar__inline-tab-dot {
+  font-size: 0.7rem;
+  width: 10px;
+  text-align: center;
+  color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.activity-bar__inline-tab--active .activity-bar__inline-tab-dot {
+  color: var(--accent);
+}
+
+.activity-bar__expand-indicator {
+  font-size: 0.7rem;
+  opacity: 0.5;
+  margin-left: 2px;
+}
+
+.activity-bar__tab-badge {
+  display: inline-block;
+  background: var(--cyan);
+  color: var(--bg-primary);
+  font-size: 0.55rem;
+  min-width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  line-height: 10px;
+  text-align: center;
+  font-weight: 700;
+  margin-left: 3px;
+  vertical-align: middle;
+}
+
+/* Selection animation */
+@keyframes activity-item-select {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

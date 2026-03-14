@@ -1,0 +1,272 @@
+/* ===== ARIA Panel ===== */
+.aria-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 300px;
+}
+
+.aria-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.aria-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 0.846rem;
+  line-height: 1.4;
+}
+
+.aria-msg--aria {
+  background: rgba(168, 85, 247, 0.08);
+  border-left: 2px solid var(--magenta);
+}
+
+.aria-msg--user {
+  background: rgba(86, 212, 221, 0.08);
+  border-left: 2px solid var(--cyan);
+}
+
+.aria-msg__label {
+  font-size: 0.692rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.aria-msg--aria .aria-msg__label {
+  color: var(--magenta);
+}
+.aria-msg--user .aria-msg__label {
+  color: var(--cyan);
+}
+
+.aria-msg__text {
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.aria-thinking {
+  color: var(--text-muted);
+  animation: pulse-fade 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-fade {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.aria-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.aria-quick__btn {
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: var(--magenta);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.769rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.aria-quick__btn:hover {
+  background: rgba(168, 85, 247, 0.2);
+}
+
+.aria-quick__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.aria-input-row {
+  display: flex;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.aria-input {
+  flex: 1;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 0.846rem;
+  font-family: inherit;
+}
+
+.aria-input:focus {
+  outline: none;
+  border-color: var(--magenta);
+}
+
+.aria-input::placeholder {
+  color: var(--text-muted);
+}
+
+.aria-send {
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid var(--magenta);
+  color: var(--magenta);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.769rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.aria-send:hover {
+  background: rgba(168, 85, 247, 0.25);
+}
+.aria-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* === ARIA Ambient Comment Toast === */
+
+@keyframes aria-slide-in {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes aria-fade-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-40px);
+    opacity: 0;
+  }
+}
+
+@keyframes aria-cursor-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.aria-comment {
+  position: fixed;
+  bottom: 80px;
+  left: 16px;
+  z-index: 500;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 10px 14px;
+  background: rgba(10, 14, 20, 0.92);
+  border: 1px solid rgba(86, 212, 221, 0.3);
+  border-left: 3px solid var(--cyan);
+  border-radius: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+  backdrop-filter: blur(6px);
+  font-family: "IBM Plex Mono", "Consolas", monospace;
+}
+
+.aria-comment--visible {
+  animation: aria-slide-in 0.35s ease-out forwards;
+}
+
+.aria-comment--fading {
+  animation: aria-fade-out 0.5s ease-in forwards;
+}
+
+.aria-comment__icon {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  margin-top: 3px;
+  background: var(--cyan);
+  transform: rotate(45deg);
+  box-shadow: 0 0 6px rgba(86, 212, 221, 0.6);
+}
+
+.aria-comment__body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  line-height: 1.5;
+}
+
+.aria-comment__prefix {
+  color: var(--cyan);
+  font-size: 0.769rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.aria-comment__text {
+  color: var(--text-primary);
+  font-size: 0.769rem;
+}
+
+.aria-comment__cursor {
+  color: var(--cyan);
+  font-weight: bold;
+  animation: aria-cursor-blink 0.6s step-end infinite;
+}
+
+@keyframes aria-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes aria-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes aria-cursor-blink {
+  50% {
+    opacity: 0;
+  }
+}

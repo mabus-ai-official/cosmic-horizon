@@ -56,7 +56,7 @@ export default function TradeTable({ outpostId, onBuy, onSell, bare }: TradeTabl
               <td className="text-trade">{info.price} cr</td>
               <td>{info.stock}/{info.capacity}</td>
               <td className={info.mode === 'buy' ? 'text-success' : info.mode === 'sell' ? 'text-combat' : ''}>
-                {info.mode}
+                {info.mode === 'buy' ? 'Buying' : info.mode === 'sell' ? 'Selling' : info.mode}
               </td>
               <td>
                 {info.mode === 'sell' && (

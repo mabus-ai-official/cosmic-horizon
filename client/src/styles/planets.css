@@ -1,0 +1,97 @@
+/* === Planets Panel === */
+.planet-panel-item {
+  padding: 10px;
+  margin-bottom: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: border-color 0.15s;
+}
+
+.planet-panel-item:hover {
+  border-color: var(--cyan);
+}
+
+.planet-panel-item:last-child {
+  margin-bottom: 0;
+}
+
+.planet-panel-item__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.planet-panel-item__name {
+  font-size: 0.923rem;
+  color: var(--foreground);
+  font-weight: bold;
+}
+
+.planet-panel-item__class {
+  font-size: 0.769rem;
+  color: var(--cyan);
+}
+
+.planet-panel-item__details {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 4px 12px;
+  font-size: 0.8rem;
+  color: var(--comment);
+  margin-top: 6px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+
+.planet-panel-item__stocks {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px 12px;
+  font-size: 0.8rem;
+  color: var(--yellow);
+  margin-top: 6px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+
+.planet-panel-item__production {
+  font-size: 0.769rem;
+  color: var(--green);
+  margin-top: 4px;
+}
+
+/* === Planet Actions === */
+.planet-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.planet-colonize-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+  width: 100%;
+}
+.planet-detail-expanded {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.planet-refinery {
+  margin-bottom: 8px;
+}
+.planet-unique {
+  margin-bottom: 8px;
+}
+.planet-combat-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}

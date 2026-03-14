@@ -1,15 +1,18 @@
-import { useReducer, useEffect, useRef, useCallback } from 'react';
-import type { SpriteDefinition } from '../config/pixel-sprites';
+import { useReducer, useEffect, useRef, useCallback } from "react";
+import type { SpriteDefinition } from "../config/pixel-sprites";
 import type {
   SceneDefinition,
   SceneRenderMode,
   SceneActor,
   SceneEffect,
-} from '../config/scene-types';
+} from "../config/scene-types";
 
 // --- Shared utility: render a SpriteDefinition as SVG rects ---
 
-export function renderSpriteGrid(def: SpriteDefinition, keyPrefix = ''): React.ReactNode[] {
+export function renderSpriteGrid(
+  def: SpriteDefinition,
+  keyPrefix = "",
+): React.ReactNode[] {
   const rects: React.ReactNode[] = [];
   for (let y = 0; y < def.rows; y++) {
     for (let x = 0; x < def.cols; x++) {
@@ -18,7 +21,14 @@ export function renderSpriteGrid(def: SpriteDefinition, keyPrefix = ''): React.R
       const fill = def.palette[idx];
       if (!fill) continue;
       rects.push(
-        <rect key={`${keyPrefix}${x}-${y}`} x={x} y={y} width={1} height={1} fill={fill} />
+        <rect
+          key={`${keyPrefix}${x}-${y}`}
+          x={x}
+          y={y}
+          width={1}
+          height={1}
+          fill={fill}
+        />,
       );
     }
   }
@@ -51,10 +61,10 @@ interface SceneState {
 }
 
 type SceneAction =
-  | { type: 'INIT_PHASE'; phase: number; scene: SceneDefinition }
-  | { type: 'ADVANCE_PHASE' }
-  | { type: 'CYCLE_FRAME'; actorId: string }
-  | { type: 'RESET' };
+  | { type: "INIT_PHASE"; phase: number; scene: SceneDefinition }
+  | { type: "ADVANCE_PHASE" }
+  | { type: "CYCLE_FRAME"; actorId: string }
+  | { type: "RESET" };
 
 function actorFromDef(def: SceneActor): ActorState {
   return {
@@ -66,16 +76,16 @@ function actorFromDef(def: SceneActor): ActorState {
     y: def.y,
     size: def.size ?? 16,
     opacity: def.opacity ?? 1,
-    transform: def.transform ?? '',
+    transform: def.transform ?? "",
     flipX: def.flipX ?? false,
     transitionDuration: 300,
-    easing: 'ease',
+    easing: "ease",
   };
 }
 
 function sceneReducer(state: SceneState, action: SceneAction): SceneState {
   switch (action.type) {
-    case 'INIT_PHASE': {
+    case "INIT_PHASE": {
       const phase = action.scene.phases[action.phase];
       if (!phase) return state;
 
@@ -122,29 +132,30 @@ function sceneReducer(state: SceneState, action: SceneAction): SceneState {
         actors,
         activeEffects: phase.effects ?? [],
         phaseText: phase.text ?? null,
-        phaseTextClass: phase.textClass ?? '',
+        phaseTextClass: phase.textClass ?? "",
       };
     }
-    case 'ADVANCE_PHASE':
+    case "ADVANCE_PHASE":
       return { ...state, currentPhase: state.currentPhase + 1 };
-    case 'CYCLE_FRAME': {
+    case "CYCLE_FRAME": {
       const actors = new Map(state.actors);
       const actor = actors.get(action.actorId);
       if (actor && actor.frames.length > 1) {
         actors.set(action.actorId, {
           ...actor,
-          currentFrameIndex: (actor.currentFrameIndex + 1) % actor.frames.length,
+          currentFrameIndex:
+            (actor.currentFrameIndex + 1) % actor.frames.length,
         });
       }
       return { ...state, actors };
     }
-    case 'RESET':
+    case "RESET":
       return {
         currentPhase: -1,
         actors: new Map(),
         activeEffects: [],
         phaseText: null,
-        phaseTextClass: '',
+        phaseTextClass: "",
       };
     default:
       return state;
@@ -164,17 +175,26 @@ interface PixelSceneProps {
 
 // --- Component ---
 
-export default function PixelScene({ scene, renderMode, onComplete, onSkip, width, height }: PixelSceneProps) {
+export default function PixelScene({
+  scene,
+  renderMode,
+  onComplete,
+  onSkip,
+  width,
+  height,
+}: PixelSceneProps) {
   const [state, dispatch] = useReducer(sceneReducer, {
     currentPhase: -1,
     actors: new Map(),
     activeEffects: [],
     phaseText: null,
-    phaseTextClass: '',
+    phaseTextClass: "",
   });
 
   const phaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const frameIntervalsRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+  const frameIntervalsRef = useRef<Map<string, ReturnType<typeof setInterval>>>(
+    new Map(),
+  );
   const completedRef = useRef(false);
 
   // Cleanup all timers
@@ -192,7 +212,7 @@ export default function PixelScene({ scene, renderMode, onComplete, onSkip, widt
   // Initialize with initial actors, then start phase 0
   useEffect(() => {
     completedRef.current = false;
-    dispatch({ type: 'RESET' });
+    dispatch({ type: "RESET" });
 
     // Add initial actors first
     if (scene.initialActors) {
@@ -206,14 +226,14 @@ export default function PixelScene({ scene, renderMode, onComplete, onSkip, widt
         ...scene,
         phases: [initPhase, ...scene.phases],
       };
-      dispatch({ type: 'INIT_PHASE', phase: 0, scene: syntheticScene });
+      dispatch({ type: "INIT_PHASE", phase: 0, scene: syntheticScene });
       // Then start real phase 0 (which is index 1 in synthetic)
       // Use a small delay so state settles
       setTimeout(() => {
-        dispatch({ type: 'INIT_PHASE', phase: 1, scene: syntheticScene });
+        dispatch({ type: "INIT_PHASE", phase: 1, scene: syntheticScene });
       }, 16);
     } else {
-      dispatch({ type: 'INIT_PHASE', phase: 0, scene });
+      dispatch({ type: "INIT_PHASE", phase: 0, scene });
     }
 
     return clearAllTimers;
@@ -221,7 +241,9 @@ export default function PixelScene({ scene, renderMode, onComplete, onSkip, widt
 
   // Phase progression timer
   useEffect(() => {
-    const phaseIndex = scene.initialActors ? state.currentPhase - 1 : state.currentPhase;
+    const phaseIndex = scene.initialActors
+      ? state.currentPhase - 1
+      : state.currentPhase;
     if (phaseIndex < 0) return;
     const phase = scene.phases[phaseIndex];
     if (!phase) return;
@@ -239,12 +261,19 @@ export default function PixelScene({ scene, renderMode, onComplete, onSkip, widt
       phaseTimerRef.current = setTimeout(() => {
         const nextPhaseIndex = phaseIndex + 1;
         if (scene.initialActors) {
-          dispatch({ type: 'INIT_PHASE', phase: nextPhaseIndex + 1, scene: {
-            ...scene,
-            phases: [{ duration: 0, addActors: scene.initialActors }, ...scene.phases],
-          }});
+          dispatch({
+            type: "INIT_PHASE",
+            phase: nextPhaseIndex + 1,
+            scene: {
+              ...scene,
+              phases: [
+                { duration: 0, addActors: scene.initialActors },
+                ...scene.phases,
+              ],
+            },
+          });
         } else {
-          dispatch({ type: 'INIT_PHASE', phase: nextPhaseIndex, scene });
+          dispatch({ type: "INIT_PHASE", phase: nextPhaseIndex, scene });
         }
       }, phase.duration);
     }
@@ -269,7 +298,7 @@ export default function PixelScene({ scene, renderMode, onComplete, onSkip, widt
     for (const [actorId, actor] of state.actors) {
       if (actor.frames.length > 1) {
         const interval = setInterval(() => {
-          dispatch({ type: 'CYCLE_FRAME', actorId });
+          dispatch({ type: "CYCLE_FRAME", actorId });
         }, actor.frameDuration);
         frameIntervalsRef.current.set(actorId, interval);
       }
@@ -296,24 +325,36 @@ export default function PixelScene({ scene, renderMode, onComplete, onSkip, widt
   const renderEffects = () => {
     return state.activeEffects.map((effect, i) => {
       switch (effect.type) {
-        case 'starfield':
+        case "starfield":
           return <Starfield key={`effect-${i}`} config={effect.config} />;
-        case 'warp-lines':
+        case "warp-lines":
           return <WarpLines key={`effect-${i}`} config={effect.config} />;
-        case 'flash':
+        case "flash":
           return (
             <rect
               key={`effect-${i}`}
-              x={0} y={0}
-              width={scene.stageWidth} height={scene.stageHeight}
-              fill={effect.config?.color as string ?? WHITE}
+              x={0}
+              y={0}
+              width={scene.stageWidth}
+              height={scene.stageHeight}
+              fill={(effect.config?.color as string) ?? WHITE}
               className="pixel-scene__flash"
-              style={{ animationDelay: `${effect.delay ?? 0}ms`, animationDuration: `${effect.duration ?? 400}ms` }}
+              style={{
+                animationDelay: `${effect.delay ?? 0}ms`,
+                animationDuration: `${effect.duration ?? 400}ms`,
+              }}
             />
           );
-        case 'laser':
-          return <Laser key={`effect-${i}`} stageWidth={scene.stageWidth} stageHeight={scene.stageHeight} config={effect.config} />;
-        case 'scanlines':
+        case "laser":
+          return (
+            <Laser
+              key={`effect-${i}`}
+              stageWidth={scene.stageWidth}
+              stageHeight={scene.stageHeight}
+              config={effect.config}
+            />
+          );
+        case "scanlines":
           return null; // Handled as HTML overlay
         default:
           return null;
@@ -321,18 +362,17 @@ export default function PixelScene({ scene, renderMode, onComplete, onSkip, widt
     });
   };
 
-  const hasScanlines = state.activeEffects.some(e => e.type === 'scanlines');
+  const hasScanlines = state.activeEffects.some((e) => e.type === "scanlines");
 
   const containerClass = `pixel-scene pixel-scene--${renderMode}`;
-  const bgColor = scene.bgColor ?? 'var(--bg-primary)';
   const bgTransparent = scene.bgColor
     ? `color-mix(in srgb, ${scene.bgColor} 40%, transparent)`
-    : 'var(--bg-primary)';
+    : "var(--bg-primary)";
 
   const containerStyle: React.CSSProperties = {
     background: bgTransparent,
-    ...(width && renderMode !== 'fullscreen' ? { width } : {}),
-    ...(height && renderMode !== 'fullscreen' ? { height } : {}),
+    ...(width && renderMode !== "fullscreen" ? { width } : {}),
+    ...(height && renderMode !== "fullscreen" ? { height } : {}),
   };
 
   return (
@@ -341,16 +381,22 @@ export default function PixelScene({ scene, renderMode, onComplete, onSkip, widt
         className="pixel-scene__stage"
         viewBox={`0 0 ${scene.stageWidth} ${scene.stageHeight}`}
         preserveAspectRatio="xMidYMid meet"
-        style={{ imageRendering: 'pixelated' }}
+        style={{ imageRendering: "pixelated" }}
       >
         {/* Background fill */}
-        <rect x={0} y={0} width={scene.stageWidth} height={scene.stageHeight} style={{ fill: bgTransparent }} />
+        <rect
+          x={0}
+          y={0}
+          width={scene.stageWidth}
+          height={scene.stageHeight}
+          style={{ fill: bgTransparent }}
+        />
 
         {/* Effects behind actors */}
         {renderEffects()}
 
         {/* Actors */}
-        {Array.from(state.actors.values()).map(actor => {
+        {Array.from(state.actors.values()).map((actor) => {
           const frame = actor.frames[actor.currentFrameIndex];
           if (!frame) return null;
           const tx = (actor.x / 100) * scene.stageWidth - actor.size / 2;
@@ -366,7 +412,7 @@ export default function PixelScene({ scene, renderMode, onComplete, onSkip, widt
                 transition: `all ${actor.transitionDuration}ms ${actor.easing}`,
                 opacity: actor.opacity,
               }}
-              transform={`translate(${tx}, ${ty}) scale(${actorScale * scaleX}, ${actorScale}) ${actor.flipX ? `translate(${-frame.cols}, 0)` : ''} ${actor.transform}`}
+              transform={`translate(${tx}, ${ty}) scale(${actorScale * scaleX}, ${actorScale}) ${actor.flipX ? `translate(${-frame.cols}, 0)` : ""} ${actor.transform}`}
             >
               {renderSpriteGrid(frame, `${actor.id}-`)}
             </g>
@@ -385,7 +431,7 @@ export default function PixelScene({ scene, renderMode, onComplete, onSkip, widt
       )}
 
       {/* Skip button (fullscreen only) */}
-      {renderMode === 'fullscreen' && onSkip && (
+      {renderMode === "fullscreen" && onSkip && (
         <button className="pixel-scene__skip" onClick={handleSkip}>
           SKIP
         </button>
@@ -396,7 +442,7 @@ export default function PixelScene({ scene, renderMode, onComplete, onSkip, widt
 
 // --- Effect sub-components ---
 
-const WHITE = '#c9d1d9';
+const WHITE = "#c9d1d9";
 
 function Starfield({ config }: { config?: Record<string, unknown> }) {
   const count = (config?.count as number) ?? 30;
@@ -405,19 +451,21 @@ function Starfield({ config }: { config?: Record<string, unknown> }) {
   // Generate deterministic stars using index as seed
   const stars = [];
   for (let i = 0; i < count; i++) {
-    const x = ((i * 7.3 + 3.1) % stageW);
-    const y = ((i * 11.7 + 5.3) % stageH);
-    const size = ((i % 3) === 0) ? 0.4 : 0.2;
+    const x = (i * 7.3 + 3.1) % stageW;
+    const y = (i * 11.7 + 5.3) % stageH;
+    const size = i % 3 === 0 ? 0.4 : 0.2;
     const delay = (i * 0.15) % 1.5;
     stars.push(
       <rect
         key={`star-${i}`}
-        x={x} y={y}
-        width={size} height={size}
+        x={x}
+        y={y}
+        width={size}
+        height={size}
         fill={WHITE}
         className="pixel-scene__star"
         style={{ animationDelay: `${delay}s` }}
-      />
+      />,
     );
   }
   return <>{stars}</>;
@@ -429,29 +477,41 @@ function WarpLines({ config }: { config?: Record<string, unknown> }) {
   const stageH = (config?.stageHeight as number) ?? 16;
   const lines = [];
   for (let i = 0; i < count; i++) {
-    const y = ((i * 3.7 + 1.1) % stageH);
+    const y = (i * 3.7 + 1.1) % stageH;
     const delay = (i * 0.08) % 0.6;
     lines.push(
       <rect
         key={`warp-${i}`}
-        x={0} y={y}
-        width={stageW * 0.3} height={0.2}
+        x={0}
+        y={y}
+        width={stageW * 0.3}
+        height={0.2}
         fill={WHITE}
         className="pixel-scene__warp-line"
         style={{ animationDelay: `${delay}s` }}
-      />
+      />,
     );
   }
   return <>{lines}</>;
 }
 
-function Laser({ stageWidth, stageHeight, config }: { stageWidth: number; stageHeight: number; config?: Record<string, unknown> }) {
+function Laser({
+  stageWidth,
+  stageHeight,
+  config,
+}: {
+  stageWidth: number;
+  stageHeight: number;
+  config?: Record<string, unknown>;
+}) {
   const y = (config?.y as number) ?? stageHeight * 0.45;
-  const color = (config?.color as string) ?? '#f85149';
+  const color = (config?.color as string) ?? "#f85149";
   return (
     <rect
-      x={0} y={y}
-      width={stageWidth} height={0.5}
+      x={0}
+      y={y}
+      width={stageWidth}
+      height={0.5}
       fill={color}
       className="pixel-scene__laser"
     />

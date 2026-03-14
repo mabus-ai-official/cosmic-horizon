@@ -1,0 +1,343 @@
+/* === Settings Panel === */
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px;
+}
+
+.settings-section {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--bg-secondary);
+}
+
+.settings-section--danger {
+  border-color: rgba(229, 62, 62, 0.3);
+  background: rgba(229, 62, 62, 0.05);
+}
+
+.settings-section__title {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  color: var(--cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.settings-section__title--danger {
+  color: #e53e3e;
+}
+
+.settings-hint {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+}
+
+.settings-hint--warning {
+  color: var(--orange);
+}
+
+.settings-hint--danger {
+  color: #e53e3e;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.settings-row--stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.settings-row label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  min-width: 80px;
+}
+
+.settings-input {
+  flex: 1;
+  padding: 6px 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+
+.settings-input:focus {
+  border-color: var(--cyan);
+  outline: none;
+}
+
+.settings-select {
+  flex: 1;
+  padding: 6px 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+
+.settings-slider {
+  flex: 1;
+  accent-color: var(--cyan);
+}
+
+.settings-value {
+  font-size: 0.85rem;
+  color: var(--cyan);
+  min-width: 40px;
+  text-align: right;
+}
+
+.settings-toggle {
+  padding: 4px 14px;
+  background: transparent;
+  border: 1px solid var(--text-secondary);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border-radius: 4px;
+  min-width: 50px;
+}
+.settings-toggle--on {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.settings-msg {
+  font-size: 0.8rem;
+  color: var(--cyan);
+  margin: 4px 0 0;
+}
+
+.settings-msg--danger {
+  color: #e53e3e;
+}
+
+.settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.settings-overlay__content {
+  position: relative;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-bright);
+  border-radius: 8px;
+  width: 480px;
+  max-width: 90vw;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.settings-overlay__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  z-index: 1;
+}
+
+.settings-overlay__close:hover {
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+}
+
+/* Settings tab navigation */
+.settings-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 12px;
+}
+
+.settings-tabs__btn {
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.settings-tabs__btn:hover {
+  color: var(--text-primary);
+}
+
+.settings-tabs__btn--active {
+  color: var(--cyan);
+  border-bottom-color: var(--cyan);
+}
+
+/* Controls tab */
+.controls-tab {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.controls-tab__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.controls-tab__header .settings-section__title {
+  margin: 0;
+}
+
+.controls-tab__warning {
+  font-size: 0.78rem;
+  color: var(--orange);
+  background: rgba(240, 136, 62, 0.1);
+  border: 1px solid rgba(240, 136, 62, 0.3);
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+
+.controls-tab__section-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.controls-tab__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.controls-tab__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.controls-tab__row--conflict {
+  border-color: rgba(240, 136, 62, 0.5);
+}
+
+.controls-tab__action {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.controls-tab__key {
+  min-width: 60px;
+  padding: 4px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--cyan);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    color 0.15s;
+}
+
+.controls-tab__key:hover {
+  border-color: var(--cyan);
+}
+
+.controls-tab__key--listening {
+  border-color: var(--yellow);
+  color: var(--yellow);
+  background: rgba(210, 153, 34, 0.1);
+  animation: key-listen-pulse 1s ease-in-out infinite;
+}
+
+@keyframes key-listen-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.controls-tab__key--conflict {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+.controls-tab__reset {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  padding: 3px 6px;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.controls-tab__reset:hover {
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+}
+
+.controls-tab__reset-spacer {
+  width: 28px;
+}
+
+.controls-tab__hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  text-align: center;
+}

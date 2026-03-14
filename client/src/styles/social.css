@@ -1,0 +1,412 @@
+/* === Sector Chat Panel === */
+.chat-messages {
+  max-height: 240px;
+  overflow-y: auto;
+  margin-bottom: 6px;
+  font-size: 0.923rem;
+}
+
+.chat-msg {
+  padding: 2px 0;
+  word-break: break-word;
+}
+
+.chat-msg--own {
+  color: var(--cyan);
+}
+
+.chat-msg__name {
+  color: var(--green);
+  font-weight: bold;
+}
+
+.chat-msg--own .chat-msg__name {
+  color: var(--cyan);
+}
+
+.chat-input-form {
+  display: flex;
+}
+
+.chat-input {
+  flex: 1;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  padding: 4px 8px;
+  font-size: 0.923rem;
+  font-family: inherit;
+  border-radius: 3px;
+  outline: none;
+}
+
+.chat-input:focus {
+  border-color: var(--cyan);
+}
+
+/* === Player List Panel === */
+.player-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 0;
+}
+
+.player-list-item__name {
+  color: var(--yellow);
+  font-size: 0.923rem;
+}
+
+/* === NPC Panel === */
+.npc-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--bg-tertiary);
+}
+.npc-list-item__info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.npc-list-item__text {
+  display: flex;
+  flex-direction: column;
+}
+.npc-list-item__name {
+  color: var(--cyan);
+  font-size: 0.923rem;
+}
+.npc-list-item__title {
+  color: var(--text-secondary);
+  font-size: 0.769rem;
+}
+.npc-disposition {
+  display: inline-flex;
+  gap: 2px;
+  margin-top: 2px;
+}
+.npc-disposition__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.npc-disposition__dot--filled-friendly {
+  background: var(--green);
+}
+.npc-disposition__dot--filled-neutral {
+  background: var(--text-secondary);
+}
+.npc-disposition__dot--filled-hostile {
+  background: var(--red);
+}
+.contact-item {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--bg-tertiary);
+  font-size: 0.846rem;
+}
+.contact-item__name {
+  color: var(--cyan);
+}
+.contact-item__detail {
+  color: var(--text-secondary);
+  font-size: 0.769rem;
+}
+
+/* === NPC Dialogue === */
+.npc-dialogue {
+  padding: 4px 0;
+}
+.npc-dialogue__header {
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.npc-dialogue__name {
+  color: var(--cyan);
+  font-size: 1.077rem;
+  font-weight: 500;
+}
+.npc-dialogue__title {
+  color: var(--text-secondary);
+  font-size: 0.769rem;
+}
+.npc-dialogue__text {
+  font-size: 0.923rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin-bottom: 8px;
+  white-space: pre-wrap;
+}
+.npc-dialogue__options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.npc-dialogue__option {
+  text-align: left;
+  padding: 4px 8px;
+  font-size: 0.846rem;
+  font-family: "IBM Plex Mono", monospace;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--blue);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.npc-dialogue__option:hover {
+  border-color: var(--blue);
+  background: rgba(88, 166, 255, 0.1);
+}
+.npc-dialogue__mission {
+  margin-top: 6px;
+  padding: 4px 6px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  border-left: 2px solid var(--yellow);
+  font-size: 0.846rem;
+}
+.npc-vendor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.npc-vendor-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.npc-vendor-item--locked {
+  opacity: 0.5;
+}
+.npc-vendor-item__name {
+  color: var(--text-primary);
+}
+.npc-vendor-item__price {
+  color: var(--yellow);
+  font-size: 0.846rem;
+}
+.npc-vendor-item__fame-req {
+  color: var(--text-muted);
+  font-size: 0.769rem;
+  font-style: italic;
+}
+
+/* === Mail Panel === */
+.mail-content {
+  font-size: 0.923rem;
+}
+.mail-subtabs {
+  margin-bottom: 6px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.8rem;
+}
+.mail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mail-list-item {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--bg-tertiary);
+  cursor: pointer;
+  transition: background 0.15s;
+  border-radius: 2px;
+}
+.mail-list-item:hover {
+  background: rgba(86, 212, 221, 0.06);
+}
+.mail-list-item--unread {
+  border-left: 2px solid var(--cyan);
+}
+.mail-list-item__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.mail-list-item__from {
+  color: var(--cyan);
+  font-size: 0.846rem;
+}
+.mail-list-item__subject {
+  color: var(--text-primary);
+  font-size: 0.923rem;
+}
+.mail-list-item__date {
+  color: var(--text-secondary);
+  font-size: 0.769rem;
+}
+.mail-unread-badge {
+  background: var(--cyan);
+  color: var(--bg-primary);
+  font-size: 0.692rem;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: bold;
+}
+.mail-message-view {
+  padding: 4px 0;
+}
+.mail-message-header {
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.mail-message-subject {
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 500;
+}
+.mail-message-body {
+  color: var(--text-primary);
+  font-size: 0.923rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  margin-bottom: 8px;
+  min-height: 40px;
+}
+.mail-message-actions {
+  display: flex;
+  gap: 6px;
+}
+.mail-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mail-field label {
+  font-size: 0.769rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+.mail-input {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 4px 6px;
+  font-size: 0.923rem;
+  font-family: inherit;
+  border-radius: 3px;
+  outline: none;
+}
+.mail-input:focus {
+  border-color: var(--cyan);
+}
+.mail-textarea {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 4px 6px;
+  font-size: 0.923rem;
+  font-family: inherit;
+  border-radius: 3px;
+  outline: none;
+  resize: vertical;
+}
+.mail-textarea:focus {
+  border-color: var(--cyan);
+}
+
+/* === Profile Dropdown === */
+.profile-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 50;
+  width: 260px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-bright);
+  border-radius: 6px;
+  padding: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.profile-dropdown__header {
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.profile-dropdown__name {
+  color: var(--magenta);
+  font-size: 1.077rem;
+  font-weight: 700;
+}
+.profile-dropdown__rank {
+  color: var(--yellow);
+  font-size: 0.846rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.profile-dropdown__stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.profile-stat {
+  display: flex;
+  flex-direction: column;
+}
+.profile-stat__label {
+  font-size: 0.692rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.profile-stat__value {
+  font-size: 0.923rem;
+  color: var(--text-primary);
+}
+.profile-xp {
+  margin-bottom: 8px;
+}
+.profile-xp__label {
+  font-size: 0.769rem;
+  color: var(--text-secondary);
+  margin-bottom: 3px;
+}
+.profile-bonuses {
+  font-size: 0.769rem;
+  margin-bottom: 8px;
+}
+.profile-bonuses__label {
+  color: var(--text-secondary);
+}
+.profile-bonus {
+  display: inline-block;
+  margin: 2px 4px;
+  padding: 1px 4px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  color: var(--yellow);
+  font-size: 0.769rem;
+}
+.profile-achievements {
+  margin-top: 4px;
+}
+.profile-achievement {
+  padding: 2px 0;
+  font-size: 0.846rem;
+}
+.profile-achievement__name {
+  color: var(--text-primary);
+}
+.status-value--clickable {
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.status-value--clickable:hover {
+  color: var(--magenta);
+}

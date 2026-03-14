@@ -1,6 +1,7 @@
-import db from '../db/connection';
-import { GAME_CONFIG } from '../config/game';
-import crypto from 'crypto';
+import db from "../db/connection";
+import { GAME_CONFIG } from "../config/game";
+import crypto from "crypto";
+import { settleDebitPlayer } from "../chain/tx-queue";
 
 export interface TabletBonuses {
   weaponBonus: number;
@@ -11,26 +12,40 @@ export interface TabletBonuses {
   xpMultiplier: number;
 }
 
-const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
+const RARITY_ORDER = [
+  "common",
+  "uncommon",
+  "rare",
+  "epic",
+  "legendary",
+  "mythic",
+];
 
 export function getTabletStorage(level: number): number {
-  return GAME_CONFIG.TABLET_BASE_STORAGE + Math.floor(level / 5) * GAME_CONFIG.TABLET_STORAGE_PER_5_LEVELS;
+  return (
+    GAME_CONFIG.TABLET_BASE_STORAGE +
+    Math.floor(level / 5) * GAME_CONFIG.TABLET_STORAGE_PER_5_LEVELS
+  );
 }
 
 export async function getPlayerTablets(playerId: string) {
-  const rows = await db('player_tablets')
-    .join('tablet_definitions', 'player_tablets.tablet_definition_id', 'tablet_definitions.id')
-    .where({ 'player_tablets.player_id': playerId })
+  const rows = await db("player_tablets")
+    .join(
+      "tablet_definitions",
+      "player_tablets.tablet_definition_id",
+      "tablet_definitions.id",
+    )
+    .where({ "player_tablets.player_id": playerId })
     .select(
-      'player_tablets.id as id',
-      'tablet_definitions.id as definitionId',
-      'tablet_definitions.name as name',
-      'tablet_definitions.description as description',
-      'tablet_definitions.rarity as rarity',
-      'tablet_definitions.effects as effects',
-      'tablet_definitions.sprite_config as sprite_config',
-      'player_tablets.equipped_slot as equipped_slot',
-      'player_tablets.acquired_at as acquired_at'
+      "player_tablets.id as id",
+      "tablet_definitions.id as definitionId",
+      "tablet_definitions.name as name",
+      "tablet_definitions.description as description",
+      "tablet_definitions.rarity as rarity",
+      "tablet_definitions.effects as effects",
+      "tablet_definitions.sprite_config as sprite_config",
+      "player_tablets.equipped_slot as equipped_slot",
+      "player_tablets.acquired_at as acquired_at",
     );
 
   return rows.map((row: any) => ({
@@ -39,28 +54,36 @@ export async function getPlayerTablets(playerId: string) {
     name: row.name,
     description: row.description,
     rarity: row.rarity,
-    effects: typeof row.effects === 'string' ? JSON.parse(row.effects) : row.effects,
-    spriteConfig: typeof row.sprite_config === 'string' ? JSON.parse(row.sprite_config) : row.sprite_config,
+    effects:
+      typeof row.effects === "string" ? JSON.parse(row.effects) : row.effects,
+    spriteConfig:
+      typeof row.sprite_config === "string"
+        ? JSON.parse(row.sprite_config)
+        : row.sprite_config,
     equippedSlot: row.equipped_slot,
     acquiredAt: row.acquired_at,
   }));
 }
 
 export async function getEquippedTablets(playerId: string) {
-  const rows = await db('player_tablets')
-    .join('tablet_definitions', 'player_tablets.tablet_definition_id', 'tablet_definitions.id')
-    .where({ 'player_tablets.player_id': playerId })
-    .whereNotNull('player_tablets.equipped_slot')
+  const rows = await db("player_tablets")
+    .join(
+      "tablet_definitions",
+      "player_tablets.tablet_definition_id",
+      "tablet_definitions.id",
+    )
+    .where({ "player_tablets.player_id": playerId })
+    .whereNotNull("player_tablets.equipped_slot")
     .select(
-      'player_tablets.id as id',
-      'tablet_definitions.id as definitionId',
-      'tablet_definitions.name as name',
-      'tablet_definitions.description as description',
-      'tablet_definitions.rarity as rarity',
-      'tablet_definitions.effects as effects',
-      'tablet_definitions.sprite_config as sprite_config',
-      'player_tablets.equipped_slot as equipped_slot',
-      'player_tablets.acquired_at as acquired_at'
+      "player_tablets.id as id",
+      "tablet_definitions.id as definitionId",
+      "tablet_definitions.name as name",
+      "tablet_definitions.description as description",
+      "tablet_definitions.rarity as rarity",
+      "tablet_definitions.effects as effects",
+      "tablet_definitions.sprite_config as sprite_config",
+      "player_tablets.equipped_slot as equipped_slot",
+      "player_tablets.acquired_at as acquired_at",
     );
 
   return rows.map((row: any) => ({
@@ -69,14 +92,20 @@ export async function getEquippedTablets(playerId: string) {
     name: row.name,
     description: row.description,
     rarity: row.rarity,
-    effects: typeof row.effects === 'string' ? JSON.parse(row.effects) : row.effects,
-    spriteConfig: typeof row.sprite_config === 'string' ? JSON.parse(row.sprite_config) : row.sprite_config,
+    effects:
+      typeof row.effects === "string" ? JSON.parse(row.effects) : row.effects,
+    spriteConfig:
+      typeof row.sprite_config === "string"
+        ? JSON.parse(row.sprite_config)
+        : row.sprite_config,
     equippedSlot: row.equipped_slot,
     acquiredAt: row.acquired_at,
   }));
 }
 
-export async function applyTabletBonuses(playerId: string): Promise<TabletBonuses> {
+export async function applyTabletBonuses(
+  playerId: string,
+): Promise<TabletBonuses> {
   const equipped = await getEquippedTablets(playerId);
 
   const bonuses: TabletBonuses = {
@@ -102,48 +131,70 @@ export async function applyTabletBonuses(playerId: string): Promise<TabletBonuse
   return bonuses;
 }
 
-export async function equipTablet(playerId: string, playerTabletId: string, slot: number) {
-  const tablet = await db('player_tablets')
-    .join('tablet_definitions', 'player_tablets.tablet_definition_id', 'tablet_definitions.id')
-    .where({ 'player_tablets.id': playerTabletId })
+export async function equipTablet(
+  playerId: string,
+  playerTabletId: string,
+  slot: number,
+) {
+  const tablet = await db("player_tablets")
+    .join(
+      "tablet_definitions",
+      "player_tablets.tablet_definition_id",
+      "tablet_definitions.id",
+    )
+    .where({ "player_tablets.id": playerTabletId })
     .select(
-      'player_tablets.id as id',
-      'player_tablets.player_id as player_id',
-      'tablet_definitions.name as name',
-      'tablet_definitions.rarity as rarity'
+      "player_tablets.id as id",
+      "player_tablets.player_id as player_id",
+      "tablet_definitions.name as name",
+      "tablet_definitions.rarity as rarity",
     )
     .first();
 
-  if (!tablet) throw new Error('Tablet not found');
-  if (tablet.player_id !== playerId) throw new Error('Tablet does not belong to this player');
+  if (!tablet) throw new Error("Tablet not found");
+  if (tablet.player_id !== playerId)
+    throw new Error("Tablet does not belong to this player");
 
-  const prog = await db('player_progression').where({ player_id: playerId }).first();
+  const prog = await db("player_progression")
+    .where({ player_id: playerId })
+    .first();
   const playerLevel = prog?.level || 1;
 
   if (slot !== 1 && slot !== 2 && slot !== 3) {
-    throw new Error('Invalid slot. Must be 1, 2, or 3');
+    throw new Error("Invalid slot. Must be 1, 2, or 3");
   }
 
-  const requiredLevel = (GAME_CONFIG.TABLET_SLOT_UNLOCK_LEVELS as Record<number, number>)[slot];
+  const requiredLevel = (
+    GAME_CONFIG.TABLET_SLOT_UNLOCK_LEVELS as Record<number, number>
+  )[slot];
   if (requiredLevel > playerLevel) {
-    throw new Error(`Slot ${slot} requires level ${requiredLevel}. Current level: ${playerLevel}`);
+    throw new Error(
+      `Slot ${slot} requires level ${requiredLevel}. Current level: ${playerLevel}`,
+    );
   }
 
-  const occupied = await db('player_tablets')
+  const occupied = await db("player_tablets")
     .where({ player_id: playerId, equipped_slot: slot })
     .first();
   if (occupied) {
     throw new Error(`Slot ${slot} is already occupied`);
   }
 
-  const cost = (GAME_CONFIG.TABLET_EQUIP_COSTS as Record<string, number>)[tablet.rarity];
-  const player = await db('players').where({ id: playerId }).first();
+  const cost = (GAME_CONFIG.TABLET_EQUIP_COSTS as Record<string, number>)[
+    tablet.rarity
+  ];
+  const player = await db("players").where({ id: playerId }).first();
   if (Number(player.credits) < cost) {
     throw new Error(`Not enough credits. Need ${cost}, have ${player.credits}`);
   }
 
-  await db('players').where({ id: playerId }).update({ credits: Number(player.credits) - cost });
-  await db('player_tablets').where({ id: playerTabletId }).update({ equipped_slot: slot });
+  await db("players")
+    .where({ id: playerId })
+    .update({ credits: Number(player.credits) - cost });
+  await settleDebitPlayer(playerId, cost, "store");
+  await db("player_tablets")
+    .where({ id: playerTabletId })
+    .update({ equipped_slot: slot });
 
   return {
     equipped: true,
@@ -156,52 +207,69 @@ export async function equipTablet(playerId: string, playerTabletId: string, slot
 }
 
 export async function unequipTablet(playerId: string, slot: number) {
-  const tablet = await db('player_tablets')
-    .join('tablet_definitions', 'player_tablets.tablet_definition_id', 'tablet_definitions.id')
-    .where({ 'player_tablets.player_id': playerId, 'player_tablets.equipped_slot': slot })
-    .select('player_tablets.id as id', 'tablet_definitions.name as name')
+  const tablet = await db("player_tablets")
+    .join(
+      "tablet_definitions",
+      "player_tablets.tablet_definition_id",
+      "tablet_definitions.id",
+    )
+    .where({
+      "player_tablets.player_id": playerId,
+      "player_tablets.equipped_slot": slot,
+    })
+    .select("player_tablets.id as id", "tablet_definitions.name as name")
     .first();
 
   if (!tablet) {
     throw new Error(`No tablet equipped in slot ${slot}`);
   }
 
-  await db('player_tablets').where({ id: tablet.id }).update({ equipped_slot: null });
+  await db("player_tablets")
+    .where({ id: tablet.id })
+    .update({ equipped_slot: null });
 
   return { unequipped: true, name: tablet.name, slot };
 }
 
 export async function combineTablets(playerId: string, tabletIds: string[]) {
   if (tabletIds.length !== GAME_CONFIG.TABLET_COMBINE_COUNT) {
-    throw new Error(`Exactly ${GAME_CONFIG.TABLET_COMBINE_COUNT} tablets are required to combine`);
+    throw new Error(
+      `Exactly ${GAME_CONFIG.TABLET_COMBINE_COUNT} tablets are required to combine`,
+    );
   }
 
-  const tablets = await db('player_tablets')
-    .join('tablet_definitions', 'player_tablets.tablet_definition_id', 'tablet_definitions.id')
-    .whereIn('player_tablets.id', tabletIds)
-    .where({ 'player_tablets.player_id': playerId })
+  const tablets = await db("player_tablets")
+    .join(
+      "tablet_definitions",
+      "player_tablets.tablet_definition_id",
+      "tablet_definitions.id",
+    )
+    .whereIn("player_tablets.id", tabletIds)
+    .where({ "player_tablets.player_id": playerId })
     .select(
-      'player_tablets.id as id',
-      'player_tablets.equipped_slot as equipped_slot',
-      'tablet_definitions.rarity as rarity'
+      "player_tablets.id as id",
+      "player_tablets.equipped_slot as equipped_slot",
+      "tablet_definitions.rarity as rarity",
     );
 
   if (tablets.length !== GAME_CONFIG.TABLET_COMBINE_COUNT) {
-    throw new Error('One or more tablets not found or do not belong to this player');
+    throw new Error(
+      "One or more tablets not found or do not belong to this player",
+    );
   }
 
   const rarity = tablets[0].rarity;
   for (const t of tablets) {
     if (t.rarity !== rarity) {
-      throw new Error('All tablets must be the same rarity to combine');
+      throw new Error("All tablets must be the same rarity to combine");
     }
     if (t.equipped_slot !== null && t.equipped_slot !== undefined) {
-      throw new Error('Cannot combine equipped tablets. Unequip them first');
+      throw new Error("Cannot combine equipped tablets. Unequip them first");
     }
   }
 
-  if (rarity === 'mythic') {
-    throw new Error('Mythic tablets cannot be combined');
+  if (rarity === "mythic") {
+    throw new Error("Mythic tablets cannot be combined");
   }
 
   const rarityIndex = RARITY_ORDER.indexOf(rarity);
@@ -209,17 +277,19 @@ export async function combineTablets(playerId: string, tabletIds: string[]) {
     throw new Error(`Unknown rarity: ${rarity}`);
   }
 
-  const cost = (GAME_CONFIG.TABLET_COMBINE_COSTS as Record<string, number>)[rarity];
-  const player = await db('players').where({ id: playerId }).first();
+  const cost = (GAME_CONFIG.TABLET_COMBINE_COSTS as Record<string, number>)[
+    rarity
+  ];
+  const player = await db("players").where({ id: playerId }).first();
   if (Number(player.credits) < cost) {
     throw new Error(`Not enough credits. Need ${cost}, have ${player.credits}`);
   }
 
   const nextRarity = RARITY_ORDER[rarityIndex + 1];
 
-  const newDef = await db('tablet_definitions')
+  const newDef = await db("tablet_definitions")
     .where({ rarity: nextRarity })
-    .orderByRaw('RANDOM()')
+    .orderByRaw("RANDOM()")
     .first();
 
   if (!newDef) {
@@ -227,19 +297,23 @@ export async function combineTablets(playerId: string, tabletIds: string[]) {
   }
 
   const newCredits = Number(player.credits) - cost;
-  await db('players').where({ id: playerId }).update({ credits: newCredits });
+  await db("players").where({ id: playerId }).update({ credits: newCredits });
+  await settleDebitPlayer(playerId, cost, "store");
 
-  await db('player_tablets').whereIn('id', tabletIds).del();
+  await db("player_tablets").whereIn("id", tabletIds).del();
 
   const newId = crypto.randomUUID();
-  await db('player_tablets').insert({
+  await db("player_tablets").insert({
     id: newId,
     player_id: playerId,
     tablet_definition_id: newDef.id,
     equipped_slot: null,
   });
 
-  const effects = typeof newDef.effects === 'string' ? JSON.parse(newDef.effects) : newDef.effects;
+  const effects =
+    typeof newDef.effects === "string"
+      ? JSON.parse(newDef.effects)
+      : newDef.effects;
 
   return {
     combined: true,
@@ -257,12 +331,14 @@ export async function combineTablets(playerId: string, tabletIds: string[]) {
 }
 
 export async function grantTablet(playerId: string, tabletDefId: string) {
-  const prog = await db('player_progression').where({ player_id: playerId }).first();
+  const prog = await db("player_progression")
+    .where({ player_id: playerId })
+    .first();
   const level = prog?.level || 1;
 
-  const countResult = await db('player_tablets')
+  const countResult = await db("player_tablets")
     .where({ player_id: playerId })
-    .count('* as count')
+    .count("* as count")
     .first();
   const count = Number(countResult?.count || 0);
 
@@ -273,14 +349,14 @@ export async function grantTablet(playerId: string, tabletDefId: string) {
   }
 
   const newId = crypto.randomUUID();
-  await db('player_tablets').insert({
+  await db("player_tablets").insert({
     id: newId,
     player_id: playerId,
     tablet_definition_id: tabletDefId,
     equipped_slot: null,
   });
 
-  const def = await db('tablet_definitions').where({ id: tabletDefId }).first();
+  const def = await db("tablet_definitions").where({ id: tabletDefId }).first();
 
   return {
     overflow: false,
@@ -310,9 +386,9 @@ export async function grantRandomTablet(playerId: string) {
     }
   }
 
-  const def = await db('tablet_definitions')
+  const def = await db("tablet_definitions")
     .where({ rarity })
-    .orderByRaw('RANDOM()')
+    .orderByRaw("RANDOM()")
     .first();
 
   if (!def) {
@@ -322,53 +398,65 @@ export async function grantRandomTablet(playerId: string) {
   return grantTablet(playerId, def.id);
 }
 
-export async function tradeTablet(fromPlayerId: string, toPlayerId: string, playerTabletId: string) {
-  const tablet = await db('player_tablets')
-    .join('tablet_definitions', 'player_tablets.tablet_definition_id', 'tablet_definitions.id')
-    .where({ 'player_tablets.id': playerTabletId })
+export async function tradeTablet(
+  fromPlayerId: string,
+  toPlayerId: string,
+  playerTabletId: string,
+) {
+  const tablet = await db("player_tablets")
+    .join(
+      "tablet_definitions",
+      "player_tablets.tablet_definition_id",
+      "tablet_definitions.id",
+    )
+    .where({ "player_tablets.id": playerTabletId })
     .select(
-      'player_tablets.id as id',
-      'player_tablets.player_id as player_id',
-      'player_tablets.equipped_slot as equipped_slot',
-      'tablet_definitions.name as name'
+      "player_tablets.id as id",
+      "player_tablets.player_id as player_id",
+      "player_tablets.equipped_slot as equipped_slot",
+      "tablet_definitions.name as name",
     )
     .first();
 
   if (!tablet) {
-    throw new Error('Tablet not found');
+    throw new Error("Tablet not found");
   }
   if (tablet.player_id !== fromPlayerId) {
-    throw new Error('Tablet does not belong to the sender');
+    throw new Error("Tablet does not belong to the sender");
   }
   if (tablet.equipped_slot !== null && tablet.equipped_slot !== undefined) {
-    throw new Error('Cannot trade an equipped tablet. Unequip it first');
+    throw new Error("Cannot trade an equipped tablet. Unequip it first");
   }
 
-  const fromPlayer = await db('players').where({ id: fromPlayerId }).first();
-  const toPlayer = await db('players').where({ id: toPlayerId }).first();
+  const fromPlayer = await db("players").where({ id: fromPlayerId }).first();
+  const toPlayer = await db("players").where({ id: toPlayerId }).first();
 
   if (!fromPlayer || !toPlayer) {
-    throw new Error('One or both players not found');
+    throw new Error("One or both players not found");
   }
   if (fromPlayer.current_sector_id !== toPlayer.current_sector_id) {
-    throw new Error('Both players must be in the same sector to trade tablets');
+    throw new Error("Both players must be in the same sector to trade tablets");
   }
 
-  const toProg = await db('player_progression').where({ player_id: toPlayerId }).first();
+  const toProg = await db("player_progression")
+    .where({ player_id: toPlayerId })
+    .first();
   const toLevel = toProg?.level || 1;
 
-  const toCountResult = await db('player_tablets')
+  const toCountResult = await db("player_tablets")
     .where({ player_id: toPlayerId })
-    .count('* as count')
+    .count("* as count")
     .first();
   const toCount = Number(toCountResult?.count || 0);
 
   const toCapacity = getTabletStorage(toLevel);
   if (toCount >= toCapacity) {
-    throw new Error('Recipient does not have enough tablet storage');
+    throw new Error("Recipient does not have enough tablet storage");
   }
 
-  await db('player_tablets').where({ id: playerTabletId }).update({ player_id: toPlayerId });
+  await db("player_tablets")
+    .where({ id: playerTabletId })
+    .update({ player_id: toPlayerId });
 
   return {
     traded: true,

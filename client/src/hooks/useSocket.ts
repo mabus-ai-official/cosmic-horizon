@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { setSocketId } from '../services/api';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -13,10 +14,12 @@ export function useSocket(playerId: string | null) {
     socketRef.current = socket;
 
     socket.on('connect', () => {
+      setSocketId(socket.id ?? null);
       socket.emit('join', { playerId });
     });
 
     return () => {
+      setSocketId(null);
       socket.disconnect();
       socketRef.current = null;
     };

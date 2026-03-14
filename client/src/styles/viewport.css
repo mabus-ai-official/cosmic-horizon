@@ -1,0 +1,550 @@
+.scene-viewport {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0a0e14;
+  border-left: none;
+  box-shadow: inset 1px 0 6px rgba(86, 212, 221, 0.08);
+  overflow: hidden;
+  min-width: 0;
+  position: relative;
+}
+
+.scene-viewport::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.06) 2px,
+    rgba(0, 0, 0, 0.06) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+.scene-viewport--empty {
+  background: #0a0e14;
+}
+
+.scene-viewport .pixel-scene--inline {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* === Viewport Space Background === */
+.viewport-space-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    /* Star dots — soft round with falloff */
+    radial-gradient(
+      3px 3px at 15% 20%,
+      rgba(255, 255, 255, 0.5) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      2px 2px at 45% 70%,
+      rgba(255, 255, 255, 0.4) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      3px 3px at 75% 30%,
+      rgba(255, 255, 255, 0.45) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      2px 2px at 25% 80%,
+      rgba(255, 255, 255, 0.35) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      2px 2px at 85% 50%,
+      rgba(255, 255, 255, 0.4) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      3px 3px at 55% 15%,
+      rgba(255, 255, 255, 0.4) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      2px 2px at 10% 60%,
+      rgba(255, 255, 255, 0.45) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      2px 2px at 90% 85%,
+      rgba(255, 255, 255, 0.35) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      2px 2px at 35% 45%,
+      rgba(255, 255, 255, 0.3) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      2px 2px at 65% 90%,
+      rgba(255, 255, 255, 0.35) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      3px 3px at 80% 15%,
+      rgba(255, 255, 255, 0.4) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      2px 2px at 5% 40%,
+      rgba(255, 255, 255, 0.3) 0%,
+      transparent 100%
+    ),
+    /* Dark base */ linear-gradient(160deg, #080a0f, #0d1117, #0a0d12);
+  animation: viewport-twinkle 8s ease-in-out infinite alternate;
+}
+
+@keyframes viewport-twinkle {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.85;
+  }
+}
+
+
+/* === Viewport HUD Overlay === */
+.viewport-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.viewport-hud__tl,
+.viewport-hud__tr,
+.viewport-hud__bl {
+  position: absolute;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.615rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 0.5;
+  padding: 4px 6px;
+}
+
+.viewport-hud__tl {
+  top: 0;
+  left: 0;
+  color: var(--cyan);
+}
+.viewport-hud__tr {
+  top: 0;
+  right: 0;
+  color: var(--text-secondary);
+}
+.viewport-hud__bl {
+  bottom: 0;
+  left: 0;
+  color: var(--magenta);
+  font-size: 0.538rem;
+}
+
+/* === Viewport Vignette === */
+.viewport-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 40%,
+    rgba(0, 0, 0, 0.5) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* === Viewport Transition Flash === */
+.viewport-flash {
+  position: absolute;
+  inset: 0;
+  background: white;
+  z-index: 3;
+  animation: viewport-flash-anim 250ms ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes viewport-flash-anim {
+  from {
+    opacity: 0.6;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Combat screen shake */
+.scene-viewport--shake {
+  animation: viewport-shake 0.4s ease-out;
+}
+@keyframes viewport-shake {
+  0% {
+    transform: translate(0, 0);
+  }
+  15% {
+    transform: translate(-3px, 2px);
+  }
+  30% {
+    transform: translate(2px, -3px);
+  }
+  45% {
+    transform: translate(-2px, 1px);
+  }
+  60% {
+    transform: translate(3px, -1px);
+  }
+  75% {
+    transform: translate(-1px, 2px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+/* Floating XP/credit numbers */
+.floating-numbers {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  pointer-events: none;
+}
+.floating-number {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 1.1rem;
+  font-weight: bold;
+  text-shadow:
+    0 0 8px rgba(0, 0, 0, 0.8),
+    0 0 4px currentColor;
+  animation: float-up 1.8s ease-out forwards;
+  white-space: nowrap;
+  text-align: center;
+}
+.floating-number--xp {
+  color: var(--cyan);
+}
+.floating-number--credits {
+  color: var(--yellow);
+}
+.floating-number--loss {
+  color: var(--red);
+}
+@keyframes float-up {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+}
+
+/* === Pixel Scene Animations === */
+.pixel-scene--fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+}
+
+.pixel-scene--sidebar {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg-primary);
+  margin-bottom: 8px;
+}
+
+.pixel-scene--inline {
+  display: block;
+  margin: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.pixel-scene__stage {
+  display: block;
+  width: 100%;
+  image-rendering: pixelated;
+}
+
+.pixel-scene__actor {
+  transition: all 300ms ease;
+}
+
+.pixel-scene__text {
+  position: absolute;
+  bottom: 16%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--magenta);
+  font-family: "IBM Plex Mono", "Consolas", monospace;
+  font-size: 1.077rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  white-space: nowrap;
+  animation: scene-text-fade-in 1s ease forwards;
+  pointer-events: none;
+}
+
+.pixel-scene__skip {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  padding: 6px 16px;
+  background: transparent;
+  border: 1px solid var(--text-muted);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.923rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  z-index: 10;
+}
+
+.pixel-scene__skip:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-secondary);
+}
+
+.pixel-scene__text--danger {
+  color: var(--red);
+}
+
+/* Scene text fade-in */
+@keyframes scene-text-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Flash effect */
+.pixel-scene__flash {
+  animation: scene-flash 400ms ease-out forwards;
+}
+
+@keyframes scene-flash {
+  from {
+    opacity: 0.8;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Star twinkle */
+.pixel-scene__star {
+  animation: star-twinkle 3s ease-in-out infinite;
+}
+
+@keyframes star-twinkle {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Warp line streak */
+.pixel-scene__warp-line {
+  animation: warp-line-streak 0.6s linear infinite;
+}
+
+@keyframes warp-line-streak {
+  from {
+    transform: scaleX(1);
+    opacity: 0.6;
+  }
+  to {
+    transform: scaleX(8);
+    opacity: 0;
+  }
+}
+
+/* Laser fire */
+.pixel-scene__laser {
+  animation: laser-fire 800ms ease-out forwards;
+}
+
+@keyframes laser-fire {
+  from {
+    transform: scaleX(0);
+    opacity: 1;
+    transform-origin: left center;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 0.3;
+    transform-origin: left center;
+  }
+}
+
+/* Actor hit flash */
+.pixel-scene__actor-hit {
+  animation: actor-hit-flash 600ms ease;
+}
+
+@keyframes actor-hit-flash {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  16% {
+    filter: brightness(3);
+  }
+  33% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(3);
+  }
+  66% {
+    filter: brightness(1);
+  }
+  83% {
+    filter: brightness(3);
+  }
+}
+
+/* CRT vignette for fullscreen */
+.pixel-scene--fullscreen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 50%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+  pointer-events: none;
+}
+
+/* Scanlines overlay */
+.pixel-scene__scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.15) 2px,
+    rgba(0, 0, 0, 0.15) 4px
+  );
+  pointer-events: none;
+}
+
+/* === Pixel Sprites === */
+.pixel-sprite {
+  display: inline-block;
+  vertical-align: middle;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+
+/* === Viewport Glow Border === */
+.scene-viewport {
+  box-shadow:
+    inset 1px 0 6px rgba(86, 212, 221, 0.08),
+    inset 0 0 12px rgba(232, 71, 160, 0.12);
+  transition: box-shadow 0.6s ease;
+}
+
+.scene-viewport--combat {
+  box-shadow:
+    inset 0 0 18px rgba(240, 136, 62, 0.25),
+    0 0 8px rgba(240, 136, 62, 0.1);
+  animation: viewport-glow-combat 1.5s ease-in-out infinite;
+}
+
+.scene-viewport--docked {
+  box-shadow:
+    inset 0 0 18px rgba(86, 212, 221, 0.2),
+    0 0 8px rgba(86, 212, 221, 0.08);
+  animation: viewport-glow-docked 3s ease-in-out infinite;
+}
+
+.scene-viewport--danger {
+  box-shadow:
+    inset 0 0 14px rgba(248, 81, 73, 0.18),
+    0 0 6px rgba(248, 81, 73, 0.08);
+  animation: viewport-glow-danger 2s ease-in-out infinite;
+}
+
+@keyframes viewport-glow-combat {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 18px rgba(240, 136, 62, 0.25),
+      0 0 8px rgba(240, 136, 62, 0.1);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 28px rgba(240, 136, 62, 0.4),
+      0 0 14px rgba(240, 136, 62, 0.2);
+  }
+}
+
+@keyframes viewport-glow-docked {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 18px rgba(86, 212, 221, 0.2),
+      0 0 8px rgba(86, 212, 221, 0.08);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 24px rgba(86, 212, 221, 0.3),
+      0 0 12px rgba(86, 212, 221, 0.12);
+  }
+}
+
+@keyframes viewport-glow-danger {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 14px rgba(248, 81, 73, 0.18),
+      0 0 6px rgba(248, 81, 73, 0.08);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 22px rgba(248, 81, 73, 0.3),
+      0 0 10px rgba(248, 81, 73, 0.15);
+  }
+}

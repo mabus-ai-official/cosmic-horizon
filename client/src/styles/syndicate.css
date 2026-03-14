@@ -1,0 +1,180 @@
+/* === Syndicate & Alliance System === */
+
+/* Syndicate create form */
+.syndicate-create-form {
+  padding: 4px 0;
+}
+
+/* Browse results */
+.syndicate-browse {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.syndicate-browse-item {
+  padding: 4px 6px;
+  margin-bottom: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  border-radius: 2px;
+}
+
+.syndicate-browse-item:hover {
+  border-color: var(--text-muted);
+}
+
+/* Recruitment badges */
+.badge-recruitment {
+  font-size: 0.615rem;
+  padding: 1px 4px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.badge-open {
+  background: #1a3a2a;
+  color: var(--green);
+}
+.badge-closed {
+  background: #3a2a1a;
+  color: var(--yellow);
+}
+.badge-invite_only {
+  background: #2a1a3a;
+  color: var(--purple);
+}
+
+/* Vote cards */
+.vote-card {
+  padding: 6px;
+  margin-bottom: 6px;
+  border: 1px solid #222;
+  background: #0a0a0a;
+  border-radius: 2px;
+}
+
+.vote-progress {
+  margin-top: 4px;
+}
+
+.vote-progress__bar {
+  display: flex;
+  height: 6px;
+  background: #1a1a1a;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 2px;
+}
+
+.vote-bar-yes {
+  background: var(--green);
+}
+.vote-bar-no {
+  background: var(--red);
+}
+.vote-bar-abstain {
+  background: #555;
+}
+
+.vote-buttons button {
+  flex: 1;
+}
+
+/* Admin panel */
+.admin-section {
+  padding: 4px 0;
+}
+
+.permission-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 2px 0;
+}
+
+.permission-grid input[type="checkbox"] {
+  accent-color: var(--cyan);
+}
+
+/* Invite codes */
+.invite-code-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.code-copy {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.923rem;
+  color: var(--cyan);
+  cursor: pointer;
+  padding: 1px 4px;
+  background: #1a2a2a;
+  border-radius: 2px;
+  letter-spacing: 1px;
+}
+
+.code-copy:hover {
+  background: #2a3a3a;
+}
+
+/* Join request items */
+.join-request-item {
+  padding: 4px 0;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+/* Chat channel selector */
+.chat-channel-selector {
+  padding: 4px 0;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.channel-active {
+  font-weight: bold;
+}
+
+/* Ally button */
+.btn-ally {
+  background: #1a2a2a;
+  color: #666;
+  border: 1px solid #333;
+  font-size: 0.692rem;
+  padding: 1px 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-ally:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.btn-ally--active {
+  background: #1a3a2a;
+  color: var(--green);
+  border-color: var(--green);
+}
+
+.btn-ally--active:hover {
+  background: #2a1a1a;
+  color: var(--red);
+  border-color: var(--red);
+}
+
+.btn-ally--accept {
+  background: #1a2a3a;
+  color: var(--cyan);
+  border-color: var(--cyan);
+}
+
+.btn-ally--accept:hover {
+  background: #1a3a2a;
+  color: var(--green);
+  border-color: var(--green);
+}

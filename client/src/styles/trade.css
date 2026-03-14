@@ -1,0 +1,606 @@
+/* === Trade Table === */
+.trade-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.923rem;
+}
+
+.trade-table th {
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.769rem;
+  text-transform: uppercase;
+}
+
+.trade-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--bg-tertiary);
+}
+
+.commodity-name {
+  text-transform: capitalize;
+}
+
+.trade-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 0.923rem;
+  color: var(--text-secondary);
+}
+
+.qty-input {
+  width: 60px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 6px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.923rem;
+  outline: none;
+}
+
+.qty-input:focus {
+  border-color: var(--magenta);
+}
+
+.commodity-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* === Trade Table Enhancements === */
+.trade-table tbody tr {
+  transition: background 0.15s ease;
+}
+.trade-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
+}
+.trade-table tbody tr:hover {
+  background: rgba(163, 113, 247, 0.06);
+}
+.trade-table tbody tr:hover td {
+  color: var(--text-primary);
+}
+
+/* === Mall Panel === */
+.mall-tabs {
+  font-size: 0.78rem;
+}
+.mall-tab-content {
+  padding: 4px 0;
+}
+.mall-tab-credits {
+  font-size: 0.846rem;
+  margin-bottom: 6px;
+}
+.mall-error {
+  color: var(--red);
+  font-size: 0.846rem;
+  padding: 4px 6px;
+  background: rgba(248, 81, 73, 0.1);
+  border-radius: 3px;
+  border: 1px solid rgba(248, 81, 73, 0.3);
+  margin-bottom: 6px;
+}
+.mall-success {
+  color: var(--green);
+  font-size: 0.846rem;
+  padding: 4px 6px;
+  background: rgba(63, 185, 80, 0.1);
+  border-radius: 3px;
+  border: 1px solid rgba(63, 185, 80, 0.3);
+  margin-bottom: 6px;
+}
+.mall-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mall-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--bg-tertiary);
+  font-size: 0.923rem;
+}
+.mall-item:last-child {
+  border-bottom: none;
+}
+.mall-item--locked {
+  opacity: 0.5;
+}
+.mall-item__info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+.mall-item__name {
+  color: var(--text-primary);
+  font-size: 0.923rem;
+}
+.mall-item__category {
+  color: var(--text-secondary);
+  font-size: 0.769rem;
+  text-transform: uppercase;
+}
+.mall-item__desc {
+  color: var(--text-secondary);
+  font-size: 0.769rem;
+}
+.mall-item__stats {
+  color: var(--cyan);
+  font-size: 0.769rem;
+}
+.mall-item__locked {
+  color: var(--red);
+  font-size: 0.769rem;
+}
+.mall-item__action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.mall-item__price {
+  color: var(--purple);
+  font-size: 0.846rem;
+  white-space: nowrap;
+}
+.mall-item__badge-warn {
+  color: var(--yellow);
+  font-size: 0.769rem;
+  font-weight: bold;
+}
+
+/* === Cantina === */
+.cantina-rumor {
+  font-size: 0.846rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  margin-bottom: 8px;
+  border-left: 2px solid var(--yellow);
+}
+.cantina-rumor__label {
+  color: var(--yellow);
+  font-weight: bold;
+  font-style: normal;
+}
+.cantina-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.cantina-action {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.cantina-result {
+  font-size: 0.846rem;
+  padding: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  margin-top: 6px;
+  border-left: 2px solid var(--cyan);
+}
+.cantina-result__label {
+  color: var(--cyan);
+  font-weight: bold;
+}
+.cantina-mission {
+  margin-top: 4px;
+}
+.cantina-intel {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cantina-intel__section {
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  padding: 6px 8px;
+  border-left: 2px solid var(--purple);
+}
+.cantina-intel__title {
+  font-size: 0.692rem;
+  color: var(--purple);
+  font-weight: bold;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+.cantina-intel__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.769rem;
+  padding: 2px 0;
+  gap: 8px;
+}
+
+/* === Refuel === */
+.refuel-status {
+  margin-bottom: 8px;
+}
+.refuel-bar-label {
+  font-size: 0.923rem;
+  margin-bottom: 4px;
+}
+.refuel-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 0.923rem;
+  color: var(--text-secondary);
+}
+.refuel-cost {
+  font-size: 0.846rem;
+  margin-bottom: 4px;
+}
+
+/* === Trade History Panel === */
+.trade-history-summary {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.trade-history-overall {
+  display: flex;
+  gap: 12px;
+  margin: 6px 0 8px;
+  flex-wrap: wrap;
+}
+
+.trade-history-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 70px;
+}
+
+.trade-history-stat__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--grey);
+}
+
+.trade-history-stat__value {
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+}
+
+.trade-history-commodities {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.trade-history-commodity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.77rem;
+  font-family: var(--font-mono);
+}
+
+.trade-history-commodity-name {
+  text-transform: capitalize;
+  min-width: 68px;
+  color: var(--cyan);
+}
+
+.trade-history-filters {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.trade-history-search {
+  flex: 1;
+  min-width: 100px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: 3px;
+}
+
+.trade-history-search::placeholder {
+  color: var(--grey);
+}
+
+.trade-history-search:focus {
+  outline: none;
+  border-color: var(--cyan);
+}
+
+.trade-history-select {
+  padding: 4px 6px;
+  font-size: 0.77rem;
+  font-family: var(--font-mono);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.trade-history-select:focus {
+  outline: none;
+  border-color: var(--cyan);
+}
+
+.trade-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+.trade-history-row {
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--bg-tertiary);
+  transition: background 0.15s ease;
+}
+
+.trade-history-row:hover {
+  background: rgba(163, 113, 247, 0.06);
+}
+
+.trade-history-row__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+}
+
+.trade-history-row__bottom {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  margin-top: 2px;
+}
+
+.trade-history-direction {
+  font-weight: bold;
+  font-size: 0.7rem;
+  padding: 1px 4px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-width: 32px;
+  text-align: center;
+}
+
+.trade-history-direction--buy {
+  color: var(--red);
+  background: rgba(248, 81, 73, 0.12);
+}
+
+.trade-history-direction--sell {
+  color: var(--green);
+  background: rgba(63, 185, 80, 0.12);
+}
+
+.trade-history-commodity {
+  text-transform: capitalize;
+  color: var(--cyan);
+  min-width: 60px;
+}
+
+.trade-history-qty {
+  color: var(--text-secondary);
+}
+
+.trade-history-total {
+  margin-left: auto;
+  font-weight: bold;
+}
+
+/* === Trade Computer === */
+.tc-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tc-header {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.85rem;
+  color: var(--purple);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tc-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tc-filter-btn {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.tc-filter-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.tc-filter-active {
+  background: var(--purple);
+  color: var(--bg-primary);
+  border-color: var(--purple);
+}
+
+.tc-filter-active:hover {
+  background: var(--purple);
+  color: var(--bg-primary);
+}
+
+.tc-count {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.tc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tc-outpost {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
+.tc-outpost-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0;
+}
+
+.tc-outpost--expanded .tc-outpost-header {
+  margin-bottom: 4px;
+}
+
+.tc-outpost-expand {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  width: 10px;
+  flex-shrink: 0;
+}
+
+.tc-outpost-sector {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.tc-outpost-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.tc-outpost-tags {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.tc-tag {
+  font-size: 0.7rem;
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-family: "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tc-tag-fuel {
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--cyan);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.tc-tag-mall {
+  background: rgba(232, 71, 160, 0.15);
+  color: var(--pink);
+  border: 1px solid rgba(232, 71, 160, 0.3);
+}
+
+.tc-commodities {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tc-commodity-row {
+  display: grid;
+  grid-template-columns: 70px 36px 60px 80px 1fr;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.tc-commodity-name {
+  color: var(--text-secondary);
+}
+
+.tc-commodity-mode {
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.tc-commodity-price {
+  color: var(--purple);
+  text-align: right;
+}
+
+.tc-commodity-stock {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-align: right;
+}
+
+.tc-stock-bar {
+  height: 4px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.tc-stock-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.tc-empty {
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
+.tc-loading {
+  color: var(--text-muted);
+  padding: 0.5rem 0;
+}
+
+.tc-show-more {
+  width: 100%;
+  margin-top: 6px;
+  text-align: center;
+}

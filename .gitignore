@@ -40,6 +40,7 @@ deploy.sh
 client/public/audio/*.mp3
 client/public/audio/*.ogg
 client/public/audio/*.wav
+client/public/audio/narration/*.mp3
 
 # Art assets (large binary files)
 art/

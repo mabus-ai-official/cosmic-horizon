@@ -54,6 +54,7 @@ type LineType =
 
 interface SectorInfo {
   sectorName: string | null;
+  sectorType: string;
   owner: { name: string; type: "player" | "syndicate" } | null;
   isNpcStarmall: boolean;
   claimedAt: string | null;
@@ -140,7 +141,14 @@ export default function ExplorePanel({
     if (tab === "sector" && sectorId) {
       fetchSectorInfo();
       getFactionReps()
-        .then(({ data }) => setFactions(data.factions || []))
+        .then(({ data }) =>
+          setFactions(
+            (data.factions || []).map((f: any) => ({
+              id: f.factionId,
+              name: f.factionName,
+            })),
+          ),
+        )
         .catch(() => setFactions([]));
     }
   }, [tab, sectorId, refreshKey]);
@@ -548,115 +556,123 @@ export default function ExplorePanel({
       <div className="text-muted">Loading sector info...</div>
     )
   ) : (
-    <div style={{ fontSize: 12 }}>
+    <div className="panel-sections">
       {sectorError && (
-        <div style={{ color: "var(--red)", fontSize: 11, marginBottom: 8 }}>
-          {sectorError}
-        </div>
+        <div style={{ color: "var(--red)", fontSize: 11 }}>{sectorError}</div>
       )}
 
-      {/* Sector name */}
-      {sectorInfo.sectorName && (
-        <div
-          style={{ color: "var(--cyan)", fontWeight: "bold", marginBottom: 6 }}
-        >
-          {sectorInfo.sectorName}
+      {/* Sector info card */}
+      <div className="panel-section panel-section--accent">
+        <div className="panel-section__header">
+          {sectorInfo.sectorName || `Sector ${sectorId}`}
         </div>
-      )}
-
-      {/* Claim status */}
-      <div style={{ marginBottom: 8, color: "#aaa" }}>
-        {sectorInfo.isNpcStarmall ? (
-          <span style={{ color: "var(--yellow)" }}>
-            NPC Star Mall (cannot be claimed)
+        <div className="panel-kv">
+          <span className="panel-kv__label">Status</span>
+          <span className="panel-kv__value">
+            {sectorInfo.isNpcStarmall ? (
+              <span style={{ color: "var(--yellow)" }}>NPC Star Mall</span>
+            ) : sectorInfo.owner?.type === "player" ? (
+              <span style={{ color: "var(--green)" }}>
+                Claimed by {sectorInfo.owner.name}
+              </span>
+            ) : sectorInfo.owner?.type === "syndicate" ? (
+              <span style={{ color: "var(--magenta)" }}>
+                Syndicate: {sectorInfo.owner.name}
+              </span>
+            ) : (
+              <span style={{ color: "#666" }}>Unclaimed</span>
+            )}
           </span>
-        ) : sectorInfo.owner?.type === "player" ? (
-          <span>
-            Claimed by{" "}
-            <span style={{ color: "var(--green)" }}>
-              {sectorInfo.owner.name}
+        </div>
+        {sectorInfo.registeredFaction && (
+          <div className="panel-kv">
+            <span className="panel-kv__label">Faction</span>
+            <span className="panel-kv__value panel-kv__value--accent">
+              {sectorInfo.registeredFaction.name}
             </span>
-          </span>
-        ) : sectorInfo.owner?.type === "syndicate" ? (
-          <span>
-            Claimed by syndicate:{" "}
-            <span style={{ color: "var(--magenta)" }}>
-              {sectorInfo.owner.name}
+          </div>
+        )}
+        {sectorInfo.claimedAt && (
+          <div className="panel-kv">
+            <span className="panel-kv__label">Claimed</span>
+            <span
+              className="panel-kv__value"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {new Date(sectorInfo.claimedAt).toLocaleDateString()}
             </span>
-          </span>
-        ) : (
-          <span style={{ color: "#666" }}>Unclaimed</span>
+          </div>
         )}
       </div>
 
-      {/* Registered faction */}
-      {sectorInfo.registeredFaction && (
-        <div style={{ fontSize: 11, color: "var(--cyan)", marginBottom: 8 }}>
-          Faction: {sectorInfo.registeredFaction.name}
-        </div>
-      )}
-
-      {/* Claimed at date */}
-      {sectorInfo.claimedAt && (
-        <div style={{ fontSize: 10, color: "#555", marginBottom: 8 }}>
-          Claimed: {new Date(sectorInfo.claimedAt).toLocaleDateString()}
-        </div>
-      )}
-
-      {/* Unclaimed and not NPC: show claim controls */}
-      {!isClaimed && !sectorInfo.isNpcStarmall && (
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ marginBottom: 4 }}>
-            <label
-              style={{
-                cursor: "pointer",
-                marginRight: 12,
-                color: claimType === "player" ? "var(--green)" : "#666",
-              }}
+      {/* Unclaimed and claimable: show claim controls */}
+      {!isClaimed &&
+        !sectorInfo.isNpcStarmall &&
+        sectorInfo.sectorType !== "protected" &&
+        sectorInfo.sectorType !== "harmony_enforced" && (
+          <div className="panel-section">
+            <div className="panel-section__header panel-section__header--muted">
+              Claim Sector
+            </div>
+            <div style={{ marginBottom: 4 }}>
+              <label
+                style={{
+                  cursor: "pointer",
+                  marginRight: 12,
+                  color: claimType === "player" ? "var(--green)" : "#666",
+                }}
+              >
+                <input
+                  type="radio"
+                  name="claimType"
+                  checked={claimType === "player"}
+                  onChange={() => setClaimType("player")}
+                  style={{ marginRight: 4 }}
+                />
+                Player
+              </label>
+              <label
+                style={{
+                  cursor: "pointer",
+                  color: claimType === "syndicate" ? "var(--magenta)" : "#666",
+                }}
+              >
+                <input
+                  type="radio"
+                  name="claimType"
+                  checked={claimType === "syndicate"}
+                  onChange={() => setClaimType("syndicate")}
+                  style={{ marginRight: 4 }}
+                />
+                Syndicate
+              </label>
+            </div>
+            <button
+              className="btn-sm btn-buy"
+              onClick={handleClaimSector}
+              disabled={sectorBusy}
             >
-              <input
-                type="radio"
-                name="claimType"
-                checked={claimType === "player"}
-                onChange={() => setClaimType("player")}
-                style={{ marginRight: 4 }}
-              />
-              Player
-            </label>
-            <label
-              style={{
-                cursor: "pointer",
-                color: claimType === "syndicate" ? "var(--magenta)" : "#666",
-              }}
-            >
-              <input
-                type="radio"
-                name="claimType"
-                checked={claimType === "syndicate"}
-                onChange={() => setClaimType("syndicate")}
-                style={{ marginRight: 4 }}
-              />
-              Syndicate
-            </label>
+              {sectorBusy ? "..." : "CLAIM SECTOR"}
+            </button>
           </div>
-          <button
-            className="btn-sm btn-buy"
-            onClick={handleClaimSector}
-            disabled={sectorBusy}
-          >
-            {sectorBusy ? "..." : "CLAIM SECTOR"}
-          </button>
-        </div>
-      )}
+        )}
 
       {/* Claimed by current player: rename controls */}
       {isClaimedByMe && !hasNamingAuthority && (
-        <div style={{ marginBottom: 8, fontSize: 11, color: "#888" }}>
-          Complete 'Stellar Census' to unlock naming
+        <div className="panel-section">
+          <div className="panel-section__header panel-section__header--muted">
+            Naming
+          </div>
+          <div style={{ fontSize: 11, color: "#888" }}>
+            Complete 'Stellar Census' to unlock naming
+          </div>
         </div>
       )}
       {isClaimedByMe && hasNamingAuthority && (
-        <div style={{ marginBottom: 8 }}>
+        <div className="panel-section">
+          <div className="panel-section__header panel-section__header--muted">
+            Rename Sector
+          </div>
           <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
             <input
               type="text"
@@ -686,7 +702,10 @@ export default function ExplorePanel({
 
       {/* Claimed by another player: conquer controls */}
       {isClaimed && !isClaimedByMe && !sectorInfo.isNpcStarmall && (
-        <div style={{ marginBottom: 8 }}>
+        <div className="panel-section panel-section--danger">
+          <div className="panel-section__header panel-section__header--danger">
+            Conquer
+          </div>
           <div style={{ color: "var(--red)", fontSize: 10, marginBottom: 4 }}>
             Warning: Conquering a sector will provoke hostility from the current
             owner.
@@ -705,13 +724,10 @@ export default function ExplorePanel({
       {isClaimedByMe &&
         !sectorInfo.registeredFaction &&
         factions.length > 0 && (
-          <div
-            style={{
-              marginBottom: 8,
-              borderTop: "1px solid #333",
-              paddingTop: 8,
-            }}
-          >
+          <div className="panel-section panel-section--special">
+            <div className="panel-section__header panel-section__header--special">
+              Faction Registration
+            </div>
             <div style={{ fontSize: 11, color: "#aaa", marginBottom: 4 }}>
               Register with a faction for fame and privileges:
             </div>

@@ -5,6 +5,7 @@ import { PLANET_TYPES } from "../config/planet-types";
 import { awardXP } from "./progression";
 import { incrementStat, logActivity, checkMilestones } from "./profile-stats";
 import { applyUpgradesToShip } from "./upgrades";
+import { settleResourceCredit, settleResourceDebit } from "../chain/tx-queue";
 
 // === Query helpers ===
 
@@ -520,6 +521,13 @@ export async function collectPlanetResources(
         name: commodity.name,
         quantity: toLoad,
       });
+      // Chain settlement: credit resource token
+      await settleResourceCredit(
+        playerId,
+        commodity.resourceId,
+        toLoad,
+        "trade",
+      );
     } else {
       planetUpdates[commodity.field] = available;
     }
@@ -617,6 +625,22 @@ export async function adjustPlayerResource(
       resource_id: resourceId,
       quantity: amount,
     });
+  }
+
+  // Chain settlement for known ERC-20 resources (cyrillium, food, tech, drift_fuel)
+  try {
+    if (amount > 0) {
+      await settleResourceCredit(playerId, resourceId, amount, "trade");
+    } else if (amount < 0) {
+      await settleResourceDebit(
+        playerId,
+        resourceId,
+        Math.abs(amount),
+        "trade",
+      );
+    }
+  } catch {
+    /* chain sync failure is non-critical */
   }
 
   // Check for recipe discovery when gaining resources

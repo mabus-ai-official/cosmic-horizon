@@ -108,6 +108,8 @@ export default function PanelRouter({
           isDocked={!!game.player?.dockedAtOutpostId}
           isLanded={!!game.player?.landedAtPlanetId}
           hasPlanets={(game.sector?.planets?.length ?? 0) > 0}
+          hasScanner={!!game.player?.currentShip?.hasPlanetaryScanner}
+          hasStarMall={!!game.sector?.hasStarMall}
           onDock={handleDock}
           onUndock={handleUndock}
           onLandClick={() => selectPanel("planets")}
@@ -250,6 +252,7 @@ export default function PanelRouter({
                 title: data.title,
                 subtitle: data.subtitle,
                 body: data.body,
+                narrationUrl: data.narrationUrl,
                 colorScheme: "yellow",
                 duration: 0,
                 priority: "blocking",
@@ -267,6 +270,7 @@ export default function PanelRouter({
                 title: data.title,
                 subtitle: data.subtitle,
                 body: data.body,
+                narrationUrl: data.narrationUrl,
                 colorScheme: "cyan",
                 duration: 0,
                 priority: "blocking",
@@ -278,12 +282,25 @@ export default function PanelRouter({
                   },
                 ],
               });
+            } else if (data.type === "mission_complete") {
+              eventOverlay.enqueueEvent({
+                category: "mission_complete",
+                title: data.title,
+                subtitle: data.subtitle,
+                body: data.body,
+                narrationUrl: data.narrationUrl,
+                colorScheme: "green",
+                duration: 6000,
+                priority: "interstitial",
+                dismissable: true,
+              });
             } else {
               eventOverlay.enqueueEvent({
                 category: "story_accept",
                 title: data.title,
                 subtitle: data.subtitle,
                 body: data.body,
+                narrationUrl: data.narrationUrl,
                 colorScheme: "green",
                 duration: 5000,
                 priority: "interstitial",
@@ -336,7 +353,6 @@ export default function PanelRouter({
           refreshKey={refreshKey}
           onItemUsed={handleItemUsed}
           atStarMall={!!activeOutpost && !!game.sector?.hasStarMall}
-          onCommand={handleActionButton}
           bare
         />
       );
@@ -346,6 +362,7 @@ export default function PanelRouter({
           refreshKey={refreshKey}
           onAddLine={game.addLine}
           onRefreshStatus={game.refreshStatus}
+          onCommand={handleActionButton}
           colonistsByRace={game.player?.currentShip?.colonistsByRace}
           sectorPlayers={game.sector?.players}
           playerId={game.player?.id}

@@ -35,7 +35,8 @@ export function useEventOverlay(
     const next = queueRef.current.shift()!;
     setCurrentEvent(next);
 
-    if (next.duration > 0) {
+    // Suppress auto-dismiss when narration is attached — user must dismiss manually
+    if (next.duration > 0 && !next.narrationUrl) {
       timerRef.current = setTimeout(() => {
         next.onDismiss?.();
         processNext();
@@ -69,6 +70,7 @@ export function useEventOverlay(
         dismissable: params.dismissable ?? defaults.dismissable,
         actions: params.actions,
         colorScheme: params.colorScheme ?? defaults.colorScheme,
+        narrationUrl: params.narrationUrl,
         onDismiss: params.onDismiss,
         onAction: params.onAction,
       };

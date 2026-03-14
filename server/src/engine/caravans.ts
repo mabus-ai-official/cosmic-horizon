@@ -8,7 +8,7 @@ import { adjustPlayerResource } from "./crafting";
 import { awardXP } from "./progression";
 import { notifyPlayer, notifySector } from "../ws/handlers";
 import { incrementStat, logActivity, checkMilestones } from "./profile-stats";
-import { settleCreditPlayer } from "../chain/tx-queue";
+import { settleCreditPlayer, settleResourceCredit } from "../chain/tx-queue";
 
 /**
  * Get maximum trade route slots based on player level.
@@ -402,6 +402,7 @@ export async function ransackCaravan(
     .update({
       food_cargo: db.raw("food_cargo + ?", [foodLoot]),
     });
+  await settleResourceCredit(attackerId, "food", foodLoot, "combat");
 
   // Add credits to attacker
   await db("players")

@@ -484,21 +484,33 @@
 
 .tc-outpost-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 6px;
+  margin-bottom: 0;
+}
+
+.tc-outpost--expanded .tc-outpost-header {
   margin-bottom: 4px;
+}
+
+.tc-outpost-expand {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  width: 10px;
+  flex-shrink: 0;
+}
+
+.tc-outpost-sector {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-family: "IBM Plex Mono", monospace;
 }
 
 .tc-outpost-name {
   font-weight: 600;
   color: var(--text-primary);
   font-size: 0.9rem;
-}
-
-.tc-outpost-sector {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  font-family: "IBM Plex Mono", monospace;
 }
 
 .tc-outpost-tags {
@@ -585,4 +597,10 @@
 .tc-loading {
   color: var(--text-muted);
   padding: 0.5rem 0;
+}
+
+.tc-show-more {
+  width: 100%;
+  margin-top: 6px;
+  text-align: center;
 }

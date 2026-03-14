@@ -6,6 +6,34 @@ import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
 import type { MapData } from "./SectorMap";
 
+/**
+ * ParallaxLayer — shifts children opposite to camera movement at a fraction
+ * of the camera's position, creating depth-based parallax.
+ * factor: 0 = locked to world (no parallax), 1 = moves fully with camera (stays fixed on screen)
+ * Typical values: 0.05 (distant bg), 0.15 (mid nebulae), 0.3 (near stars)
+ */
+function ParallaxLayer({
+  factor,
+  children,
+}: {
+  factor: number;
+  children: React.ReactNode;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
+  const { camera } = useThree();
+
+  useFrame(() => {
+    if (!groupRef.current) return;
+    groupRef.current.position.set(
+      camera.position.x * factor,
+      camera.position.y * factor,
+      camera.position.z * factor,
+    );
+  });
+
+  return <group ref={groupRef}>{children}</group>;
+}
+
 // --- Constants ---
 const TOTAL_SECTORS = 5000;
 const GALAXY_RADIUS = 100;
@@ -1670,20 +1698,26 @@ export default function SectorMap3D({
         <pointLight position={[-40, -20, 10]} color="#e847a0" intensity={0.2} />
         <pointLight position={[0, 0, 15]} color="#fffbe8" intensity={0.15} />
 
-        <Stars
-          radius={200}
-          depth={150}
-          count={4000}
-          factor={4}
-          saturation={0.1}
-          fade
-          speed={0.2}
-        />
+        <ParallaxLayer factor={0.3}>
+          <Stars
+            radius={200}
+            depth={150}
+            count={4000}
+            factor={4}
+            saturation={0.1}
+            fade
+            speed={0.2}
+          />
+        </ParallaxLayer>
 
         <GalaxyDust exploredSet={exploredSet} />
-        <NebulaClouds />
+        <ParallaxLayer factor={0.15}>
+          <NebulaClouds />
+        </ParallaxLayer>
         <GalacticCore />
-        <BackgroundGalaxies />
+        <ParallaxLayer factor={0.05}>
+          <BackgroundGalaxies />
+        </ParallaxLayer>
 
         <CurrentEdges
           edges={mapData.edges}

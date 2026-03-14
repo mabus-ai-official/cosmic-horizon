@@ -44,9 +44,17 @@ export default function CodexPanel({ refreshKey, bare }: Props) {
   }, [refreshKey]);
 
   const content = (
-    <div className="codex-panel">
-      <div className="codex-progress">
-        CODEX: {unlockedCount}/{totalEntries} entries
+    <div className="panel-sections">
+      <div className="panel-section panel-section--special">
+        <div className="panel-section__header panel-section__header--special">
+          Lore Codex
+        </div>
+        <div className="panel-kv">
+          <span className="panel-kv__label">Progress</span>
+          <span className="panel-kv__value panel-kv__value--accent">
+            {unlockedCount}/{totalEntries} entries
+          </span>
+        </div>
       </div>
 
       {[1, 2, 3, 4].map((act) => {
@@ -55,7 +63,7 @@ export default function CodexPanel({ refreshKey, bare }: Props) {
         const isExpanded = expandedAct === act;
 
         return (
-          <div key={act} className="codex-act-section">
+          <div key={act} className="panel-section">
             <div
               className="codex-act-header"
               onClick={() => setExpandedAct(isExpanded ? null : act)}

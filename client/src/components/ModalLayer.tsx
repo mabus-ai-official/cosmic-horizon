@@ -3,6 +3,7 @@
  * Includes ARIA comment toast, toasts, event overlay, SP complete modal,
  * settings overlay, arcade modal, and tutorial overlays.
  */
+import { useEffect, useRef } from "react";
 import AriaComment from "./AriaComment";
 import ToastManager from "./ToastManager";
 import EventOverlay from "./EventOverlay";
@@ -11,12 +12,22 @@ import TutorialWelcomeOverlay from "./TutorialWelcomeOverlay";
 import TutorialOverlay from "./TutorialOverlay";
 import SettingsPanel from "./SettingsPanel";
 import type { ChatMessage } from "./SectorChatPanel";
+import type { KeyBinding } from "../hooks/useKeybindings";
 
 interface ModalLayerProps {
   aria: any;
   toasts: any[];
   dismissToast: (id: number) => void;
   eventOverlay: any;
+  narration: {
+    playNarration: (url: string) => void;
+    skipNarration: () => void;
+    isPlaying: boolean;
+    narrationEnabled: boolean;
+    setNarrationEnabled: (enabled: boolean) => void;
+    narrationVolume: number;
+    setNarrationVolume: (v: number) => void;
+  };
   showSPComplete: boolean;
   setShowSPComplete: React.Dispatch<React.SetStateAction<boolean>>;
   showSettings: boolean;
@@ -26,14 +37,17 @@ interface ModalLayerProps {
   chatMessages: ChatMessage[];
   game: any;
   audio: any;
-  map3D: boolean;
-  setMap3D: React.Dispatch<React.SetStateAction<boolean>>;
   onLogout?: () => void;
   onCommand: (input: string) => void;
   activePanel: string;
   selectPanel: (id: any) => void;
   on: (event: string, handler: (...args: any[]) => void) => () => void;
   emit: (event: string, data: any) => void;
+  keybindings: KeyBinding[];
+  keybindConflicts: Map<string, string[]>;
+  onRebind: (action: string, newKey: string) => void;
+  onResetKeybind: (action: string) => void;
+  onResetAllKeybinds: () => void;
 }
 
 export default function ModalLayer({
@@ -41,6 +55,7 @@ export default function ModalLayer({
   toasts,
   dismissToast,
   eventOverlay,
+  narration,
   showSPComplete,
   setShowSPComplete,
   showSettings,
@@ -50,15 +65,86 @@ export default function ModalLayer({
   chatMessages,
   game,
   audio,
-  map3D,
-  setMap3D,
   onLogout,
   onCommand,
   activePanel,
   selectPanel,
   on,
   emit,
+  keybindings,
+  keybindConflicts,
+  onRebind,
+  onResetKeybind,
+  onResetAllKeybinds,
 }: ModalLayerProps) {
+  // Auto-play narration when a narrated event becomes current
+  const lastNarratedEventId = useRef<number | null>(null);
+  const postNarrationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wasPlayingRef = useRef(false);
+  const currentEvent = eventOverlay.currentEvent;
+
+  useEffect(() => {
+    if (
+      currentEvent?.narrationUrl &&
+      narration.narrationEnabled &&
+      currentEvent.id !== lastNarratedEventId.current
+    ) {
+      lastNarratedEventId.current = currentEvent.id;
+      narration.playNarration(currentEvent.narrationUrl);
+    }
+  }, [currentEvent, narration]);
+
+  // Auto-dismiss 2s after narration ends
+  useEffect(() => {
+    if (narration.isPlaying) {
+      wasPlayingRef.current = true;
+      // Clear any pending post-narration timer
+      if (postNarrationTimer.current) {
+        clearTimeout(postNarrationTimer.current);
+        postNarrationTimer.current = null;
+      }
+    } else if (wasPlayingRef.current && currentEvent?.narrationUrl) {
+      // Narration just ended — start 2s countdown
+      wasPlayingRef.current = false;
+      postNarrationTimer.current = setTimeout(() => {
+        postNarrationTimer.current = null;
+        eventOverlay.dismissCurrent();
+      }, 2000);
+    }
+  }, [narration.isPlaying, currentEvent, eventOverlay]);
+
+  // Clean up timer on unmount or event change
+  useEffect(() => {
+    return () => {
+      if (postNarrationTimer.current) {
+        clearTimeout(postNarrationTimer.current);
+        postNarrationTimer.current = null;
+      }
+    };
+  }, [currentEvent]);
+
+  // Wrap dismiss to also stop narration
+  const handleDismiss = () => {
+    if (postNarrationTimer.current) {
+      clearTimeout(postNarrationTimer.current);
+      postNarrationTimer.current = null;
+    }
+    wasPlayingRef.current = false;
+    narration.skipNarration();
+    eventOverlay.dismissCurrent();
+  };
+
+  // Wrap action handler to also stop narration
+  const handleAction = (actionId: string) => {
+    if (postNarrationTimer.current) {
+      clearTimeout(postNarrationTimer.current);
+      postNarrationTimer.current = null;
+    }
+    wasPlayingRef.current = false;
+    narration.skipNarration();
+    eventOverlay.handleAction(actionId);
+  };
+
   return (
     <>
       <AriaComment
@@ -70,8 +156,10 @@ export default function ModalLayer({
       {eventOverlay.currentEvent && (
         <EventOverlay
           event={eventOverlay.currentEvent}
-          onDismiss={eventOverlay.dismissCurrent}
-          onAction={eventOverlay.handleAction}
+          onDismiss={handleDismiss}
+          onAction={handleAction}
+          narrationPlaying={narration.isPlaying}
+          onSkipNarration={narration.skipNarration}
         />
       )}
       {showSPComplete && (
@@ -159,14 +247,21 @@ export default function ModalLayer({
               gameMode={game.player?.gameMode ?? undefined}
               volume={audio.volume}
               onVolumeChange={audio.setVolume}
-              map3D={map3D}
-              onToggleMap3D={() => setMap3D((v) => !v)}
+              narrationEnabled={narration.narrationEnabled}
+              onNarrationToggle={narration.setNarrationEnabled}
+              narrationVolume={narration.narrationVolume}
+              onNarrationVolumeChange={narration.setNarrationVolume}
               onLogout={onLogout ?? (() => {})}
               onRefresh={() => {
                 game.refreshStatus();
                 game.refreshSector();
                 game.refreshMap();
               }}
+              keybindings={keybindings}
+              keybindConflicts={keybindConflicts}
+              onRebind={onRebind}
+              onResetKeybind={onResetKeybind}
+              onResetAllKeybinds={onResetAllKeybinds}
             />
           </div>
         </div>

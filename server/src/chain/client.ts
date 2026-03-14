@@ -20,6 +20,7 @@ import {
   shipNftAbi,
   equipmentNftAbi,
   characterNftAbi,
+  planetNftAbi,
   syndicateFactoryAbi,
   syndicateGovernorAbi,
   memberFactoryAbi,
@@ -47,6 +48,7 @@ const parsedGameTokenAbi = parseAbi(gameTokenAbi);
 const parsedShipNftAbi = parseAbi(shipNftAbi);
 const parsedEquipmentNftAbi = parseAbi(equipmentNftAbi);
 const parsedCharacterNftAbi = parseAbi(characterNftAbi);
+const parsedPlanetNftAbi = parseAbi(planetNftAbi);
 const parsedSyndicateFactoryAbi = parseAbi(syndicateFactoryAbi);
 const parsedSyndicateGovernorAbi = parseAbi(syndicateGovernorAbi);
 const parsedMemberFactoryAbi = parseAbi(memberFactoryAbi);
@@ -353,6 +355,63 @@ export async function getFactionRep(
 }
 
 // ---------------------------------------------------------------------------
+// Helper functions — Planet NFT
+// ---------------------------------------------------------------------------
+
+export interface PlanetData {
+  planetClass: string;
+  name: string;
+  sectorId: number;
+}
+
+/** Mint a planet NFT on first claim, returns the token ID */
+export async function mintPlanet(
+  to: Address,
+  data: PlanetData,
+): Promise<bigint> {
+  const hash = await write(
+    contractAddresses.planetNft,
+    parsedPlanetNftAbi,
+    "mintPlanet",
+    [to, data],
+  );
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+  const mintEvent = receipt.logs.find(
+    (log) =>
+      log.address.toLowerCase() === contractAddresses.planetNft.toLowerCase(),
+  );
+  if (!mintEvent || !mintEvent.topics[1]) {
+    throw new Error("PlanetMinted event not found in receipt");
+  }
+  return BigInt(mintEvent.topics[1]);
+}
+
+/** Transfer planet NFT between players (conquest/trade) */
+export async function transferPlanet(
+  tokenId: bigint,
+  from: Address,
+  to: Address,
+): Promise<Hash> {
+  return write(
+    contractAddresses.planetNft,
+    parsedPlanetNftAbi,
+    "transferPlanet",
+    [tokenId, from, to],
+  );
+}
+
+/** Read planet data from chain */
+export async function getPlanetData(tokenId: bigint): Promise<PlanetData> {
+  return read<PlanetData>(
+    contractAddresses.planetNft,
+    parsedPlanetNftAbi,
+    "getPlanet",
+    [tokenId],
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Helper functions — Equipment NFT
 // ---------------------------------------------------------------------------
 
@@ -408,6 +467,75 @@ export async function uninstallEquipment(tokenId: bigint): Promise<Hash> {
     "uninstallFromShip",
     [tokenId],
   );
+}
+
+// ---------------------------------------------------------------------------
+// Helper functions — NFT ownership checks
+// ---------------------------------------------------------------------------
+
+/** Map NFT type name to contract address */
+export function getNftContractAddress(nftType: string): Address {
+  const map: Record<string, Address> = {
+    ship: contractAddresses.shipNft,
+    equipment: contractAddresses.equipmentNft,
+    character: contractAddresses.characterNft,
+    planet: contractAddresses.planetNft,
+  };
+  const addr = map[nftType];
+  if (!addr) throw new Error(`Unknown NFT type: ${nftType}`);
+  return addr;
+}
+
+/** Read the on-chain ERC-721 ownerOf for any game NFT */
+export async function nftOwnerOf(
+  nftType: string,
+  tokenId: bigint,
+): Promise<Address> {
+  const nftAddr = getNftContractAddress(nftType);
+  // All NFT contracts have a standard ownerOf(uint256)
+  const abi = parseAbi([
+    "function ownerOf(uint256 tokenId) view returns (address)",
+  ]);
+  return read<Address>(nftAddr, abi, "ownerOf", [tokenId]);
+}
+
+/** Check if an NFT is recorded in a MemberContract's nftLedger */
+export async function nftInMemberLedger(
+  memberAddress: Address,
+  nftType: string,
+  tokenId: bigint,
+): Promise<boolean> {
+  const nftAddr = getNftContractAddress(nftType);
+  return read<boolean>(memberAddress, parsedMemberContractAbi, "nftLedger", [
+    nftAddr,
+    tokenId,
+  ]);
+}
+
+// ---------------------------------------------------------------------------
+// Helper functions — NFT withdrawal from MemberContract to external wallet
+// ---------------------------------------------------------------------------
+
+/**
+ * Withdraw an NFT from a player's MemberContract to their external wallet.
+ * Uses MemberContract.transferNFTTo() which debits the nftLedger and calls
+ * ERC721.safeTransferFrom in a single atomic operation.
+ */
+export async function withdrawNFTFromMember(
+  memberAddress: Address,
+  nftType: string,
+  tokenId: bigint,
+  toWallet: Address,
+): Promise<Hash> {
+  const nftAddr = getNftContractAddress(nftType);
+  const hash = await write(
+    memberAddress,
+    parsedMemberContractAbi,
+    "transferNFTTo",
+    [nftAddr, tokenId, toWallet],
+  );
+  await publicClient.waitForTransactionReceipt({ hash });
+  return hash;
 }
 
 // ---------------------------------------------------------------------------

@@ -10,6 +10,14 @@ interface ActivityBarProps {
   onSelectTab: (id: PanelId) => void;
   badges: Record<string, number>;
   groupBadge: (id: GroupId) => number;
+  keyToGroup?: (key: string) => GroupId | null;
+  onMapClick?: () => void;
+  panelMinimized?: boolean;
+  viewportMinimized?: boolean;
+  onRestorePanel?: () => void;
+  onRestoreViewport?: () => void;
+  panelLabel?: string;
+  panelSpriteKey?: string;
 }
 
 const SEPARATOR_AFTER: GroupId[] = ["ship", "starmall"];
@@ -21,8 +29,23 @@ export default function ActivityBar({
   onSelectTab,
   badges,
   groupBadge,
+  keyToGroup,
+  onMapClick,
+  panelMinimized,
+  viewportMinimized,
+  onRestorePanel,
+  onRestoreViewport,
+  panelLabel,
+  panelSpriteKey,
 }: ActivityBarProps) {
-  const [expanded, setExpanded] = useState(true);
+  const [expandedGroup, setExpandedGroup] = useState<GroupId | null>(
+    activeGroup,
+  );
+
+  // Sync expanded state when group changes externally
+  useEffect(() => {
+    setExpandedGroup(activeGroup);
+  }, [activeGroup]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -42,41 +65,45 @@ export default function ActivityBar({
         return;
 
       const key = e.key.toUpperCase();
-      const group = PANEL_GROUPS.find((g) => g.hotkey === key);
-      if (group) onSelectGroup(group.id);
+      if (keyToGroup) {
+        const groupId = keyToGroup(key);
+        if (groupId) onSelectGroup(groupId);
+      } else {
+        const group = PANEL_GROUPS.find((g) => g.hotkey === key);
+        if (group) onSelectGroup(group.id);
+      }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onSelectGroup]);
-
-  const currentGroup = PANEL_GROUPS.find((g) => g.id === activeGroup);
+  }, [onSelectGroup, keyToGroup]);
 
   return (
-    <div className={`activity-bar${expanded ? " activity-bar--expanded" : ""}`}>
-      {/* Expand/collapse toggle */}
-      <button
-        className="activity-bar__toggle"
-        onClick={() => setExpanded((v) => !v)}
-        title={expanded ? "Collapse" : "Expand"}
-      >
-        {expanded ? "«" : "»"}
-      </button>
-
-      {/* Group buttons */}
+    <div className="activity-bar">
+      {/* Group buttons with inline tabs */}
       <div className="activity-bar__groups">
         {PANEL_GROUPS.map((group) => {
           const isActive = activeGroup === group.id;
           const badge = groupBadge(group.id);
+          const hasTabs = group.tabs.length > 1;
           return (
             <React.Fragment key={group.id}>
               <button
-                className={`activity-bar__item${isActive ? " activity-bar__item--active" : ""}`}
+                className={`activity-bar__item${isActive ? " activity-bar__item--active" : ""}${isActive && hasTabs && expandedGroup === group.id ? " activity-bar__item--expanded" : ""}`}
                 style={
                   {
                     "--accent": group.accentColor,
                   } as React.CSSProperties
                 }
-                onClick={() => onSelectGroup(group.id)}
+                onClick={() => {
+                  if (activeGroup === group.id) {
+                    setExpandedGroup(
+                      expandedGroup === group.id ? null : group.id,
+                    );
+                  } else {
+                    onSelectGroup(group.id);
+                    setExpandedGroup(group.id);
+                  }
+                }}
                 data-tutorial={`group-${group.id}`}
               >
                 <div className="activity-bar__item-icon">
@@ -85,51 +112,115 @@ export default function ActivityBar({
                 <div className="activity-bar__item-text">
                   <span className="activity-bar__item-label">
                     {group.label}
+                    {isActive && hasTabs && expandedGroup === group.id && (
+                      <span className="activity-bar__expand-indicator"> ▾</span>
+                    )}
+                    {(!isActive || expandedGroup !== group.id) && hasTabs && (
+                      <span className="activity-bar__expand-indicator"> ›</span>
+                    )}
                   </span>
-                  {expanded && (
-                    <span className="activity-bar__item-desc">
-                      {group.description}
-                    </span>
-                  )}
                 </div>
                 {badge > 0 && (
                   <span className="activity-bar__badge">{badge}</span>
                 )}
+                <span className="activity-bar__tooltip">
+                  {group.description}
+                </span>
               </button>
+              {/* Inline tabs under active group */}
+              {isActive && hasTabs && expandedGroup === group.id && (
+                <div
+                  className="activity-bar__inline-tabs"
+                  style={
+                    { "--accent": group.accentColor } as React.CSSProperties
+                  }
+                >
+                  {group.tabs.map((tab) => {
+                    const isActiveTab = activePanel === tab.id;
+                    const tabBadge = badges[tab.id] || 0;
+                    return (
+                      <button
+                        key={tab.id}
+                        className={`activity-bar__inline-tab${isActiveTab ? " activity-bar__inline-tab--active" : ""}`}
+                        onClick={() => onSelectTab(tab.id)}
+                      >
+                        <span className="activity-bar__inline-tab-dot">
+                          {isActiveTab ? "▸" : "·"}
+                        </span>
+                        {tab.label}
+                        {tabBadge > 0 && (
+                          <span className="activity-bar__tab-badge">
+                            {tabBadge}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               {SEPARATOR_AFTER.includes(group.id) && (
                 <div className="activity-bar__sep" />
               )}
             </React.Fragment>
           );
         })}
-      </div>
 
-      {/* Tab bar for active group */}
-      {currentGroup && currentGroup.tabs.length > 1 && (
-        <div className="activity-bar__tabs">
-          {currentGroup.tabs.map((tab) => {
-            const isActiveTab = activePanel === tab.id;
-            const tabBadge = badges[tab.id] || 0;
-            return (
-              <button
-                key={tab.id}
-                className={`activity-bar__tab${isActiveTab ? " activity-bar__tab--active" : ""}`}
-                style={
-                  {
-                    "--accent": currentGroup.accentColor,
-                  } as React.CSSProperties
-                }
-                onClick={() => onSelectTab(tab.id)}
-              >
-                {tab.label}
-                {tabBadge > 0 && (
-                  <span className="activity-bar__tab-badge">{tabBadge}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
+        {/* Separator before utility items */}
+        <div className="activity-bar__sep" />
+
+        {/* MAP button */}
+        {onMapClick && (
+          <button
+            className="activity-bar__item"
+            style={{ "--accent": "var(--cyan)" } as React.CSSProperties}
+            onClick={onMapClick}
+          >
+            <div className="activity-bar__item-icon">
+              <PixelSprite spriteKey="icon_explore" size={20} />
+            </div>
+            <div className="activity-bar__item-text">
+              <span className="activity-bar__item-label">MAP</span>
+            </div>
+            <span className="activity-bar__tooltip">Open 2D sector map</span>
+          </button>
+        )}
+
+        {/* Restore minimized panels */}
+        {panelMinimized && onRestorePanel && (
+          <button
+            className="activity-bar__item"
+            style={{ "--accent": "var(--magenta)" } as React.CSSProperties}
+            onClick={onRestorePanel}
+          >
+            <div className="activity-bar__item-icon">
+              <PixelSprite spriteKey={panelSpriteKey ?? "icon_nav"} size={20} />
+            </div>
+            <div className="activity-bar__item-text">
+              <span className="activity-bar__item-label">
+                {panelLabel ?? "PANEL"}
+              </span>
+            </div>
+            <span className="activity-bar__tooltip">
+              Restore activity panel
+            </span>
+          </button>
+        )}
+        {viewportMinimized && onRestoreViewport && (
+          <button
+            className="activity-bar__item"
+            style={{ "--accent": "var(--cyan)" } as React.CSSProperties}
+            onClick={onRestoreViewport}
+          >
+            <div className="activity-bar__item-icon">
+              <PixelSprite spriteKey="icon_nav" size={20} />
+            </div>
+            <div className="activity-bar__item-text">
+              <span className="activity-bar__item-label">BRIDGE</span>
+            </div>
+            <span className="activity-bar__tooltip">Restore bridge view</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 }

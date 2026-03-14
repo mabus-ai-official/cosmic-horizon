@@ -30,6 +30,7 @@ export interface GameEvent {
   dismissable: boolean;
   actions?: EventAction[];
   colorScheme: string;
+  narrationUrl?: string;
   onDismiss?: () => void;
   onAction?: (actionId: string) => void;
 }

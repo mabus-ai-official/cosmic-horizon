@@ -22,12 +22,24 @@ import {
   addSyndicateMember,
   removeSyndicateMember,
   getMemberAddress,
+  mintPlanet,
+  transferPlanet,
+  withdrawNFTFromMember,
   type ShipData,
   type CharacterData,
   type EquipmentData,
+  type PlanetData,
 } from "./client";
 import { isChainEnabled, isSettlementEnabled } from "./config";
+import { resourceToToken } from "./addresses";
 import db from "../db/connection";
+
+type SettlementType =
+  | "trade"
+  | "combat"
+  | "store"
+  | "progression"
+  | "syndicate";
 
 // ---------------------------------------------------------------------------
 // Queue types
@@ -47,6 +59,13 @@ export type ChainOp =
       tokenId: bigint;
       factionId: string;
       rep: bigint;
+    }
+  | { type: "mintPlanet"; to: Address; data: PlanetData }
+  | {
+      type: "transferPlanetNFT";
+      tokenId: bigint;
+      from: Address;
+      to: Address;
     }
   | { type: "mintEquipment"; to: Address; data: EquipmentData }
   | {
@@ -104,6 +123,13 @@ export type ChainOp =
       amount: bigint;
       characterData: CharacterData;
       shipData: ShipData;
+    }
+  | {
+      type: "withdrawNFT";
+      memberAddress: Address;
+      nftType: string;
+      tokenId: bigint;
+      toWallet: Address;
     };
 
 interface QueueEntry {
@@ -181,26 +207,9 @@ export function enqueueAndWait<T = unknown>(op: ChainOp): Promise<T> {
 export async function settleCreditPlayer(
   playerId: string,
   amount: number,
-  settlementType:
-    | "trade"
-    | "combat"
-    | "store"
-    | "progression"
-    | "syndicate" = "progression",
+  settlementType: SettlementType = "progression",
 ): Promise<void> {
-  if (!isChainEnabled() || !isSettlementEnabled(settlementType) || amount <= 0)
-    return;
-  const player = await db("players")
-    .where({ id: playerId })
-    .select("member_contract_address")
-    .first();
-  if (!player?.member_contract_address) return;
-  enqueue({
-    type: "creditMember",
-    memberAddress: player.member_contract_address as Address,
-    resource: "credits",
-    amount: BigInt(amount) * 10n ** 18n,
-  });
+  return settleResourceCredit(playerId, "credits", amount, settlementType);
 }
 
 /**
@@ -209,15 +218,50 @@ export async function settleCreditPlayer(
 export async function settleDebitPlayer(
   playerId: string,
   amount: number,
-  settlementType:
-    | "trade"
-    | "combat"
-    | "store"
-    | "progression"
-    | "syndicate" = "progression",
+  settlementType: SettlementType = "progression",
+): Promise<void> {
+  return settleResourceDebit(playerId, "credits", amount, settlementType);
+}
+
+/**
+ * Generic: credit any ERC-20 resource to a player's MemberContract.
+ * Resource must be in resourceToToken map (credits, cyrillium, food, tech, drift_fuel).
+ */
+export async function settleResourceCredit(
+  playerId: string,
+  resource: string,
+  amount: number,
+  settlementType: SettlementType = "trade",
 ): Promise<void> {
   if (!isChainEnabled() || !isSettlementEnabled(settlementType) || amount <= 0)
     return;
+  if (!resourceToToken[resource]) return;
+  const player = await db("players")
+    .where({ id: playerId })
+    .select("member_contract_address")
+    .first();
+  if (!player?.member_contract_address) return;
+  enqueue({
+    type: "creditMember",
+    memberAddress: player.member_contract_address as Address,
+    resource,
+    amount: BigInt(amount) * 10n ** 18n,
+  });
+}
+
+/**
+ * Generic: debit any ERC-20 resource from a player's MemberContract.
+ * Resource must be in resourceToToken map.
+ */
+export async function settleResourceDebit(
+  playerId: string,
+  resource: string,
+  amount: number,
+  settlementType: SettlementType = "trade",
+): Promise<void> {
+  if (!isChainEnabled() || !isSettlementEnabled(settlementType) || amount <= 0)
+    return;
+  if (!resourceToToken[resource]) return;
   const player = await db("players")
     .where({ id: playerId })
     .select("member_contract_address")
@@ -226,8 +270,157 @@ export async function settleDebitPlayer(
   enqueue({
     type: "debitMember",
     memberAddress: player.member_contract_address as Address,
-    resource: "credits",
+    resource,
     amount: BigInt(amount) * 10n ** 18n,
+  });
+}
+
+/**
+ * Transfer an ERC-20 resource between two players' MemberContracts.
+ * Used for combat loot, P2P trades, etc.
+ */
+export async function settleTransferBetweenPlayers(
+  fromPlayerId: string,
+  toPlayerId: string,
+  resource: string,
+  amount: number,
+  settlementType: SettlementType = "combat",
+): Promise<void> {
+  if (!isChainEnabled() || !isSettlementEnabled(settlementType) || amount <= 0)
+    return;
+  if (!resourceToToken[resource]) return;
+  const [from, to] = await Promise.all([
+    db("players")
+      .where({ id: fromPlayerId })
+      .select("member_contract_address")
+      .first(),
+    db("players")
+      .where({ id: toPlayerId })
+      .select("member_contract_address")
+      .first(),
+  ]);
+  if (!from?.member_contract_address || !to?.member_contract_address) return;
+  enqueue({
+    type: "transferBetweenMembers",
+    fromMember: from.member_contract_address as Address,
+    toMember: to.member_contract_address as Address,
+    resource,
+    amount: BigInt(amount) * 10n ** 18n,
+  });
+}
+
+/**
+ * Convenience: update a ShipNFT on-chain with current DB stats.
+ * Call after permanent ship modifications (equipment installs, not transient combat damage).
+ */
+export async function settleUpdateShip(
+  shipId: string,
+  settlementType:
+    | "trade"
+    | "combat"
+    | "store"
+    | "progression"
+    | "syndicate" = "store",
+): Promise<void> {
+  if (!isChainEnabled() || !isSettlementEnabled(settlementType)) return;
+  const ship = await db("ships").where({ id: shipId }).first();
+  if (!ship || ship.chain_token_id == null) return;
+  enqueue({
+    type: "updateShip",
+    tokenId: BigInt(ship.chain_token_id),
+    data: {
+      shipType: ship.ship_type_id || "corvette",
+      hullHp: ship.hull_hp,
+      maxHullHp: ship.max_hull_hp,
+      weaponEnergy: ship.weapon_energy,
+      engineEnergy: ship.engine_energy,
+      cargoBays: ship.max_cargo_holds,
+      hasCloakDevice: !!ship.has_cloak_device,
+      hasRacheDevice: !!ship.has_rache_device,
+      hasJumpDrive: !!ship.has_jump_drive,
+    },
+  });
+}
+
+/**
+ * Mint a planet NFT on first claim. Looks up player's MemberContract,
+ * enqueues mint, and stores chain_token_id on the planet row.
+ */
+export async function settleMintPlanet(
+  playerId: string,
+  planetId: string,
+  planetClass: string,
+  planetName: string,
+  sectorId: number,
+): Promise<void> {
+  if (!isChainEnabled() || !isSettlementEnabled("trade")) return;
+  const player = await db("players")
+    .where({ id: playerId })
+    .select("member_contract_address")
+    .first();
+  if (!player?.member_contract_address) return;
+  enqueue({
+    type: "mintPlanet",
+    to: player.member_contract_address as Address,
+    data: { planetClass, name: planetName, sectorId },
+  });
+}
+
+/**
+ * Transfer a planet NFT between players (conquest or trade).
+ * Requires both players to have MemberContracts and the planet to have a chain_token_id.
+ */
+export async function settleTransferPlanet(
+  planetId: string,
+  fromPlayerId: string,
+  toPlayerId: string,
+): Promise<void> {
+  if (!isChainEnabled() || !isSettlementEnabled("trade")) return;
+  const planet = await db("planets")
+    .where({ id: planetId })
+    .select("chain_token_id")
+    .first();
+  if (!planet?.chain_token_id) return;
+  const [from, to] = await Promise.all([
+    db("players")
+      .where({ id: fromPlayerId })
+      .select("member_contract_address")
+      .first(),
+    db("players")
+      .where({ id: toPlayerId })
+      .select("member_contract_address")
+      .first(),
+  ]);
+  if (!from?.member_contract_address || !to?.member_contract_address) return;
+  enqueue({
+    type: "transferPlanetNFT",
+    tokenId: BigInt(planet.chain_token_id),
+    from: from.member_contract_address as Address,
+    to: to.member_contract_address as Address,
+  });
+}
+
+/**
+ * Withdraw an NFT from a player's MemberContract to their external wallet.
+ * Uses enqueueAndWait so the API can confirm success to the player.
+ */
+export async function settleWithdrawNFT(
+  playerId: string,
+  nftType: string,
+  tokenId: bigint,
+): Promise<void> {
+  if (!isChainEnabled()) return;
+  const player = await db("players")
+    .where({ id: playerId })
+    .select("wallet_address", "member_contract_address")
+    .first();
+  if (!player?.member_contract_address || !player?.wallet_address) return;
+  await enqueueAndWait({
+    type: "withdrawNFT",
+    memberAddress: player.member_contract_address as Address,
+    nftType,
+    tokenId,
+    toWallet: player.wallet_address as Address,
   });
 }
 
@@ -290,6 +483,10 @@ async function executeOp(op: ChainOp): Promise<unknown> {
       return updateCharacter(op.tokenId, op.data);
     case "updateFactionRep":
       return updateFactionRep(op.tokenId, op.factionId, op.rep);
+    case "mintPlanet":
+      return mintPlanet(op.to, op.data);
+    case "transferPlanetNFT":
+      return transferPlanet(op.tokenId, op.from, op.to);
     case "mintEquipment":
       return mintEquipment(op.to, op.data);
     case "creditMember":
@@ -334,6 +531,13 @@ async function executeOp(op: ChainOp): Promise<unknown> {
       );
       return;
     }
+    case "withdrawNFT":
+      return withdrawNFTFromMember(
+        op.memberAddress,
+        op.nftType,
+        op.tokenId,
+        op.toWallet,
+      );
     default:
       throw new Error(`Unknown chain operation type: ${(op as ChainOp).type}`);
   }

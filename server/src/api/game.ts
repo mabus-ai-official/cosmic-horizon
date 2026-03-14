@@ -16,6 +16,7 @@ import {
   getResourceEventsInSectors,
 } from "../engine/rare-spawns";
 import { PLANET_TYPES } from "../config/planet-types";
+import { SHIP_TYPES } from "../config/ship-types";
 import { findShortestPath, type SectorEdge } from "../engine/universe";
 import { checkPrerequisite } from "../engine/missions";
 import {
@@ -60,6 +61,9 @@ router.get("/status", requireAuth, async (req, res) => {
       : null;
 
     const upgrades = ship ? await applyUpgradesToShip(ship.id) : null;
+    const shipType = ship
+      ? SHIP_TYPES.find((s: any) => s.id === ship.ship_type_id)
+      : null;
     const progress = await getPlayerProgress(player.id);
     const levelBonuses = await getPlayerLevelBonuses(player.id);
 
@@ -169,6 +173,9 @@ router.get("/status", requireAuth, async (req, res) => {
         ? {
             id: ship.id,
             shipTypeId: ship.ship_type_id,
+            hasPlanetaryScanner: !!(
+              shipType?.hasPlanetaryScanner || ship.has_planetary_scanner
+            ),
             weaponEnergy:
               ship.weapon_energy +
               (upgrades?.weaponBonus ?? 0) +
@@ -1097,7 +1104,6 @@ router.post("/scan", requireAuth, async (req, res) => {
     if (!ship) return res.status(400).json({ error: "No active ship" });
 
     // Check if ship has scanner (built-in for cruiser/battleship, or purchased upgrade)
-    const { SHIP_TYPES } = require("../config/ship-types");
     const shipType = SHIP_TYPES.find((s: any) => s.id === ship.ship_type_id);
     if (!shipType?.hasPlanetaryScanner && !ship.has_planetary_scanner) {
       return res.status(400).json({

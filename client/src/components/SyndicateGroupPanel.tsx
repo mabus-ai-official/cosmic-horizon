@@ -91,46 +91,48 @@ export default function SyndicateGroupPanel({
   const effectiveKey = (refreshKey || 0) + internalRefresh;
 
   const content = (
-    <>
+    <div className="panel-sections">
       {tabBar}
-      {tab === "overview" && (
-        <SyndicateOverviewPanel
-          refreshKey={effectiveKey}
-          onCommand={onCommand}
-          bare
-          onRefresh={triggerRefresh}
-        />
-      )}
-      {tab === "governance" && syndicateId && (
-        <GovernanceTab
-          syndicateId={syndicateId}
-          refreshKey={effectiveKey}
-          bare
-        />
-      )}
-      {tab === "economy" && (
-        <SyndicateEconomyPanel refreshKey={effectiveKey} bare />
-      )}
-      {tab === "projects" && (
-        <SyndicateProjectsPanel
-          refreshKey={effectiveKey}
-          onCommand={onCommand}
-          bare
-        />
-      )}
-      {tab === "structures" && (
-        <SyndicateStructuresPanel refreshKey={effectiveKey} bare />
-      )}
-      {tab === "admin" && syndicateId && (
-        <SyndicateAdminTab
-          syndicateId={syndicateId}
-          members={members}
-          isLeader={!!isLeader}
-          refreshKey={effectiveKey}
-          onRefresh={triggerRefresh}
-        />
-      )}
-    </>
+      <div className="panel-section">
+        {tab === "overview" && (
+          <SyndicateOverviewPanel
+            refreshKey={effectiveKey}
+            onCommand={onCommand}
+            bare
+            onRefresh={triggerRefresh}
+          />
+        )}
+        {tab === "governance" && syndicateId && (
+          <GovernanceTab
+            syndicateId={syndicateId}
+            refreshKey={effectiveKey}
+            bare
+          />
+        )}
+        {tab === "economy" && (
+          <SyndicateEconomyPanel refreshKey={effectiveKey} bare />
+        )}
+        {tab === "projects" && (
+          <SyndicateProjectsPanel
+            refreshKey={effectiveKey}
+            onCommand={onCommand}
+            bare
+          />
+        )}
+        {tab === "structures" && (
+          <SyndicateStructuresPanel refreshKey={effectiveKey} bare />
+        )}
+        {tab === "admin" && syndicateId && (
+          <SyndicateAdminTab
+            syndicateId={syndicateId}
+            members={members}
+            isLeader={!!isLeader}
+            refreshKey={effectiveKey}
+            onRefresh={triggerRefresh}
+          />
+        )}
+      </div>
+    </div>
   );
 
   if (bare) return <div className="panel-content">{content}</div>;

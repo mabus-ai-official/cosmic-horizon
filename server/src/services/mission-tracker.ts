@@ -205,6 +205,7 @@ export async function checkAndUpdateMissions(
         "mission_templates.reward_faction_id",
         "mission_templates.reward_fame",
         "mission_templates.source",
+        "mission_templates.story_order",
       );
 
     for (const mission of activeMissions) {
@@ -291,6 +292,7 @@ export async function checkAndUpdateMissions(
               rewardXp: mission.reward_xp || 0,
               requiresClaim,
               isStory,
+              storyOrder: mission.story_order || 0,
             });
           }
 

@@ -1,29 +1,139 @@
-/* 2D/3D map toggle */
+/* MAP button — opens 2D map modal */
 .map-toggle-btn {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 10;
-  padding: 2px 8px;
-  font-size: 0.692rem;
-  font-family: inherit;
+  padding: 6px 14px;
+  font-size: 0.769rem;
+  font-family: "IBM Plex Mono", monospace;
   font-weight: bold;
   color: var(--cyan);
-  background: rgba(10, 14, 20, 0.8);
-  border: 1px solid var(--border);
-  border-radius: 3px;
+  background: rgba(13, 17, 23, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(86, 212, 221, 0.3);
+  border-radius: 6px;
   cursor: pointer;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
   transition:
     background 0.15s,
-    border-color 0.15s;
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 .map-toggle-btn:hover {
-  background: rgba(86, 212, 221, 0.1);
+  background: rgba(86, 212, 221, 0.12);
   border-color: var(--cyan);
+  box-shadow: 0 0 12px rgba(86, 212, 221, 0.3);
 }
 
-/* Map commodity filters */
+/* === 2D Map Modal === */
+.map-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: map-modal-fade-in 0.2s ease-out;
+}
+
+@keyframes map-modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.map-modal {
+  width: 85vw;
+  height: 80vh;
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(13, 17, 23, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(86, 212, 221, 0.15);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow:
+    0 8px 48px rgba(0, 0, 0, 0.6),
+    0 0 1px rgba(86, 212, 221, 0.2),
+    inset 0 0 80px rgba(86, 212, 221, 0.02);
+  animation: map-modal-scale-in 0.2s ease-out;
+}
+
+@keyframes map-modal-scale-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.map-modal__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(86, 212, 221, 0.1);
+  background: linear-gradient(90deg, rgba(86, 212, 221, 0.06), transparent 50%);
+}
+
+.map-modal__title {
+  font-size: 0.923rem;
+  font-weight: 700;
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 2px;
+  color: var(--cyan);
+  text-shadow: 0 0 8px rgba(86, 212, 221, 0.4);
+}
+
+.map-modal__close {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  font-size: 1rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.map-modal__close:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.map-modal__body {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Commodity filters inside modal — not absolute positioned */
+.map-commodity-filters--modal {
+  position: static;
+  padding: 0;
+}
+
+/* Map commodity filters (legacy absolute for non-modal usage) */
 .map-commodity-filters {
   display: flex;
   flex-wrap: wrap;
@@ -347,7 +457,6 @@
   height: 200px;
 }
 
-
 .map-planet-row {
   display: flex;
   align-items: center;
@@ -436,13 +545,8 @@
 /* === Notification Bar (collapsed log) === */
 .notification-bar {
   flex-shrink: 0;
-  border-top: 1px solid rgba(232, 71, 160, 0.2);
-  border-bottom: 6px solid #444;
-  background: linear-gradient(
-    180deg,
-    rgba(232, 71, 160, 0.04),
-    var(--bg-secondary)
-  );
+  border: none;
+  background: transparent;
   display: flex;
   flex-direction: column;
 }
@@ -452,8 +556,8 @@
   align-items: center;
   gap: 8px;
   padding: 3px 10px;
-  background: var(--bg-tertiary);
-  border-bottom: 1px solid var(--border);
+  background: transparent;
+  border-bottom: none;
   font-size: 0.769rem;
   text-transform: uppercase;
   letter-spacing: 1px;

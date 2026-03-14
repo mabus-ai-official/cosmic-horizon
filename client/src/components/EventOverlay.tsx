@@ -5,6 +5,8 @@ interface EventOverlayProps {
   event: GameEvent;
   onDismiss: () => void;
   onAction: (actionId: string) => void;
+  narrationPlaying?: boolean;
+  onSkipNarration?: () => void;
 }
 
 // Typing effect for story/lore text bodies
@@ -87,6 +89,7 @@ const CATEGORY_ANIMATION_CLASS: Record<string, string> = {
 const TYPING_CATEGORIES = new Set([
   "story_act",
   "story_mission",
+  "story_accept",
   "lore_reveal",
 ]);
 
@@ -94,9 +97,14 @@ export default function EventOverlay({
   event,
   onDismiss,
   onAction,
+  narrationPlaying,
+  onSkipNarration,
 }: EventOverlayProps) {
+  const hasNarration = !!event.narrationUrl;
+  const suppressAutoDismiss = hasNarration && narrationPlaying;
+
   const handleBackdropClick = () => {
-    if (event.dismissable) onDismiss();
+    if (event.dismissable || hasNarration) onDismiss();
   };
 
   const animClass = CATEGORY_ANIMATION_CLASS[event.category] || "";
@@ -141,11 +149,21 @@ export default function EventOverlay({
             ))}
           </div>
         )}
-        {event.dismissable && event.duration > 0 && (
+        {narrationPlaying && onSkipNarration && (
+          <button className="event-overlay__skip-btn" onClick={onSkipNarration}>
+            Skip Narration ▶▶
+          </button>
+        )}
+        {!suppressAutoDismiss && event.dismissable && event.duration > 0 && (
           <DismissProgress duration={event.duration} eventId={event.id} />
         )}
-        {event.dismissable && !event.actions?.length && (
-          <div className="event-overlay__hint">Click to dismiss</div>
+        {hasNarration ? (
+          <div className="event-overlay__hint">Click anywhere to dismiss</div>
+        ) : (
+          event.dismissable &&
+          !event.actions?.length && (
+            <div className="event-overlay__hint">Click to dismiss</div>
+          )
         )}
       </div>
     </div>

@@ -10,7 +10,11 @@ import {
   notifyPlayer,
 } from "../ws/handlers";
 import { isSettlementEnabled } from "../chain/config";
-import { enqueue } from "../chain/tx-queue";
+import {
+  enqueue,
+  settleCreditPlayer,
+  settleDebitPlayer,
+} from "../chain/tx-queue";
 import type { Address } from "viem";
 
 const router = Router();
@@ -628,6 +632,11 @@ router.post("/syndicate/disband", requireAuth, async (req, res) => {
         .update({
           credits: Number(player.credits) + Number(syndicate.treasury),
         });
+      await settleCreditPlayer(
+        player.id,
+        Number(syndicate.treasury),
+        "syndicate",
+      );
     }
 
     // Remove all members and syndicate alliances
@@ -718,6 +727,7 @@ router.post("/syndicate/deposit", requireAuth, async (req, res) => {
       .update({
         credits: Number(player.credits) - amount,
       });
+    await settleDebitPlayer(player.id, amount, "syndicate");
     await db("syndicates")
       .where({ id: membership.syndicate_id })
       .increment("treasury", amount);
@@ -773,6 +783,7 @@ router.post("/syndicate/withdraw", requireAuth, async (req, res) => {
       .update({
         credits: Number(player.credits) + amount,
       });
+    await settleCreditPlayer(player.id, amount, "syndicate");
 
     res.json({
       withdrawn: amount,
@@ -995,6 +1006,7 @@ router.post("/bounty", requireAuth, async (req, res) => {
       .update({
         credits: Number(player.credits) - amount,
       });
+    await settleDebitPlayer(player.id, amount, "combat");
 
     // Schema uses placed_by_id, target_player_id, reward
     await db("bounties").insert({

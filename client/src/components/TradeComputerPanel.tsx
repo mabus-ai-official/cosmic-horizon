@@ -45,6 +45,8 @@ const FILTERS: { id: FilterId; label: string }[] = [
   { id: "sells_fuel", label: "Fuel" },
 ];
 
+const PAGE_SIZE = 10;
+
 function modeColor(mode: string): string {
   if (mode === "buy") return "var(--green)";
   if (mode === "sell") return "var(--orange)";
@@ -56,6 +58,8 @@ export default function TradeComputerPanel({ bare }: TradeComputerPanelProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterId>("all");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   useEffect(() => {
     setLoading(true);
@@ -68,10 +72,14 @@ export default function TradeComputerPanel({ bare }: TradeComputerPanelProps) {
       .finally(() => setLoading(false));
   }, []);
 
+  // Reset visible count when filter changes
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [filter]);
+
   const filtered = useMemo(() => {
     if (filter === "all") return outposts;
     if (filter === "sells_fuel") return outposts.filter((o) => o.sellsFuel);
-    // Parse "buy_cyrillium" -> commodity="cyrillium", mode="buy"
     const [mode, commodity] = filter.split("_") as [string, string];
     return outposts.filter((o) => {
       const key = commodity === "cyr" ? "cyrillium" : commodity;
@@ -79,6 +87,18 @@ export default function TradeComputerPanel({ bare }: TradeComputerPanelProps) {
       return info && info.mode === mode;
     });
   }, [outposts, filter]);
+
+  const visible = filtered.slice(0, visibleCount);
+  const hasMore = visibleCount < filtered.length;
+
+  const toggleExpand = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   if (loading) {
     const spinner = (
@@ -97,46 +117,77 @@ export default function TradeComputerPanel({ bare }: TradeComputerPanelProps) {
   }
 
   const content = (
-    <div className="tc-container">
-      <div className="tc-header">TRADE COMPUTER</div>
-      <div className="tc-filters">
-        {FILTERS.map((f) => (
-          <button
-            key={f.id}
-            className={`btn-sm tc-filter-btn${filter === f.id ? " tc-filter-active" : ""}`}
-            onClick={() => setFilter(f.id)}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-      <div className="tc-count">
-        {filtered.length} outpost{filtered.length !== 1 ? "s" : ""}
+    <div className="panel-sections">
+      <div className="panel-section panel-section--special">
+        <div className="panel-section__header panel-section__header--special">
+          Market Directory
+        </div>
+        <div className="tc-filters">
+          {FILTERS.map((f) => (
+            <button
+              key={f.id}
+              className={`btn-sm tc-filter-btn${filter === f.id ? " tc-filter-active" : ""}`}
+              onClick={() => setFilter(f.id)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="tc-count">
+          {filtered.length} discovered outpost{filtered.length !== 1 ? "s" : ""}
+        </div>
       </div>
       <div className="tc-list">
-        {filtered.map((o) => (
-          <div key={o.id} className="tc-outpost">
-            <div className="tc-outpost-header">
-              <span className="tc-outpost-name">{o.name}</span>
-              <span className="tc-outpost-sector">Sector {o.sectorId}</span>
-            </div>
-            <div className="tc-outpost-tags">
-              {o.sellsFuel && <span className="tc-tag tc-tag-fuel">FUEL</span>}
-              {o.hasStarMall && (
-                <span className="tc-tag tc-tag-mall">STAR MALL</span>
+        {visible.map((o) => {
+          const isExpanded = expanded.has(o.id);
+          return (
+            <div
+              key={o.id}
+              className={`tc-outpost${isExpanded ? " tc-outpost--expanded" : ""}`}
+            >
+              <div
+                className="tc-outpost-header"
+                onClick={() => toggleExpand(o.id)}
+                style={{ cursor: "pointer" }}
+              >
+                <span className="tc-outpost-expand">
+                  {isExpanded ? "▾" : "›"}
+                </span>
+                <span className="tc-outpost-name">{o.name}</span>
+                <span className="tc-outpost-sector">Sector {o.sectorId}</span>
+              </div>
+              {isExpanded && (
+                <>
+                  <div className="tc-outpost-tags">
+                    {o.sellsFuel && (
+                      <span className="tc-tag tc-tag-fuel">FUEL</span>
+                    )}
+                    {o.hasStarMall && (
+                      <span className="tc-tag tc-tag-mall">STAR MALL</span>
+                    )}
+                  </div>
+                  <div className="tc-commodities">
+                    <CommodityRow label="Cyrillium" info={o.cyrillium} />
+                    <CommodityRow label="Food" info={o.food} />
+                    <CommodityRow label="Tech" info={o.tech} />
+                  </div>
+                </>
               )}
             </div>
-            <div className="tc-commodities">
-              <CommodityRow label="Cyrillium" info={o.cyrillium} />
-              <CommodityRow label="Food" info={o.food} />
-              <CommodityRow label="Tech" info={o.tech} />
-            </div>
-          </div>
-        ))}
+          );
+        })}
         {filtered.length === 0 && (
           <div className="tc-empty">No outposts match this filter.</div>
         )}
       </div>
+      {hasMore && (
+        <button
+          className="btn btn-secondary btn-sm tc-show-more"
+          onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+        >
+          Show more ({filtered.length - visibleCount} remaining)
+        </button>
+      )}
     </div>
   );
 

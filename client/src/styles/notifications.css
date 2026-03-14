@@ -91,6 +91,24 @@
   margin-top: 16px;
   opacity: 0.5;
 }
+.event-overlay__skip-btn {
+  margin-top: 12px;
+  padding: 6px 16px;
+  background: transparent;
+  border: 1px solid var(--text-secondary);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  cursor: pointer;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  transition:
+    border-color 0.2s,
+    color 0.2s;
+}
+.event-overlay__skip-btn:hover {
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+}
 
 /* Color schemes */
 .event-overlay--cyan .event-overlay__burst {

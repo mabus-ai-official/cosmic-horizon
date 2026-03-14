@@ -23,7 +23,6 @@ export type GroupId =
   | "pilot"
   | "helm"
   | "ship"
-  | "ops"
   | "starmall"
   | "social"
   | "database";
@@ -55,6 +54,8 @@ export const PANEL_GROUPS: PanelGroupDef[] = [
     accentColor: "var(--magenta)",
     tabs: [
       { id: "profile", label: "Profile" },
+      { id: "gear", label: "Loadout" },
+      { id: "missions", label: "Missions" },
       { id: "wallet", label: "Wallet" },
       { id: "notes", label: "Notes" },
     ],
@@ -74,26 +75,14 @@ export const PANEL_GROUPS: PanelGroupDef[] = [
   {
     id: "ship",
     label: "SHIP",
-    description: "Loadout, cargo & territory",
+    description: "Cargo, combat & territory",
     spriteKey: "icon_gear",
     hotkey: "S",
     accentColor: "var(--green)",
     tabs: [
-      { id: "gear", label: "Loadout" },
       { id: "inventory", label: "Cargo" },
-      { id: "planets", label: "Planets" },
-    ],
-  },
-  {
-    id: "ops",
-    label: "OPS",
-    description: "Missions, combat & scanning",
-    spriteKey: "icon_missions",
-    hotkey: "O",
-    accentColor: "var(--red)",
-    tabs: [
-      { id: "missions", label: "Missions" },
       { id: "combat", label: "Combat" },
+      { id: "planets", label: "Planets" },
       { id: "explore", label: "Scanner" },
     ],
   },
@@ -105,7 +94,7 @@ export const PANEL_GROUPS: PanelGroupDef[] = [
     hotkey: "M",
     accentColor: "var(--yellow)",
     tabs: [
-      { id: "trade", label: "Trade" },
+      { id: "trade", label: "Market" },
       { id: "trade-history", label: "Ledger" },
     ],
   },

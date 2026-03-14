@@ -86,77 +86,83 @@ export default function AriaPanel({ bare, onBack }: Props) {
   };
 
   const content = (
-    <div className="aria-panel">
-      {onBack && (
-        <button
-          className="btn-action"
-          onClick={onBack}
-          style={{
-            marginBottom: 6,
-            fontSize: "0.75rem",
-            padding: "3px 10px",
-            borderColor: "var(--cyan)",
-            color: "var(--cyan)",
-          }}
-        >
-          ← Back to Navigation
-        </button>
-      )}
-      <div className="aria-messages" ref={scrollRef}>
-        {messages.map((m, i) => (
-          <div key={i} className={`aria-msg aria-msg--${m.role}`}>
-            <span className="aria-msg__label">
-              {m.role === "aria" ? "ARIA" : "YOU"}
-            </span>
-            <span className="aria-msg__text">{m.text}</span>
-          </div>
-        ))}
-        {loading && (
-          <div className="aria-msg aria-msg--aria">
-            <span className="aria-msg__label">ARIA</span>
-            <span className="aria-msg__text aria-thinking">thinking...</span>
-          </div>
-        )}
-      </div>
-
-      {messages.length <= 1 && (
-        <div className="aria-quick">
-          {QUICK_QUESTIONS.map((q) => (
+    <div className="panel-sections">
+      <div className="panel-section panel-section--special">
+        <div className="aria-panel">
+          {onBack && (
             <button
-              key={q}
-              className="aria-quick__btn"
-              onClick={() => sendMessage(q)}
-              disabled={loading}
+              className="btn-action"
+              onClick={onBack}
+              style={{
+                marginBottom: 6,
+                fontSize: "0.75rem",
+                padding: "3px 10px",
+                borderColor: "var(--cyan)",
+                color: "var(--cyan)",
+              }}
             >
-              {q}
+              ← Back to Navigation
             </button>
-          ))}
-        </div>
-      )}
+          )}
+          <div className="aria-messages" ref={scrollRef}>
+            {messages.map((m, i) => (
+              <div key={i} className={`aria-msg aria-msg--${m.role}`}>
+                <span className="aria-msg__label">
+                  {m.role === "aria" ? "ARIA" : "YOU"}
+                </span>
+                <span className="aria-msg__text">{m.text}</span>
+              </div>
+            ))}
+            {loading && (
+              <div className="aria-msg aria-msg--aria">
+                <span className="aria-msg__label">ARIA</span>
+                <span className="aria-msg__text aria-thinking">
+                  thinking...
+                </span>
+              </div>
+            )}
+          </div>
 
-      <div className="aria-input-row">
-        <input
-          ref={inputRef}
-          className="aria-input"
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              sendMessage(input);
-            }
-          }}
-          placeholder="Ask ARIA..."
-          disabled={loading}
-        />
-        <button
-          className="aria-send"
-          onClick={() => sendMessage(input)}
-          disabled={loading || !input.trim()}
-        >
-          ASK
-        </button>
+          {messages.length <= 1 && (
+            <div className="aria-quick">
+              {QUICK_QUESTIONS.map((q) => (
+                <button
+                  key={q}
+                  className="aria-quick__btn"
+                  onClick={() => sendMessage(q)}
+                  disabled={loading}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="aria-input-row">
+            <input
+              ref={inputRef}
+              className="aria-input"
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  sendMessage(input);
+                }
+              }}
+              placeholder="Ask ARIA..."
+              disabled={loading}
+            />
+            <button
+              className="aria-send"
+              onClick={() => sendMessage(input)}
+              disabled={loading || !input.trim()}
+            >
+              ASK
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

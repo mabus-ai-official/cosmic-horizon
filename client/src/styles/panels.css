@@ -41,6 +41,156 @@
   margin-right: 8px;
 }
 
+/* === Panel Section Cards (shared pattern for structured content) === */
+.panel-section {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.panel-section--accent {
+  border-left: 3px solid var(--cyan);
+}
+
+.panel-section--warning {
+  border-left: 3px solid var(--yellow);
+}
+
+.panel-section--danger {
+  border-left: 3px solid var(--red);
+}
+
+.panel-section--special {
+  border-left: 3px solid var(--purple);
+}
+
+.panel-section__header {
+  font-size: 0.692rem;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--cyan);
+  font-weight: 600;
+  margin: 0;
+}
+
+.panel-section__header--warning {
+  color: var(--yellow);
+}
+
+.panel-section__header--danger {
+  color: var(--red);
+}
+
+.panel-section__header--special {
+  color: var(--purple);
+}
+
+.panel-section__header--muted {
+  color: var(--text-secondary);
+}
+
+/* Key-value rows inside sections */
+.panel-kv {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.panel-kv__label {
+  font-size: 0.769rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.panel-kv__value {
+  font-size: 0.846rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.panel-kv__value--success {
+  color: var(--green);
+}
+
+.panel-kv__value--warning {
+  color: var(--yellow);
+}
+
+.panel-kv__value--danger {
+  color: var(--red);
+}
+
+.panel-kv__value--accent {
+  color: var(--cyan);
+}
+
+/* List items inside sections */
+.panel-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.846rem;
+  cursor: default;
+}
+
+.panel-list-item--clickable {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.panel-list-item--clickable:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.panel-list-item__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.panel-list-item__dot--warning {
+  background: var(--yellow);
+}
+
+.panel-list-item__dot--danger {
+  background: var(--red);
+}
+
+.panel-list-item__dot--special {
+  background: var(--purple);
+}
+
+.panel-list-item__dot--npc {
+  background: var(--green);
+}
+
+.panel-list-item__dot--resource {
+  background: var(--cyan);
+}
+
+/* Inline button grids inside sections */
+.panel-btn-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Sections container — vertical stack of cards */
+.panel-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
 /* === Collapsible Panels === */
 .collapsible-panel__header {
@@ -177,9 +327,7 @@
 .nav-warp-row {
   display: flex;
   gap: 4px;
-  padding: 0 0 6px;
-  margin-bottom: 4px;
-  border-bottom: 1px solid var(--border);
+  align-items: center;
 }
 
 .nav-warp-input {
@@ -204,7 +352,6 @@
   padding-bottom: 6px;
   border-bottom: 1px solid var(--border);
 }
-
 
 /* === Group Panel Tabs (shared by CrewGroup, GearGroup, CommsGroup) === */
 .group-panel-tabs {

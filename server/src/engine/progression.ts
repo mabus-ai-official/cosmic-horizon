@@ -94,8 +94,10 @@ export async function awardXP(
     .where({ player_id: playerId })
     .update(updateData);
 
-  // Chain settlement: update CharacterNFT on level-up (or significant XP thresholds)
-  if (isSettlementEnabled("progression") && levelUp) {
+  // Chain settlement: update CharacterNFT on level-up or every 100 XP
+  const xpThresholdCrossed =
+    !levelUp && Math.floor(newXp / 100) > Math.floor((newXp - amount) / 100);
+  if (isSettlementEnabled("progression") && (levelUp || xpThresholdCrossed)) {
     try {
       const player = await db("players")
         .where({ id: playerId })

@@ -30,6 +30,7 @@ const VALID_STAT_KEYS = [
   "energy_spent",
   "planets_bombarded",
   "planets_conquered",
+  "cargo_looted",
 ] as const;
 
 type StatKey = (typeof VALID_STAT_KEYS)[number];

@@ -7,6 +7,8 @@ import {
   transitionToMP,
   transitionToSP,
 } from "../services/api";
+import ControlsTab from "./ControlsTab";
+import type { KeyBinding } from "../hooks/useKeybindings";
 
 const RACES = [
   { id: "muscarian", name: "Muscarian" },
@@ -21,10 +23,17 @@ interface SettingsPanelProps {
   gameMode?: string;
   volume: number;
   onVolumeChange: (v: number) => void;
-  map3D: boolean;
-  onToggleMap3D: () => void;
+  narrationEnabled: boolean;
+  onNarrationToggle: (enabled: boolean) => void;
+  narrationVolume: number;
+  onNarrationVolumeChange: (v: number) => void;
   onLogout: () => void;
   onRefresh: () => void;
+  keybindings: KeyBinding[];
+  keybindConflicts: Map<string, string[]>;
+  onRebind: (action: string, newKey: string) => void;
+  onResetKeybind: (action: string) => void;
+  onResetAllKeybinds: () => void;
 }
 
 export default function SettingsPanel({
@@ -33,11 +42,19 @@ export default function SettingsPanel({
   gameMode,
   volume,
   onVolumeChange,
-  map3D,
-  onToggleMap3D,
+  narrationEnabled,
+  onNarrationToggle,
+  narrationVolume,
+  onNarrationVolumeChange,
   onLogout,
   onRefresh,
+  keybindings,
+  keybindConflicts,
+  onRebind,
+  onResetKeybind,
+  onResetAllKeybinds,
 }: SettingsPanelProps) {
+  const [activeTab, setActiveTab] = useState<"general" | "controls">("general");
   // Username
   const [newUsername, setNewUsername] = useState("");
   const [usernameMsg, setUsernameMsg] = useState("");
@@ -141,232 +158,278 @@ export default function SettingsPanel({
 
   return (
     <div className="panel-content settings-panel">
-      <h3 className="panel-subheader">Settings</h3>
-
-      {/* Audio */}
-      <div className="settings-section">
-        <h4 className="settings-section__title">Audio</h4>
-        <div className="settings-row">
-          <label>Music</label>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.05"
-            value={volume}
-            onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-            className="settings-slider"
-          />
-          <span className="settings-value">{Math.round(volume * 100)}%</span>
-        </div>
+      <div className="settings-tabs">
+        <button
+          className={`settings-tabs__btn${activeTab === "general" ? " settings-tabs__btn--active" : ""}`}
+          onClick={() => setActiveTab("general")}
+        >
+          General
+        </button>
+        <button
+          className={`settings-tabs__btn${activeTab === "controls" ? " settings-tabs__btn--active" : ""}`}
+          onClick={() => setActiveTab("controls")}
+        >
+          Controls
+        </button>
       </div>
 
-      {/* Display */}
-      <div className="settings-section">
-        <h4 className="settings-section__title">Display</h4>
-        <div className="settings-row">
-          <label>Galaxy Map</label>
-          <button className="btn btn-secondary btn-sm" onClick={onToggleMap3D}>
-            {map3D ? "3D" : "2D"} — Click to switch
-          </button>
-        </div>
-      </div>
+      {activeTab === "controls" ? (
+        <ControlsTab
+          bindings={keybindings}
+          conflicts={keybindConflicts}
+          onRebind={onRebind}
+          onResetOne={onResetKeybind}
+          onResetAll={onResetAllKeybinds}
+        />
+      ) : (
+        <>
+          {/* Audio */}
+          <div className="settings-section">
+            <h4 className="settings-section__title">Audio</h4>
+            <div className="settings-row">
+              <label>Music</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={volume}
+                onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+                className="settings-slider"
+              />
+              <span className="settings-value">
+                {Math.round(volume * 100)}%
+              </span>
+            </div>
+            <div className="settings-row">
+              <label>Narration</label>
+              <button
+                className={`settings-toggle${narrationEnabled ? " settings-toggle--on" : ""}`}
+                onClick={() => onNarrationToggle(!narrationEnabled)}
+              >
+                {narrationEnabled ? "ON" : "OFF"}
+              </button>
+            </div>
+            {narrationEnabled && (
+              <div className="settings-row">
+                <label>Narration Vol</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={narrationVolume}
+                  onChange={(e) =>
+                    onNarrationVolumeChange(parseFloat(e.target.value))
+                  }
+                  className="settings-slider"
+                />
+                <span className="settings-value">
+                  {Math.round(narrationVolume * 100)}%
+                </span>
+              </div>
+            )}
+          </div>
 
-      {/* Game Mode */}
-      <div className="settings-section">
-        <h4 className="settings-section__title">Game Mode</h4>
-        <p className="settings-hint">
-          Current:{" "}
-          <strong>
-            {gameMode === "singleplayer" ? "Single Player" : "Multiplayer"}
-          </strong>
-        </p>
-        <div className="settings-row">
-          <button
-            className="btn btn-primary btn-sm"
-            disabled={modeBusy}
-            onClick={async () => {
-              setModeBusy(true);
-              setModeMsg("");
-              try {
-                if (gameMode === "singleplayer") {
-                  await transitionToMP(true);
-                  setModeMsg("Switched to Multiplayer. Refreshing...");
-                } else {
-                  await transitionToSP();
-                  setModeMsg("Switched to Single Player. Refreshing...");
-                }
-                setTimeout(() => {
-                  onRefresh();
-                }, 1000);
-              } catch (err: any) {
-                setModeMsg(err.response?.data?.error || "Failed");
-              } finally {
-                setModeBusy(false);
-              }
-            }}
-          >
-            {modeBusy
-              ? "SWITCHING..."
-              : gameMode === "singleplayer"
-                ? "SWITCH TO MULTIPLAYER"
-                : "SWITCH TO SINGLE PLAYER"}
-          </button>
-        </div>
-        {modeMsg && <p className="settings-msg">{modeMsg}</p>}
-      </div>
+          {/* Game Mode */}
+          <div className="settings-section">
+            <h4 className="settings-section__title">Game Mode</h4>
+            <p className="settings-hint">
+              Current:{" "}
+              <strong>
+                {gameMode === "singleplayer" ? "Single Player" : "Multiplayer"}
+              </strong>
+            </p>
+            <div className="settings-row">
+              <button
+                className="btn btn-primary btn-sm"
+                disabled={modeBusy}
+                onClick={async () => {
+                  setModeBusy(true);
+                  setModeMsg("");
+                  try {
+                    if (gameMode === "singleplayer") {
+                      await transitionToMP(true);
+                      setModeMsg("Switched to Multiplayer. Refreshing...");
+                    } else {
+                      await transitionToSP();
+                      setModeMsg("Switched to Single Player. Refreshing...");
+                    }
+                    setTimeout(() => {
+                      onRefresh();
+                    }, 1000);
+                  } catch (err: any) {
+                    setModeMsg(err.response?.data?.error || "Failed");
+                  } finally {
+                    setModeBusy(false);
+                  }
+                }}
+              >
+                {modeBusy
+                  ? "SWITCHING..."
+                  : gameMode === "singleplayer"
+                    ? "SWITCH TO MULTIPLAYER"
+                    : "SWITCH TO SINGLE PLAYER"}
+              </button>
+            </div>
+            {modeMsg && <p className="settings-msg">{modeMsg}</p>}
+          </div>
 
-      {/* Change Username */}
-      <div className="settings-section">
-        <h4 className="settings-section__title">Change Username</h4>
-        <p className="settings-hint">
-          Current: <strong>{playerUsername}</strong> (max 3 changes ever)
-        </p>
-        <div className="settings-row">
-          <input
-            type="text"
-            value={newUsername}
-            onChange={(e) => setNewUsername(e.target.value)}
-            placeholder="New username"
-            className="settings-input"
-          />
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={handleChangeUsername}
-            disabled={usernameBusy || !newUsername.trim()}
-          >
-            {usernameBusy ? "..." : "CHANGE"}
-          </button>
-        </div>
-        {usernameMsg && <p className="settings-msg">{usernameMsg}</p>}
-      </div>
-
-      {/* Change Race */}
-      <div className="settings-section">
-        <h4 className="settings-section__title">Change Race</h4>
-        <p className="settings-hint settings-hint--warning">
-          All faction and NPC reputation will be permanently reset.
-        </p>
-        <div className="settings-row">
-          <select
-            value={selectedRace}
-            onChange={(e) => setSelectedRace(e.target.value)}
-            className="settings-select"
-          >
-            {RACES.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-                {r.id === playerRace ? " (current)" : ""}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="settings-row">
-          <input
-            type="password"
-            value={racePassword}
-            onChange={(e) => setRacePassword(e.target.value)}
-            placeholder="Confirm password"
-            className="settings-input"
-          />
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={handleChangeRace}
-            disabled={raceBusy || !racePassword || selectedRace === playerRace}
-          >
-            {raceBusy ? "..." : "CHANGE RACE"}
-          </button>
-        </div>
-        {raceMsg && <p className="settings-msg">{raceMsg}</p>}
-      </div>
-
-      {/* Change Password */}
-      <div className="settings-section">
-        <h4 className="settings-section__title">Change Password</h4>
-        <div className="settings-row settings-row--stack">
-          <input
-            type="password"
-            value={currentPw}
-            onChange={(e) => setCurrentPw(e.target.value)}
-            placeholder="Current password"
-            className="settings-input"
-          />
-          <input
-            type="password"
-            value={newPw}
-            onChange={(e) => setNewPw(e.target.value)}
-            placeholder="New password (min 8 chars)"
-            className="settings-input"
-          />
-          <input
-            type="password"
-            value={confirmPw}
-            onChange={(e) => setConfirmPw(e.target.value)}
-            placeholder="Confirm new password"
-            className="settings-input"
-          />
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={handleChangePassword}
-            disabled={pwBusy || !currentPw || !newPw || !confirmPw}
-          >
-            {pwBusy ? "..." : "UPDATE PASSWORD"}
-          </button>
-        </div>
-        {pwMsg && <p className="settings-msg">{pwMsg}</p>}
-      </div>
-
-      {/* Delete Account */}
-      <div className="settings-section settings-section--danger">
-        <h4 className="settings-section__title settings-section__title--danger">
-          Delete Account
-        </h4>
-        <p className="settings-hint settings-hint--danger">
-          This is permanent. All game data, ships, planets, and progress will be
-          destroyed.
-        </p>
-        {!deleteConfirm ? (
-          <button
-            className="btn btn-danger btn-sm"
-            onClick={() => setDeleteConfirm(true)}
-          >
-            I WANT TO DELETE MY ACCOUNT
-          </button>
-        ) : (
-          <>
+          {/* Change Username */}
+          <div className="settings-section">
+            <h4 className="settings-section__title">Change Username</h4>
+            <p className="settings-hint">
+              Current: <strong>{playerUsername}</strong> (max 3 changes ever)
+            </p>
             <div className="settings-row">
               <input
-                type="password"
-                value={deletePw}
-                onChange={(e) => setDeletePw(e.target.value)}
-                placeholder="Enter password to confirm"
+                type="text"
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                placeholder="New username"
                 className="settings-input"
               />
               <button
-                className="btn btn-danger btn-sm"
-                onClick={handleDeleteAccount}
-                disabled={deleteBusy || !deletePw}
+                className="btn btn-primary btn-sm"
+                onClick={handleChangeUsername}
+                disabled={usernameBusy || !newUsername.trim()}
               >
-                {deleteBusy ? "DELETING..." : "PERMANENTLY DELETE"}
+                {usernameBusy ? "..." : "CHANGE"}
               </button>
             </div>
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={() => {
-                setDeleteConfirm(false);
-                setDeletePw("");
-                setDeleteMsg("");
-              }}
-              style={{ marginTop: 4 }}
-            >
-              CANCEL
-            </button>
-          </>
-        )}
-        {deleteMsg && (
-          <p className="settings-msg settings-msg--danger">{deleteMsg}</p>
-        )}
-      </div>
+            {usernameMsg && <p className="settings-msg">{usernameMsg}</p>}
+          </div>
+
+          {/* Change Race */}
+          <div className="settings-section">
+            <h4 className="settings-section__title">Change Race</h4>
+            <p className="settings-hint settings-hint--warning">
+              All faction and NPC reputation will be permanently reset.
+            </p>
+            <div className="settings-row">
+              <select
+                value={selectedRace}
+                onChange={(e) => setSelectedRace(e.target.value)}
+                className="settings-select"
+              >
+                {RACES.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                    {r.id === playerRace ? " (current)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="settings-row">
+              <input
+                type="password"
+                value={racePassword}
+                onChange={(e) => setRacePassword(e.target.value)}
+                placeholder="Confirm password"
+                className="settings-input"
+              />
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleChangeRace}
+                disabled={
+                  raceBusy || !racePassword || selectedRace === playerRace
+                }
+              >
+                {raceBusy ? "..." : "CHANGE RACE"}
+              </button>
+            </div>
+            {raceMsg && <p className="settings-msg">{raceMsg}</p>}
+          </div>
+
+          {/* Change Password */}
+          <div className="settings-section">
+            <h4 className="settings-section__title">Change Password</h4>
+            <div className="settings-row settings-row--stack">
+              <input
+                type="password"
+                value={currentPw}
+                onChange={(e) => setCurrentPw(e.target.value)}
+                placeholder="Current password"
+                className="settings-input"
+              />
+              <input
+                type="password"
+                value={newPw}
+                onChange={(e) => setNewPw(e.target.value)}
+                placeholder="New password (min 8 chars)"
+                className="settings-input"
+              />
+              <input
+                type="password"
+                value={confirmPw}
+                onChange={(e) => setConfirmPw(e.target.value)}
+                placeholder="Confirm new password"
+                className="settings-input"
+              />
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleChangePassword}
+                disabled={pwBusy || !currentPw || !newPw || !confirmPw}
+              >
+                {pwBusy ? "..." : "UPDATE PASSWORD"}
+              </button>
+            </div>
+            {pwMsg && <p className="settings-msg">{pwMsg}</p>}
+          </div>
+
+          {/* Delete Account */}
+          <div className="settings-section settings-section--danger">
+            <h4 className="settings-section__title settings-section__title--danger">
+              Delete Account
+            </h4>
+            <p className="settings-hint settings-hint--danger">
+              This is permanent. All game data, ships, planets, and progress
+              will be destroyed.
+            </p>
+            {!deleteConfirm ? (
+              <button
+                className="btn btn-danger btn-sm"
+                onClick={() => setDeleteConfirm(true)}
+              >
+                I WANT TO DELETE MY ACCOUNT
+              </button>
+            ) : (
+              <>
+                <div className="settings-row">
+                  <input
+                    type="password"
+                    value={deletePw}
+                    onChange={(e) => setDeletePw(e.target.value)}
+                    placeholder="Enter password to confirm"
+                    className="settings-input"
+                  />
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={handleDeleteAccount}
+                    disabled={deleteBusy || !deletePw}
+                  >
+                    {deleteBusy ? "DELETING..." : "PERMANENTLY DELETE"}
+                  </button>
+                </div>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    setDeleteConfirm(false);
+                    setDeletePw("");
+                    setDeleteMsg("");
+                  }}
+                  style={{ marginTop: 4 }}
+                >
+                  CANCEL
+                </button>
+              </>
+            )}
+            {deleteMsg && (
+              <p className="settings-msg settings-msg--danger">{deleteMsg}</p>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

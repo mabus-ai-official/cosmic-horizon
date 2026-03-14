@@ -69,7 +69,7 @@ export default function CrewGroupPanel({
   );
 
   const content = (
-    <>
+    <div className="panel-sections">
       {tabBar}
       {tab === "players" && (
         <PlayerListPanel
@@ -89,7 +89,7 @@ export default function CrewGroupPanel({
         />
       )}
       {tab === "contacts" && <ContactsList refreshKey={refreshKey} />}
-    </>
+    </div>
   );
 
   if (bare) return <div className="panel-content">{content}</div>;

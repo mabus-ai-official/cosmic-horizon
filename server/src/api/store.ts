@@ -8,7 +8,11 @@ import db from "../db/connection";
 import { syncPlayer } from "../ws/sync";
 import { handleSectorChange, notifyPlayer } from "../ws/handlers";
 import { sendPushToPlayer } from "../services/push";
-import { enqueue } from "../chain/tx-queue";
+import {
+  enqueue,
+  settleDebitPlayer,
+  settleUpdateShip,
+} from "../chain/tx-queue";
 import { isSettlementEnabled } from "../chain/config";
 import type { Address } from "viem";
 import { pickFlavor, outpostNpcRace } from "../config/flavor-text";
@@ -128,6 +132,7 @@ router.post("/buy/:itemId", requireAuth, async (req, res) => {
         await db("ships")
           .where({ id: ship.id })
           .update({ has_jump_drive: true });
+        await settleUpdateShip(ship.id);
       }
       if (item.id === "planetary_scanner") {
         if (ship.has_planetary_scanner) {
@@ -138,6 +143,7 @@ router.post("/buy/:itemId", requireAuth, async (req, res) => {
         await db("ships")
           .where({ id: ship.id })
           .update({ has_planetary_scanner: true });
+        await settleUpdateShip(ship.id);
       }
     }
 
@@ -151,6 +157,7 @@ router.post("/buy/:itemId", requireAuth, async (req, res) => {
             credits: Number(player.credits) - item.price,
             energy: newEnergy,
           });
+        await settleDebitPlayer(player.id, item.price, "store");
         // Multi-session sync
         const io = req.app.get("io");
         if (io)
@@ -683,6 +690,7 @@ router.post("/refuel", requireAuth, async (req, res) => {
         credits: Number(player.credits) - actualCost,
         energy: newEnergy,
       });
+    await settleDebitPlayer(player.id, actualCost, "store");
 
     // Multi-session sync
     const io = req.app.get("io");

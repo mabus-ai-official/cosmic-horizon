@@ -112,141 +112,159 @@ export default function TradeHistoryPanel({ refreshKey, bare: _bare }: Props) {
 
   return (
     <div className="panel-content">
-      {/* P&L Summary */}
-      {summary && (
-        <div className="trade-history-summary">
-          <div className="panel-subheader">Profit & Loss</div>
-          <div className="trade-history-overall">
-            <div className="trade-history-stat">
-              <span className="trade-history-stat__label">Spent</span>
-              <span
-                className="trade-history-stat__value"
-                style={{ color: "var(--red)" }}
-              >
-                {formatCredits(summary.overall.totalSpent)}
-              </span>
-            </div>
-            <div className="trade-history-stat">
-              <span className="trade-history-stat__label">Earned</span>
-              <span
-                className="trade-history-stat__value"
-                style={{ color: "var(--green)" }}
-              >
-                {formatCredits(summary.overall.totalEarned)}
-              </span>
-            </div>
-            <div className="trade-history-stat">
-              <span className="trade-history-stat__label">Net P&L</span>
-              <span
-                className="trade-history-stat__value"
-                style={{
-                  color: profitColor(summary.overall.netProfit),
-                  fontWeight: "bold",
-                }}
-              >
-                {summary.overall.netProfit >= 0 ? "+" : ""}
-                {formatCredits(summary.overall.netProfit)}
-              </span>
-            </div>
-          </div>
-
-          <div className="trade-history-commodities">
-            {Object.entries(summary.byCommodity).map(([commodity, data]) => (
-              <div key={commodity} className="trade-history-commodity-row">
-                <span className="trade-history-commodity-name">
-                  {commodity}
-                </span>
-                <span className="text-muted">
-                  B:{data.totalBought} @{data.avgBuyPrice}
-                </span>
-                <span className="text-muted">
-                  S:{data.totalSold} @{data.avgSellPrice}
-                </span>
+      <div className="panel-sections">
+        {/* P&L Summary */}
+        {summary && (
+          <div className="panel-section panel-section--accent">
+            <div className="panel-section__header">Profit & Loss</div>
+            <div className="trade-history-overall">
+              <div className="trade-history-stat">
+                <span className="trade-history-stat__label">Spent</span>
                 <span
+                  className="trade-history-stat__value"
+                  style={{ color: "var(--red)" }}
+                >
+                  {formatCredits(summary.overall.totalSpent)}
+                </span>
+              </div>
+              <div className="trade-history-stat">
+                <span className="trade-history-stat__label">Earned</span>
+                <span
+                  className="trade-history-stat__value"
+                  style={{ color: "var(--green)" }}
+                >
+                  {formatCredits(summary.overall.totalEarned)}
+                </span>
+              </div>
+              <div className="trade-history-stat">
+                <span className="trade-history-stat__label">Net P&L</span>
+                <span
+                  className="trade-history-stat__value"
                   style={{
-                    color: profitColor(data.netProfit),
+                    color: profitColor(summary.overall.netProfit),
                     fontWeight: "bold",
                   }}
                 >
-                  {data.netProfit >= 0 ? "+" : ""}
-                  {data.netProfit.toLocaleString()}
+                  {summary.overall.netProfit >= 0 ? "+" : ""}
+                  {formatCredits(summary.overall.netProfit)}
                 </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="trade-history-filters">
-        <input
-          type="text"
-          className="trade-history-search"
-          placeholder="Search outpost..."
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-        />
-        <select
-          className="trade-history-select"
-          value={filterCommodity}
-          onChange={(e) => setFilterCommodity(e.target.value)}
-        >
-          <option value="all">All</option>
-          <option value="cyrillium">Cyrillium</option>
-          <option value="food">Food</option>
-          <option value="tech">Tech</option>
-        </select>
-        <select
-          className="trade-history-select"
-          value={filterDirection}
-          onChange={(e) => setFilterDirection(e.target.value)}
-        >
-          <option value="all">All</option>
-          <option value="buy">Buy</option>
-          <option value="sell">Sell</option>
-        </select>
-      </div>
-
-      {/* Trade List */}
-      <div className="trade-history-list">
-        {filteredTrades.length === 0 ? (
-          <div className="text-muted" style={{ padding: "8px 0" }}>
-            No trades found.
-          </div>
-        ) : (
-          filteredTrades.map((t) => (
-            <div key={t.id} className="trade-history-row">
-              <div className="trade-history-row__top">
-                <span
-                  className={
-                    t.direction === "buy"
-                      ? "trade-history-direction trade-history-direction--buy"
-                      : "trade-history-direction trade-history-direction--sell"
-                  }
-                >
-                  {t.direction.toUpperCase()}
-                </span>
-                <span className="trade-history-commodity">{t.commodity}</span>
-                <span className="trade-history-qty">x{t.quantity}</span>
-                <span className="text-muted">@{t.pricePerUnit} cr</span>
-                <span
-                  className="trade-history-total"
-                  style={{
-                    color:
-                      t.direction === "sell" ? "var(--green)" : "var(--red)",
-                  }}
-                >
-                  {t.direction === "sell" ? "+" : "-"}
-                  {t.totalPrice.toLocaleString()} cr
-                </span>
-              </div>
-              <div className="trade-history-row__bottom">
-                <span className="text-muted">{t.outpostName}</span>
-                <span className="text-muted">{formatTime(t.createdAt)}</span>
               </div>
             </div>
-          ))
+
+            <div className="trade-history-commodities">
+              {Object.entries(summary.byCommodity).map(([commodity, data]) => (
+                <div key={commodity} className="trade-history-commodity-row">
+                  <span className="trade-history-commodity-name">
+                    {commodity}
+                  </span>
+                  <span className="text-muted">
+                    B:{data.totalBought} @{data.avgBuyPrice}
+                  </span>
+                  <span className="text-muted">
+                    S:{data.totalSold} @{data.avgSellPrice}
+                  </span>
+                  <span
+                    style={{
+                      color: profitColor(data.netProfit),
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {data.netProfit >= 0 ? "+" : ""}
+                    {data.netProfit.toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
+
+        {/* Filters */}
+        <div className="panel-section">
+          <div className="panel-section__header panel-section__header--muted">
+            Filters
+          </div>
+          <div className="trade-history-filters">
+            <input
+              type="text"
+              className="trade-history-search"
+              placeholder="Search outpost..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+            <select
+              className="trade-history-select"
+              value={filterCommodity}
+              onChange={(e) => setFilterCommodity(e.target.value)}
+            >
+              <option value="all">All</option>
+              <option value="cyrillium">Cyrillium</option>
+              <option value="food">Food</option>
+              <option value="tech">Tech</option>
+            </select>
+            <select
+              className="trade-history-select"
+              value={filterDirection}
+              onChange={(e) => setFilterDirection(e.target.value)}
+            >
+              <option value="all">All</option>
+              <option value="buy">Buy</option>
+              <option value="sell">Sell</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Trade List */}
+        <div className="panel-section">
+          <div className="panel-section__header panel-section__header--muted">
+            Transactions ({filteredTrades.length})
+          </div>
+          <div className="trade-history-list">
+            {filteredTrades.length === 0 ? (
+              <div className="text-muted" style={{ padding: "8px 0" }}>
+                No trades found.
+              </div>
+            ) : (
+              filteredTrades.map((t) => (
+                <div key={t.id} className="trade-history-row">
+                  <div className="trade-history-row__top">
+                    <span
+                      className={
+                        t.direction === "buy"
+                          ? "trade-history-direction trade-history-direction--buy"
+                          : "trade-history-direction trade-history-direction--sell"
+                      }
+                    >
+                      {t.direction.toUpperCase()}
+                    </span>
+                    <span className="trade-history-commodity">
+                      {t.commodity}
+                    </span>
+                    <span className="trade-history-qty">x{t.quantity}</span>
+                    <span className="text-muted">@{t.pricePerUnit} cr</span>
+                    <span
+                      className="trade-history-total"
+                      style={{
+                        color:
+                          t.direction === "sell"
+                            ? "var(--green)"
+                            : "var(--red)",
+                      }}
+                    >
+                      {t.direction === "sell" ? "+" : "-"}
+                      {t.totalPrice.toLocaleString()} cr
+                    </span>
+                  </div>
+                  <div className="trade-history-row__bottom">
+                    <span className="text-muted">{t.outpostName}</span>
+                    <span className="text-muted">
+                      {formatTime(t.createdAt)}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -37,6 +37,7 @@ export interface PlayerState {
   currentShip: {
     id: string;
     shipTypeId: string;
+    hasPlanetaryScanner: boolean;
     weaponEnergy: number;
     engineEnergy: number;
     hullHp: number;

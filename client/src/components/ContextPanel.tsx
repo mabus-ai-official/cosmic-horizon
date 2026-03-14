@@ -356,36 +356,32 @@ export default function ContextPanel({
             )}
           </div>
 
-          {/* Self-Destruct — requires Rache Device in inventory */}
-          <button
-            className={`btn-self-destruct${confirmDestruct > 0 ? " btn-self-destruct--active" : ""}`}
-            disabled={!hasRache}
-            title={
-              hasRache
-                ? "Detonate Rache Device — destroys your ship and damages all ships in sector"
-                : "Requires a Rache Device (buy at Star Mall store)"
-            }
-            onClick={() => {
-              if (!hasRache) return;
-              if (confirmDestruct === 0) {
-                setConfirmDestruct(1);
-                return;
-              }
-              if (confirmDestruct === 1) {
-                setConfirmDestruct(2);
-                return;
-              }
-              onCommand("use rache_device");
-              setConfirmDestruct(0);
-            }}
-            onBlur={() => setConfirmDestruct(0)}
-          >
-            {confirmDestruct === 0
-              ? "SELF-DESTRUCT"
-              : confirmDestruct === 1
-                ? "ARE YOU SURE?"
-                : "CONFIRM DESTRUCT"}
-          </button>
+          {/* Self-Destruct — only visible with Rache Device */}
+          {hasRache && (
+            <button
+              className={`btn-self-destruct${confirmDestruct > 0 ? " btn-self-destruct--active" : ""}`}
+              title="Detonate Rache Device — destroys your ship and damages all ships in sector"
+              onClick={() => {
+                if (confirmDestruct === 0) {
+                  setConfirmDestruct(1);
+                  return;
+                }
+                if (confirmDestruct === 1) {
+                  setConfirmDestruct(2);
+                  return;
+                }
+                onCommand("use rache_device");
+                setConfirmDestruct(0);
+              }}
+              onBlur={() => setConfirmDestruct(0)}
+            >
+              {confirmDestruct === 0
+                ? "RACHE DEVICE — SELF-DESTRUCT"
+                : confirmDestruct === 1
+                  ? "ARE YOU SURE?"
+                  : "CONFIRM DESTRUCT"}
+            </button>
+          )}
         </div>
       )}
 

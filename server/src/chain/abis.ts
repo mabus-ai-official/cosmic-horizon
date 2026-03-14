@@ -48,6 +48,18 @@ export const characterNftAbi = [
   "event FactionRepUpdated(uint256 indexed tokenId, bytes32 indexed factionId, int64 rep)",
 ] as const;
 
+export const planetNftAbi = [
+  "function mintPlanet(address to, (string planetClass, string name, uint32 sectorId) data) returns (uint256)",
+  "function updatePlanet(uint256 tokenId, (string planetClass, string name, uint32 sectorId) data)",
+  "function transferPlanet(uint256 tokenId, address from, address to)",
+  "function getPlanet(uint256 tokenId) view returns ((string planetClass, string name, uint32 sectorId))",
+  "function ownerOf(uint256 tokenId) view returns (address)",
+  "function balanceOf(address owner) view returns (uint256)",
+  "event PlanetMinted(uint256 indexed tokenId, address indexed owner, string planetClass, uint32 sectorId)",
+  "event PlanetUpdated(uint256 indexed tokenId)",
+  "event PlanetTransferred(uint256 indexed tokenId, address indexed from, address indexed to)",
+] as const;
+
 export const syndicateFactoryAbi = [
   "function createSyndicate(string name, address founder, uint64 votingPeriod, uint256 quorumPercent) returns (uint256)",
   "function addMember(uint256 syndicateIndex, address member)",

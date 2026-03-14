@@ -6,6 +6,9 @@ import { canAccessShipType } from "../engine/progression";
 import { GAME_CONFIG } from "../config/game";
 import db from "../db/connection";
 import { syncPlayer } from "../ws/sync";
+import { enqueue, settleDebitPlayer } from "../chain/tx-queue";
+import { isSettlementEnabled } from "../chain/config";
+import type { Address } from "viem";
 import { pickFlavor, outpostNpcRace } from "../config/flavor-text";
 import type { RaceId } from "../config/races";
 
@@ -117,6 +120,26 @@ router.post("/buy/:shipTypeId", requireAuth, async (req, res) => {
         credits: Number(player.credits) - shipType.price,
         current_ship_id: shipId,
       });
+
+    // Chain settlement: debit credits + mint new ShipNFT
+    if (isSettlementEnabled("store") && player.member_contract_address) {
+      await settleDebitPlayer(player.id, shipType.price, "store");
+      enqueue({
+        type: "mintShip",
+        to: player.member_contract_address as Address,
+        data: {
+          shipType: shipType.id,
+          hullHp: shipType.baseHullHp,
+          maxHullHp: shipType.maxHullHp,
+          weaponEnergy: shipType.baseWeaponEnergy,
+          engineEnergy: shipType.baseEngineEnergy,
+          cargoBays: shipType.baseCargoHolds,
+          hasCloakDevice: false,
+          hasRacheDevice: false,
+          hasJumpDrive: false,
+        },
+      });
+    }
 
     // Multi-session sync
     const io = req.app.get("io");

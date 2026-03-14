@@ -27,7 +27,9 @@ router.get("/:id/info", requireAuth, async (req, res) => {
       .select(
         "sectors.id",
         "sectors.sector_name",
+        "sectors.type as sector_type",
         "sectors.is_npc_starmall",
+        "sectors.has_star_mall",
         "sectors.claimed_by_player_id",
         "sectors.claimed_by_syndicate_id",
         "sectors.claimed_at",
@@ -55,7 +57,8 @@ router.get("/:id/info", requireAuth, async (req, res) => {
     res.json({
       sectorId,
       sectorName: sector.sector_name,
-      isNpcStarmall: !!sector.is_npc_starmall,
+      sectorType: sector.sector_type || "standard",
+      isNpcStarmall: !!(sector.is_npc_starmall || sector.has_star_mall),
       owner,
       claimedAt: sector.claimed_at,
       registeredFaction,
@@ -90,10 +93,8 @@ router.post("/:id/claim", requireAuth, async (req, res) => {
         .status(400)
         .json({ error: "Star Mall sectors cannot be claimed" });
     }
-    if (sector.type === "protected") {
-      return res
-        .status(400)
-        .json({ error: "Protected sectors cannot be claimed" });
+    if (sector.type === "protected" || sector.type === "harmony_enforced") {
+      return res.status(400).json({ error: "This sector cannot be claimed" });
     }
     if (sector.claimed_by_player_id || sector.claimed_by_syndicate_id) {
       return res.status(400).json({ error: "Sector is already claimed" });

@@ -12,7 +12,12 @@ import {
 } from "viem";
 import { publicClient } from "./client";
 import { contractAddresses } from "./addresses";
-import { shipNftAbi, characterNftAbi, syndicateFactoryAbi } from "./abis";
+import {
+  shipNftAbi,
+  characterNftAbi,
+  syndicateFactoryAbi,
+  planetNftAbi,
+} from "./abis";
 import db from "../db/connection";
 
 // ---------------------------------------------------------------------------
@@ -58,6 +63,12 @@ const EVENTS = {
   syndicateMemberRemoved: parseAbiItem(
     "event MemberRemoved(uint256 indexed syndicateIndex, address indexed member)",
   ),
+  planetMinted: parseAbiItem(
+    "event PlanetMinted(uint256 indexed tokenId, address indexed owner, string planetClass)",
+  ),
+  planetTransferred: parseAbiItem(
+    "event PlanetTransferred(uint256 indexed tokenId, address indexed from, address indexed to)",
+  ),
 } as const;
 
 // Precompute event selectors (topic0) for routing
@@ -74,6 +85,8 @@ const SELECTORS = {
   syndicateCreated: toEventSelector(EVENTS.syndicateCreated),
   syndicateMemberAdded: toEventSelector(EVENTS.syndicateMemberAdded),
   syndicateMemberRemoved: toEventSelector(EVENTS.syndicateMemberRemoved),
+  planetMinted: toEventSelector(EVENTS.planetMinted),
+  planetTransferred: toEventSelector(EVENTS.planetTransferred),
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -267,12 +280,19 @@ async function handleShipMinted(log: Log): Promise<void> {
       .first();
   }
   if (player) {
-    await db("ships")
-      .where({ owner_id: player.id })
-      .whereNull("chain_token_id")
-      .orderBy("created_at", "desc")
-      .limit(1)
-      .update({ chain_token_id: Number(tokenId) });
+    // Skip if this token ID is already assigned to a ship (idempotent replay)
+    const existing = await db("ships")
+      .where({ chain_token_id: Number(tokenId) })
+      .first();
+    if (!existing) {
+      // Match by ship type + null chain_token_id to assign correctly
+      await db("ships")
+        .where({ owner_id: player.id, ship_type_id: shipType })
+        .whereNull("chain_token_id")
+        .orderBy("created_at", "desc")
+        .limit(1)
+        .update({ chain_token_id: Number(tokenId) });
+    }
   }
 
   console.log(
@@ -450,6 +470,81 @@ async function handleSyndicateMemberRemoved(log: Log): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Event handlers — PlanetNFT
+// ---------------------------------------------------------------------------
+
+async function handlePlanetMinted(log: Log): Promise<void> {
+  const decoded = decodeEventLog({
+    abi: [EVENTS.planetMinted],
+    data: log.data,
+    topics: log.topics,
+  });
+  const { tokenId, owner } = decoded.args as {
+    tokenId: bigint;
+    owner: Address;
+    planetClass: string;
+  };
+
+  // Find player by member_contract_address (NFTs held by MemberContract)
+  let player = await db("players")
+    .whereRaw("LOWER(member_contract_address) = ?", [owner.toLowerCase()])
+    .first();
+  if (!player) {
+    player = await db("players")
+      .whereRaw("LOWER(wallet_address) = ?", [owner.toLowerCase()])
+      .first();
+  }
+  if (player) {
+    // Skip if already assigned (idempotent replay)
+    const existing = await db("planets")
+      .where({ chain_token_id: Number(tokenId) })
+      .first();
+    if (!existing) {
+      // Match by owner + null chain_token_id, most recent first
+      await db("planets")
+        .where({ owner_id: player.id })
+        .whereNull("chain_token_id")
+        .orderBy("claimed_at", "desc")
+        .limit(1)
+        .update({ chain_token_id: Number(tokenId) });
+    }
+  }
+
+  console.log(`[indexer] PlanetMinted: tokenId=${tokenId} owner=${owner}`);
+}
+
+async function handlePlanetTransferred(log: Log): Promise<void> {
+  const decoded = decodeEventLog({
+    abi: [EVENTS.planetTransferred],
+    data: log.data,
+    topics: log.topics,
+  });
+  const { tokenId, to } = decoded.args as {
+    tokenId: bigint;
+    from: Address;
+    to: Address;
+  };
+
+  // Find new owner by member_contract_address
+  let newOwner = await db("players")
+    .whereRaw("LOWER(member_contract_address) = ?", [to.toLowerCase()])
+    .first();
+  if (!newOwner) {
+    newOwner = await db("players")
+      .whereRaw("LOWER(wallet_address) = ?", [to.toLowerCase()])
+      .first();
+  }
+
+  if (newOwner) {
+    await db("planets")
+      .where({ chain_token_id: Number(tokenId) })
+      .update({ owner_id: newOwner.id });
+  }
+
+  console.log(`[indexer] PlanetTransferred: tokenId=${tokenId} to=${to}`);
+}
+
+// ---------------------------------------------------------------------------
 // Main indexer — watches events and replays from last synced block
 // ---------------------------------------------------------------------------
 
@@ -526,6 +621,10 @@ async function routeLog(contractAddress: string, log: Log): Promise<void> {
       await handleSyndicateMemberAdded(log);
     else if (topic0 === SELECTORS.syndicateMemberRemoved)
       await handleSyndicateMemberRemoved(log);
+  } else if (addr === contractAddresses.planetNft.toLowerCase()) {
+    if (topic0 === SELECTORS.planetMinted) await handlePlanetMinted(log);
+    else if (topic0 === SELECTORS.planetTransferred)
+      await handlePlanetTransferred(log);
   }
 }
 
@@ -583,6 +682,7 @@ export async function startIndexer(): Promise<void> {
         address: contractAddresses.syndicateFactory,
         name: "syndicateFactory",
       },
+      { address: contractAddresses.planetNft, name: "planetNft" },
     ];
 
     // Replay missed events for each contract

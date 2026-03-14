@@ -28,7 +28,11 @@ import {
 import { syncPlayer } from "../ws/sync";
 import { handleSectorChange, notifyPlayer } from "../ws/handlers";
 import { isStoryNPC, cleanupDestroyedNPC } from "../engine/story-npcs";
-import { enqueue } from "../chain/tx-queue";
+import {
+  enqueue,
+  settleResourceCredit,
+  settleTransferBetweenPlayers,
+} from "../chain/tx-queue";
 import { isSettlementEnabled } from "../chain/config";
 import type { Address } from "viem";
 
@@ -300,7 +304,60 @@ router.post("/fire", requireAuth, async (req, res) => {
       }
     }
 
-    // Chain settlement: ship destruction + bounty rewards
+    // Cargo loot transfer: attacker salvages destroyed ship's cargo
+    let cargoLooted: { resource: string; amount: number }[] = [];
+    if (result.defenderDestroyed && !targetIsStoryNPC) {
+      const attackerUpgradesForCargo = await applyUpgradesToShip(
+        attackerShip.id,
+      );
+      const freshAttackerShip = await db("ships")
+        .where({ id: attackerShip.id })
+        .first();
+      const maxCargo =
+        freshAttackerShip.max_cargo_holds + attackerUpgradesForCargo.cargoBonus;
+      const currentCargo =
+        (freshAttackerShip.cyrillium_cargo || 0) +
+        (freshAttackerShip.food_cargo || 0) +
+        (freshAttackerShip.tech_cargo || 0) +
+        (freshAttackerShip.colonist_cargo || 0);
+      let freeSpace = maxCargo - currentCargo;
+
+      const lootResources = [
+        { cargo: "cyrillium_cargo", resource: "cyrillium" },
+        { cargo: "food_cargo", resource: "food" },
+        { cargo: "tech_cargo", resource: "tech" },
+      ];
+
+      for (const lr of lootResources) {
+        const available = defenderShip[lr.cargo] || 0;
+        if (available > 0 && freeSpace > 0) {
+          const toLoot = Math.min(available, freeSpace);
+          await db("ships")
+            .where({ id: attackerShip.id })
+            .increment(lr.cargo, toLoot);
+          freeSpace -= toLoot;
+          cargoLooted.push({ resource: lr.resource, amount: toLoot });
+        }
+      }
+
+      if (cargoLooted.length > 0) {
+        const lootSummary = cargoLooted
+          .map((l) => `${l.amount} ${l.resource}`)
+          .join(", ");
+        logActivity(
+          player.id,
+          "combat_loot",
+          `Salvaged ${lootSummary} from ${target.username}'s wreckage`,
+        );
+        incrementStat(
+          player.id,
+          "cargo_looted",
+          cargoLooted.reduce((s, l) => s + l.amount, 0),
+        );
+      }
+    }
+
+    // Chain settlement: ship destruction + bounty rewards + cargo loot
     if (result.defenderDestroyed && isSettlementEnabled("combat")) {
       // Destroy ship NFT on-chain
       const destroyedShip = await db("ships")
@@ -324,6 +381,16 @@ router.post("/fire", requireAuth, async (req, res) => {
           resource: "credits",
           amount: BigInt(totalReward) * 10n ** 18n,
         });
+      }
+      // Cargo loot on-chain: transfer resources from defender to attacker
+      for (const loot of cargoLooted) {
+        await settleTransferBetweenPlayers(
+          target.id,
+          player.id,
+          loot.resource,
+          loot.amount,
+          "combat",
+        );
       }
     }
 

@@ -20,6 +20,7 @@ import {
   ACT_OPENINGS,
   ACT_COMPLETIONS,
 } from "../config/story-interstitials";
+import { getNarrationUrl, CLAIM_TEXTS } from "../config/narration-manifest";
 import {
   buildIdleSpaceScene,
   buildIdleOutpostScene,
@@ -822,13 +823,17 @@ export function useGameEffects({
           rewardXp: number;
           requiresClaim: boolean;
           isStory?: boolean;
+          storyOrder?: number;
         }) => {
           if (data.isStory) {
+            const storyOrder = data.storyOrder || 0;
+            const claimText = CLAIM_TEXTS[storyOrder];
             eventOverlay.enqueueEvent({
               category: "story_mission",
               title: "STORY QUEST COMPLETE",
               subtitle: data.title,
-              body: "Claim your reward in the Story tab.",
+              body: claimText || "Claim your reward in the Story tab.",
+              narrationUrl: getNarrationUrl(storyOrder, "claim") ?? undefined,
               colorScheme: "yellow",
               duration: 7000,
               dismissable: true,

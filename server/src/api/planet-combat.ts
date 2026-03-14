@@ -15,6 +15,7 @@ import {
 } from "../engine/profile-stats";
 import { notifyPlayer } from "../ws/handlers";
 import { syncPlayer } from "../ws/sync";
+import { settleDebitPlayer, settleTransferPlanet } from "../chain/tx-queue";
 
 const router = Router();
 
@@ -174,6 +175,15 @@ router.post("/bombard", requireAuth, async (req, res) => {
       planetUpdate.happiness = Math.max(0, (planet.happiness ?? 50) - 30);
     }
     await db("planets").where({ id: planet.id }).update(planetUpdate);
+
+    // Chain settlement: transfer PlanetNFT ownership on conquest
+    if (conquered) {
+      try {
+        await settleTransferPlanet(planet.id, planet.owner_id, player.id);
+      } catch {
+        /* chain sync failure is non-critical */
+      }
+    }
 
     // Deduct weapon energy from ship
     const newWeaponEnergy = Math.max(0, ship.weapon_energy - actualExpend);
@@ -401,6 +411,7 @@ router.post("/fortify", requireAuth, async (req, res) => {
     await db("players")
       .where({ id: player.id })
       .update({ credits: Number(player.credits) - totalCost });
+    await settleDebitPlayer(player.id, totalCost, "combat");
 
     res.json({
       type,

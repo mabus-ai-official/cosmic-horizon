@@ -590,8 +590,12 @@ router.get("/directory", requireAuth, async (req, res) => {
       .first();
     if (!player) return res.status(404).json({ error: "Player not found" });
 
+    // Only show outposts in sectors the player has explored
+    const explored: number[] = JSON.parse(player.explored_sectors || "[]");
+
     const outposts = await db("outposts")
       .join("sectors", "outposts.sector_id", "sectors.id")
+      .whereIn("outposts.sector_id", explored)
       .select(
         "outposts.id",
         "outposts.name",

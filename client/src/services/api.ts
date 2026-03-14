@@ -343,6 +343,13 @@ export const verifyWallet = (message: string, signature: string) =>
 export const disconnectWallet = () => api.post("/wallet/disconnect");
 export const getWalletBalance = () => api.get("/wallet/balance");
 export const getWalletStatus = () => api.get("/wallet/status");
+export const getWalletTokens = () => api.get("/wallet/tokens");
+export const getWalletNfts = () => api.get("/wallet/nfts");
+export const getWalletHoldings = () => api.get("/wallet/holdings");
+export const withdrawTokens = (resource: string, amount: number) =>
+  api.post("/wallet/withdraw-tokens", { resource, amount });
+export const withdrawNft = (nftType: string, tokenId: number) =>
+  api.post("/wallet/withdraw-nft", { nftType, tokenId });
 
 // NPCs
 export const getNPCsInSector = () => api.get("/npcs/sector");

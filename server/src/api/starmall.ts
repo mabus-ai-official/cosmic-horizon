@@ -10,6 +10,12 @@ import {
 import { GAME_CONFIG } from "../config/game";
 import db from "../db/connection";
 import { pickFlavor, outpostNpcRace } from "../config/flavor-text";
+import {
+  enqueue,
+  settleCreditPlayer,
+  settleDebitPlayer,
+} from "../chain/tx-queue";
+import { isSettlementEnabled } from "../chain/config";
 
 const router = Router();
 
@@ -212,6 +218,7 @@ router.get("/garage/upgrades", requireAuth, async (req, res) => {
     res.json({
       upgrades: upgrades.map((u) => ({
         id: u.id,
+        upgradeTypeId: u.id,
         name: u.name,
         description: u.description,
         slot: u.slot,
@@ -309,6 +316,7 @@ router.post("/garage/install/:id", requireAuth, async (req, res) => {
       .update({
         credits: Number(player!.credits) - upgradeType.price,
       });
+    await settleDebitPlayer(player!.id, upgradeType.price, "store");
 
     // Install
     const installId = crypto.randomUUID();
@@ -414,6 +422,12 @@ router.post("/salvage/sell/:shipId", requireAuth, async (req, res) => {
       .update({
         credits: Number(player!.credits) + salvageValue,
       });
+
+    // Chain settlement: credit salvage value + destroy ShipNFT
+    await settleCreditPlayer(player!.id, salvageValue, "store");
+    if (isSettlementEnabled("store") && ship.chain_token_id != null) {
+      enqueue({ type: "destroyShip", tokenId: BigInt(ship.chain_token_id) });
+    }
 
     const salvageRace = outpostNpcRace(player!.current_sector_id.toString());
     res.json({
@@ -623,6 +637,7 @@ router.post("/cantina/intel", requireAuth, async (req, res) => {
       .update({
         credits: Number(player!.credits) - CANTINA_INTEL_COST,
       });
+    await settleDebitPlayer(player!.id, CANTINA_INTEL_COST, "store");
 
     // Gather intel: richest outposts, most populated planets, recent combat
     const richOutposts = await db("outposts")

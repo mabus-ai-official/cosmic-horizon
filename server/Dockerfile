@@ -26,6 +26,9 @@ COPY entrypoint.sh ./
 RUN rm -f dist/db/migrations/*.d.ts dist/db/migrations/*.d.ts.map dist/db/migrations/*.js.map
 RUN chmod +x entrypoint.sh
 
+# Run as non-root user (node:20-alpine provides uid 1000 'node' user)
+USER node
+
 EXPOSE 3105
 
 CMD ["sh", "entrypoint.sh"]

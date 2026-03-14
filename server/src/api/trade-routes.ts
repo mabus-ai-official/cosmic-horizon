@@ -1,38 +1,40 @@
-import { Router } from 'express';
-import crypto from 'crypto';
-import { requireAuth } from '../middleware/auth';
-import { canAffordAction, deductEnergy } from '../engine/energy';
-import { awardXP, getPlayerProgress } from '../engine/progression';
-import { GAME_CONFIG } from '../config/game';
+import { Router } from "express";
+import crypto from "crypto";
+import { requireAuth } from "../middleware/auth";
+import { canAffordAction, deductEnergy } from "../engine/energy";
+import { awardXP, getPlayerProgress } from "../engine/progression";
+import { GAME_CONFIG } from "../config/game";
 import {
   getMaxRouteSlots,
   computeRoutePath,
   ransackCaravan,
   escortCaravan,
   scoutCaravans,
-} from '../engine/caravans';
-import db from '../db/connection';
-import { syncPlayer } from '../ws/sync';
+} from "../engine/caravans";
+import db from "../db/connection";
+import { syncPlayer } from "../ws/sync";
+import { settleDebitPlayer } from "../chain/tx-queue";
 
 const router = Router();
 
 // List player's trade routes + active caravans + slot info
-router.get('/', requireAuth, async (req, res) => {
+router.get("/", requireAuth, async (req, res) => {
   try {
     const playerId = req.session.playerId!;
     const progress = await getPlayerProgress(playerId);
 
-    const routes = await db('trade_routes')
+    const routes = await db("trade_routes")
       .where({ owner_id: playerId })
-      .whereNot({ status: 'destroyed' });
+      .whereNot({ status: "destroyed" });
 
     // Get active caravans for each route
-    const routeIds = routes.map(r => r.id);
-    const caravans = routeIds.length > 0
-      ? await db('caravans')
-          .whereIn('trade_route_id', routeIds)
-          .where({ status: 'in_transit' })
-      : [];
+    const routeIds = routes.map((r) => r.id);
+    const caravans =
+      routeIds.length > 0
+        ? await db("caravans")
+            .whereIn("trade_route_id", routeIds)
+            .where({ status: "in_transit" })
+        : [];
 
     const caravansByRoute = new Map<string, any>();
     for (const c of caravans) {
@@ -40,20 +42,21 @@ router.get('/', requireAuth, async (req, res) => {
     }
 
     // Get planet names for destinations
-    const planetIds = [...new Set(routes.map(r => r.dest_planet_id))];
-    const planets = planetIds.length > 0
-      ? await db('planets').whereIn('id', planetIds).select('id', 'name')
-      : [];
-    const planetMap = new Map(planets.map(p => [p.id, p.name]));
+    const planetIds = [...new Set(routes.map((r) => r.dest_planet_id))];
+    const planets =
+      planetIds.length > 0
+        ? await db("planets").whereIn("id", planetIds).select("id", "name")
+        : [];
+    const planetMap = new Map(planets.map((p) => [p.id, p.name]));
 
     const maxSlots = getMaxRouteSlots(progress.level);
-    const activeCount = routes.filter(r => r.status === 'active').length;
+    const activeCount = routes.filter((r) => r.status === "active").length;
 
     res.json({
       maxSlots,
       activeCount,
       playerLevel: progress.level,
-      routes: routes.map(r => {
+      routes: routes.map((r) => {
         const caravan = caravansByRoute.get(r.id);
         const path = JSON.parse(r.path_json);
         return {
@@ -62,7 +65,7 @@ router.get('/', requireAuth, async (req, res) => {
           sourceId: r.source_id,
           sourceSectorId: r.source_sector_id,
           destPlanetId: r.dest_planet_id,
-          destPlanetName: planetMap.get(r.dest_planet_id) || 'Unknown',
+          destPlanetName: planetMap.get(r.dest_planet_id) || "Unknown",
           destSectorId: r.dest_sector_id,
           pathLength: r.path_length,
           foodPerCycle: r.food_per_cycle,
@@ -71,49 +74,55 @@ router.get('/', requireAuth, async (req, res) => {
           status: r.status,
           createdAt: r.created_at,
           lastDispatchAt: r.last_dispatch_at,
-          activeCaravan: caravan ? {
-            id: caravan.id,
-            currentSectorId: caravan.current_sector_id,
-            pathIndex: caravan.path_index,
-            pathLength: path.length,
-            foodCargo: caravan.food_cargo,
-            isProtected: !!caravan.is_protected,
-            escorted: !!caravan.escort_player_id,
-            defenseHp: caravan.defense_hp,
-            status: caravan.status,
-          } : null,
+          activeCaravan: caravan
+            ? {
+                id: caravan.id,
+                currentSectorId: caravan.current_sector_id,
+                pathIndex: caravan.path_index,
+                pathLength: path.length,
+                foodCargo: caravan.food_cargo,
+                isProtected: !!caravan.is_protected,
+                escorted: !!caravan.escort_player_id,
+                defenseHp: caravan.defense_hp,
+                status: caravan.status,
+              }
+            : null,
         };
       }),
     });
   } catch (err) {
-    console.error('Trade routes list error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Trade routes list error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // Create a new trade route
-router.post('/', requireAuth, async (req, res) => {
+router.post("/", requireAuth, async (req, res) => {
   try {
     const playerId = req.session.playerId!;
     const { sourceType, sourceId, destPlanetId, fuelPaid } = req.body;
 
     if (!sourceType || !sourceId || !destPlanetId) {
-      return res.status(400).json({ error: 'Missing required fields: sourceType, sourceId, destPlanetId' });
+      return res.status(400).json({
+        error: "Missing required fields: sourceType, sourceId, destPlanetId",
+      });
     }
 
-    if (!['outpost', 'star_mall'].includes(sourceType)) {
-      return res.status(400).json({ error: 'sourceType must be outpost or star_mall' });
+    if (!["outpost", "star_mall"].includes(sourceType)) {
+      return res
+        .status(400)
+        .json({ error: "sourceType must be outpost or star_mall" });
     }
 
-    const player = await db('players').where({ id: playerId }).first();
-    if (!player) return res.status(404).json({ error: 'Player not found' });
+    const player = await db("players").where({ id: playerId }).first();
+    if (!player) return res.status(404).json({ error: "Player not found" });
 
     // Check slot availability
     const progress = await getPlayerProgress(playerId);
     const maxSlots = getMaxRouteSlots(progress.level);
-    const activeRoutes = await db('trade_routes')
-      .where({ owner_id: playerId, status: 'active' })
-      .count('* as count')
+    const activeRoutes = await db("trade_routes")
+      .where({ owner_id: playerId, status: "active" })
+      .count("* as count")
       .first();
     const activeCount = Number(activeRoutes?.count || 0);
 
@@ -126,33 +135,47 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     // Check player owns destination planet
-    const destPlanet = await db('planets').where({ id: destPlanetId }).first();
-    if (!destPlanet) return res.status(404).json({ error: 'Destination planet not found' });
+    const destPlanet = await db("planets").where({ id: destPlanetId }).first();
+    if (!destPlanet)
+      return res.status(404).json({ error: "Destination planet not found" });
     if (destPlanet.owner_id !== playerId) {
-      return res.status(400).json({ error: 'You do not own the destination planet' });
+      return res
+        .status(400)
+        .json({ error: "You do not own the destination planet" });
     }
 
     // Validate source
     let sourceSectorId: number;
-    if (sourceType === 'outpost') {
-      const outpost = await db('outposts').where({ id: sourceId }).first();
-      if (!outpost) return res.status(404).json({ error: 'Source outpost not found' });
+    if (sourceType === "outpost") {
+      const outpost = await db("outposts").where({ id: sourceId }).first();
+      if (!outpost)
+        return res.status(404).json({ error: "Source outpost not found" });
       sourceSectorId = outpost.sector_id;
     } else {
       // star_mall — sourceId is sector id
       const sectorId = parseInt(sourceId, 10);
-      if (isNaN(sectorId)) return res.status(400).json({ error: 'Invalid star mall sector ID' });
-      const sector = await db('sectors').where({ id: sectorId, has_star_mall: true }).first();
-      if (!sector) return res.status(404).json({ error: 'Star mall sector not found' });
+      if (isNaN(sectorId))
+        return res.status(400).json({ error: "Invalid star mall sector ID" });
+      const sector = await db("sectors")
+        .where({ id: sectorId, has_star_mall: true })
+        .first();
+      if (!sector)
+        return res.status(404).json({ error: "Star mall sector not found" });
       sourceSectorId = sectorId;
     }
 
     // Check for existing active route to same planet
-    const existingRoute = await db('trade_routes')
-      .where({ owner_id: playerId, dest_planet_id: destPlanetId, status: 'active' })
+    const existingRoute = await db("trade_routes")
+      .where({
+        owner_id: playerId,
+        dest_planet_id: destPlanetId,
+        status: "active",
+      })
       .first();
     if (existingRoute) {
-      return res.status(400).json({ error: 'You already have an active route to this planet' });
+      return res
+        .status(400)
+        .json({ error: "You already have an active route to this planet" });
     }
 
     // Check credits
@@ -173,14 +196,21 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     // Deduct setup cost
-    await db('players').where({ id: playerId }).update({
-      credits: db.raw('credits - ?', [GAME_CONFIG.TRADE_ROUTE_SETUP_COST]),
-    });
+    await db("players")
+      .where({ id: playerId })
+      .update({
+        credits: db.raw("credits - ?", [GAME_CONFIG.TRADE_ROUTE_SETUP_COST]),
+      });
+    await settleDebitPlayer(
+      playerId,
+      GAME_CONFIG.TRADE_ROUTE_SETUP_COST,
+      "trade",
+    );
 
     const now = new Date().toISOString();
     const routeId = crypto.randomUUID();
 
-    await db('trade_routes').insert({
+    await db("trade_routes").insert({
       id: routeId,
       owner_id: playerId,
       source_type: sourceType,
@@ -193,16 +223,22 @@ router.post('/', requireAuth, async (req, res) => {
       food_per_cycle: GAME_CONFIG.TRADE_ROUTE_FOOD_PER_CYCLE,
       credit_cost: GAME_CONFIG.TRADE_ROUTE_MAINTENANCE_COST,
       fuel_paid: fuelPaid ? 1 : 0,
-      status: 'active',
+      status: "active",
       created_at: now,
     });
 
     // Award XP
-    await awardXP(playerId, GAME_CONFIG.XP_ESTABLISH_TRADE_ROUTE, 'trade');
+    await awardXP(playerId, GAME_CONFIG.XP_ESTABLISH_TRADE_ROUTE, "trade");
 
     // Multi-session sync
-    const io = req.app.get('io');
-    if (io) syncPlayer(io, playerId, 'sync:status', req.headers['x-socket-id'] as string | undefined);
+    const io = req.app.get("io");
+    if (io)
+      syncPlayer(
+        io,
+        playerId,
+        "sync:status",
+        req.headers["x-socket-id"] as string | undefined,
+      );
 
     res.json({
       success: true,
@@ -214,132 +250,156 @@ router.post('/', requireAuth, async (req, res) => {
       foodPerCycle: GAME_CONFIG.TRADE_ROUTE_FOOD_PER_CYCLE,
     });
   } catch (err) {
-    console.error('Create trade route error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Create trade route error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // Delete/destroy a trade route
-router.delete('/:id', requireAuth, async (req, res) => {
+router.delete("/:id", requireAuth, async (req, res) => {
   try {
     const playerId = req.session.playerId!;
-    const route = await db('trade_routes').where({ id: req.params.id, owner_id: playerId }).first();
-    if (!route) return res.status(404).json({ error: 'Trade route not found' });
+    const route = await db("trade_routes")
+      .where({ id: req.params.id, owner_id: playerId })
+      .first();
+    if (!route) return res.status(404).json({ error: "Trade route not found" });
 
     // Destroy any in-transit caravans
-    await db('caravans')
-      .where({ trade_route_id: route.id, status: 'in_transit' })
-      .update({ status: 'destroyed' });
+    await db("caravans")
+      .where({ trade_route_id: route.id, status: "in_transit" })
+      .update({ status: "destroyed" });
 
-    await db('trade_routes').where({ id: route.id }).update({ status: 'destroyed' });
+    await db("trade_routes")
+      .where({ id: route.id })
+      .update({ status: "destroyed" });
 
     res.json({ success: true });
   } catch (err) {
-    console.error('Delete trade route error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Delete trade route error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // Toggle fuel paid on/off
-router.patch('/:id', requireAuth, async (req, res) => {
+router.patch("/:id", requireAuth, async (req, res) => {
   try {
     const playerId = req.session.playerId!;
     const { fuelPaid } = req.body;
-    if (fuelPaid === undefined) return res.status(400).json({ error: 'Missing fuelPaid field' });
+    if (fuelPaid === undefined)
+      return res.status(400).json({ error: "Missing fuelPaid field" });
 
-    const route = await db('trade_routes').where({ id: req.params.id, owner_id: playerId }).first();
-    if (!route) return res.status(404).json({ error: 'Trade route not found' });
+    const route = await db("trade_routes")
+      .where({ id: req.params.id, owner_id: playerId })
+      .first();
+    if (!route) return res.status(404).json({ error: "Trade route not found" });
 
-    await db('trade_routes').where({ id: route.id }).update({
-      fuel_paid: fuelPaid ? 1 : 0,
-    });
+    await db("trade_routes")
+      .where({ id: route.id })
+      .update({
+        fuel_paid: fuelPaid ? 1 : 0,
+      });
 
     res.json({ success: true, fuelPaid: !!fuelPaid });
   } catch (err) {
-    console.error('Toggle trade route fuel error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Toggle trade route fuel error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // Resume a paused route
-router.post('/:id/resume', requireAuth, async (req, res) => {
+router.post("/:id/resume", requireAuth, async (req, res) => {
   try {
     const playerId = req.session.playerId!;
-    const route = await db('trade_routes').where({ id: req.params.id, owner_id: playerId }).first();
-    if (!route) return res.status(404).json({ error: 'Trade route not found' });
-    if (route.status !== 'paused') return res.status(400).json({ error: 'Route is not paused' });
+    const route = await db("trade_routes")
+      .where({ id: req.params.id, owner_id: playerId })
+      .first();
+    if (!route) return res.status(404).json({ error: "Trade route not found" });
+    if (route.status !== "paused")
+      return res.status(400).json({ error: "Route is not paused" });
 
-    await db('trade_routes').where({ id: route.id }).update({ status: 'active' });
+    await db("trade_routes")
+      .where({ id: route.id })
+      .update({ status: "active" });
 
     res.json({ success: true });
   } catch (err) {
-    console.error('Resume trade route error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Resume trade route error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // Get caravans in player's current sector
-router.get('/caravans', requireAuth, async (req, res) => {
+router.get("/caravans", requireAuth, async (req, res) => {
   try {
     const playerId = req.session.playerId!;
-    const player = await db('players').where({ id: playerId }).first();
-    if (!player) return res.status(404).json({ error: 'Player not found' });
+    const player = await db("players").where({ id: playerId }).first();
+    if (!player) return res.status(404).json({ error: "Player not found" });
 
-    const caravans = await db('caravans')
-      .join('players', 'caravans.owner_id', 'players.id')
-      .where('caravans.current_sector_id', player.current_sector_id)
-      .where('caravans.status', 'in_transit')
+    const caravans = await db("caravans")
+      .join("players", "caravans.owner_id", "players.id")
+      .where("caravans.current_sector_id", player.current_sector_id)
+      .where("caravans.status", "in_transit")
       .select(
-        'caravans.id',
-        'caravans.owner_id as ownerId',
-        'players.username as ownerName',
-        'caravans.food_cargo as foodCargo',
-        'caravans.is_protected as isProtected',
-        'caravans.escort_player_id as escortPlayerId',
-        'caravans.defense_hp as defenseHp'
+        "caravans.id",
+        "caravans.owner_id as ownerId",
+        "players.username as ownerName",
+        "caravans.food_cargo as foodCargo",
+        "caravans.is_protected as isProtected",
+        "caravans.escort_player_id as escortPlayerId",
+        "caravans.defense_hp as defenseHp",
       );
 
     res.json({
-      caravans: caravans.map(c => ({
+      caravans: caravans.map((c) => ({
         ...c,
         isProtected: !!c.isProtected || !!c.escortPlayerId,
       })),
     });
   } catch (err) {
-    console.error('Sector caravans error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Sector caravans error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // Ransack an unprotected caravan (2 AP)
-router.post('/ransack', requireAuth, async (req, res) => {
+router.post("/ransack", requireAuth, async (req, res) => {
   try {
     const playerId = req.session.playerId!;
     const { caravanId } = req.body;
-    if (!caravanId) return res.status(400).json({ error: 'Missing caravanId' });
+    if (!caravanId) return res.status(400).json({ error: "Missing caravanId" });
 
-    const player = await db('players').where({ id: playerId }).first();
-    if (!player) return res.status(404).json({ error: 'Player not found' });
+    const player = await db("players").where({ id: playerId }).first();
+    if (!player) return res.status(404).json({ error: "Player not found" });
 
-    if (!canAffordAction(player.energy, 'ransack')) {
-      return res.status(400).json({ error: 'Not enough energy', cost: 2 });
+    if (!canAffordAction(player.energy, "ransack")) {
+      return res.status(400).json({ error: "Not enough energy", cost: 2 });
     }
 
-    const io = req.app.get('io');
+    const io = req.app.get("io");
     const result = await ransackCaravan(io, playerId, caravanId);
 
     if (!result.success) {
       // Still deduct energy for the attempt
-      const newEnergy = deductEnergy(player.energy, 'ransack');
-      await db('players').where({ id: playerId }).update({ energy: newEnergy });
-      return res.status(400).json({ error: result.error, energy: newEnergy, combatResult: result.combatResult });
+      const newEnergy = deductEnergy(player.energy, "ransack");
+      await db("players").where({ id: playerId }).update({ energy: newEnergy });
+      return res.status(400).json({
+        error: result.error,
+        energy: newEnergy,
+        combatResult: result.combatResult,
+      });
     }
 
-    const newEnergy = deductEnergy(player.energy, 'ransack');
-    await db('players').where({ id: playerId }).update({ energy: newEnergy });
+    const newEnergy = deductEnergy(player.energy, "ransack");
+    await db("players").where({ id: playerId }).update({ energy: newEnergy });
 
     // Multi-session sync
-    if (io) syncPlayer(io, playerId, 'sync:status', req.headers['x-socket-id'] as string | undefined);
+    if (io)
+      syncPlayer(
+        io,
+        playerId,
+        "sync:status",
+        req.headers["x-socket-id"] as string | undefined,
+      );
 
     res.json({
       success: true,
@@ -348,61 +408,69 @@ router.post('/ransack', requireAuth, async (req, res) => {
       combatResult: result.combatResult,
     });
   } catch (err) {
-    console.error('Ransack error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Ransack error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // Escort an allied caravan (2 AP)
-router.post('/escort', requireAuth, async (req, res) => {
+router.post("/escort", requireAuth, async (req, res) => {
   try {
     const playerId = req.session.playerId!;
     const { caravanId } = req.body;
-    if (!caravanId) return res.status(400).json({ error: 'Missing caravanId' });
+    if (!caravanId) return res.status(400).json({ error: "Missing caravanId" });
 
-    const player = await db('players').where({ id: playerId }).first();
-    if (!player) return res.status(404).json({ error: 'Player not found' });
+    const player = await db("players").where({ id: playerId }).first();
+    if (!player) return res.status(404).json({ error: "Player not found" });
 
-    if (!canAffordAction(player.energy, 'escort')) {
-      return res.status(400).json({ error: 'Not enough energy', cost: 2 });
+    if (!canAffordAction(player.energy, "escort")) {
+      return res.status(400).json({ error: "Not enough energy", cost: 2 });
     }
 
-    const io = req.app.get('io');
+    const io = req.app.get("io");
     const result = await escortCaravan(io, playerId, caravanId);
 
     if (!result.success) {
       return res.status(400).json({ error: result.error });
     }
 
-    const newEnergy = deductEnergy(player.energy, 'escort');
-    await db('players').where({ id: playerId }).update({ energy: newEnergy });
+    const newEnergy = deductEnergy(player.energy, "escort");
+    await db("players").where({ id: playerId }).update({ energy: newEnergy });
 
     // Multi-session sync
-    if (io) syncPlayer(io, playerId, 'sync:status', req.headers['x-socket-id'] as string | undefined);
+    if (io)
+      syncPlayer(
+        io,
+        playerId,
+        "sync:status",
+        req.headers["x-socket-id"] as string | undefined,
+      );
 
     res.json({ success: true, energy: newEnergy });
   } catch (err) {
-    console.error('Escort error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Escort error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // Get caravan event logs for a route
-router.get('/:routeId/logs', requireAuth, async (req, res) => {
+router.get("/:routeId/logs", requireAuth, async (req, res) => {
   try {
     const playerId = req.session.playerId!;
 
     // Verify ownership
-    const route = await db('trade_routes').where({ id: req.params.routeId, owner_id: playerId }).first();
-    if (!route) return res.status(404).json({ error: 'Trade route not found' });
+    const route = await db("trade_routes")
+      .where({ id: req.params.routeId, owner_id: playerId })
+      .first();
+    if (!route) return res.status(404).json({ error: "Trade route not found" });
 
-    const logs = await db('caravan_logs')
+    const logs = await db("caravan_logs")
       .where({ trade_route_id: req.params.routeId })
-      .orderBy('created_at', 'desc')
+      .orderBy("created_at", "desc")
       .limit(50);
 
     res.json({
-      logs: logs.map(l => ({
+      logs: logs.map((l) => ({
         id: l.id,
         caravanId: l.caravan_id,
         eventType: l.event_type,
@@ -415,24 +483,25 @@ router.get('/:routeId/logs', requireAuth, async (req, res) => {
       })),
     });
   } catch (err) {
-    console.error('Route logs error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Route logs error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // Scout for unprotected caravans in range (1 AP)
-router.post('/scout', requireAuth, async (req, res) => {
+router.post("/scout", requireAuth, async (req, res) => {
   try {
     const playerId = req.session.playerId!;
-    const player = await db('players').where({ id: playerId }).first();
-    if (!player) return res.status(404).json({ error: 'Player not found' });
+    const player = await db("players").where({ id: playerId }).first();
+    if (!player) return res.status(404).json({ error: "Player not found" });
 
-    if (!canAffordAction(player.energy, 'move')) { // 1 AP same as move
-      return res.status(400).json({ error: 'Not enough energy', cost: 1 });
+    if (!canAffordAction(player.energy, "move")) {
+      // 1 AP same as move
+      return res.status(400).json({ error: "Not enough energy", cost: 1 });
     }
 
-    const newEnergy = deductEnergy(player.energy, 'move');
-    await db('players').where({ id: playerId }).update({ energy: newEnergy });
+    const newEnergy = deductEnergy(player.energy, "move");
+    await db("players").where({ id: playerId }).update({ energy: newEnergy });
 
     const result = await scoutCaravans(playerId);
 
@@ -441,8 +510,8 @@ router.post('/scout', requireAuth, async (req, res) => {
       caravans: result.caravans,
     });
   } catch (err) {
-    console.error('Scout caravans error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Scout caravans error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

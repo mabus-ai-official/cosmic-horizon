@@ -24,6 +24,7 @@ import {
   checkMilestones,
 } from "../engine/profile-stats";
 import { pickFlavor } from "../config/flavor-text";
+import { settleDebitPlayer, settleMintPlanet } from "../chain/tx-queue";
 import type { RaceId } from "../config/races";
 import {
   handleTutorialPlanetInfo,
@@ -505,6 +506,15 @@ router.post("/:id/claim", requireAuth, async (req, res) => {
     await db("planets").where({ id: planet.id }).update({
       owner_id: player.id,
     });
+
+    // Chain settlement: mint PlanetNFT on first claim
+    await settleMintPlanet(
+      player.id,
+      planet.id,
+      planet.planet_class,
+      planet.name,
+      planet.sector_id,
+    );
 
     // Award XP for claiming a planet
     const xpResult = await awardXP(
@@ -1009,6 +1019,9 @@ router.post("/:id/upgrade", requireAuth, async (req, res) => {
       .update({
         credits: Number(player.credits) - req_.credits,
       });
+    if (req_.credits > 0) {
+      await settleDebitPlayer(player.id, req_.credits, "store");
+    }
 
     res.json({
       planetId: planet.id,

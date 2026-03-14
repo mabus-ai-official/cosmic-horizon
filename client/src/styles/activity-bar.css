@@ -1,78 +1,45 @@
 /* === Activity Bar === */
-/* === Activity Bar (Navigation Sidebar) === */
+/* === Activity Bar (Floating Overlay) === */
 .activity-bar {
-  width: 140px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 180px;
   display: flex;
   flex-direction: column;
-  padding: 8px 6px;
-  background:
-    radial-gradient(
-      ellipse at 50% 20%,
-      rgba(232, 71, 160, 0.05) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      ellipse at 50% 80%,
-      rgba(86, 212, 221, 0.03) 0%,
-      transparent 60%
-    ),
-    linear-gradient(to bottom, #1a1f28, var(--bg-tertiary), #0d1015);
-  border-right: 1px solid var(--border);
-  flex-shrink: 0;
+  padding: 8px 6px 8px 6px;
+  background: transparent;
+  z-index: 10;
   overflow-y: auto;
   overflow-x: hidden;
-  transition: width 0.2s ease;
-}
-.activity-bar--expanded {
-  width: 200px;
-}
-
-/* Toggle button */
-.activity-bar__toggle {
-  width: 100%;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  color: var(--cyan);
-  font-size: 1.1rem;
-  cursor: pointer;
-  opacity: 0.8;
-  margin-bottom: 6px;
-  transition:
-    opacity 0.15s,
-    color 0.15s;
-  font-family: "IBM Plex Mono", monospace;
-}
-.activity-bar__toggle:hover {
-  opacity: 1;
-  color: var(--cyan);
+  pointer-events: none;
+  max-height: calc(100% - 45vh - 16px);
 }
 
 /* Groups container */
 .activity-bar__groups {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   flex: 1;
+  pointer-events: auto;
 }
 
-/* Individual group item — card style like context panel */
+/* Individual group item — floating glassmorphism card over the map */
 .activity-bar__item {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
-  border: 1px solid transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid color-mix(in srgb, var(--accent) 30%, transparent);
   border-radius: 6px;
-  background: transparent;
+  background: rgba(13, 17, 23, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   cursor: pointer;
   position: relative;
-  opacity: 0.55;
   transition:
-    opacity 0.15s,
     background 0.2s,
     border-color 0.2s,
     box-shadow 0.2s;
@@ -81,22 +48,21 @@
   width: 100%;
 }
 .activity-bar__item:hover {
-  opacity: 0.9;
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.06);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-left-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 .activity-bar__item--active {
-  opacity: 1;
   background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent) 10%, transparent),
-    transparent
+    90deg,
+    color-mix(in srgb, var(--accent) 12%, rgba(13, 17, 23, 0.85)),
+    rgba(13, 17, 23, 0.8)
   );
-  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, rgba(255, 255, 255, 0.1));
   border-left: 3px solid var(--accent);
   box-shadow:
-    0 0 12px color-mix(in srgb, var(--accent) 25%, transparent),
-    inset 0 0 8px color-mix(in srgb, var(--accent) 8%, transparent);
+    0 0 14px color-mix(in srgb, var(--accent) 20%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--accent) 5%, transparent);
   animation: activity-item-select 0.25s ease-out;
 }
 
@@ -110,14 +76,15 @@
 }
 
 .activity-bar__item:not(.activity-bar__item--active) .pixel-sprite {
-  filter: grayscale(0.6) brightness(0.8);
+  filter: grayscale(0.3) brightness(0.9);
   transition: filter 0.2s;
 }
 .activity-bar__item:hover .pixel-sprite {
-  filter: grayscale(0) brightness(1.1);
+  filter: grayscale(0) brightness(1.15);
 }
 .activity-bar__item--active .pixel-sprite {
-  filter: brightness(1.15);
+  filter: brightness(1.2)
+    drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 40%, transparent));
 }
 
 .activity-bar__item-text {
@@ -130,25 +97,45 @@
 .activity-bar__item-label {
   font-size: 0.96rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   letter-spacing: 0.8px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: color 0.2s;
+}
+.activity-bar__item:hover .activity-bar__item-label {
+  color: var(--text-primary);
 }
 .activity-bar__item--active .activity-bar__item-label {
   color: var(--accent);
   text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
-.activity-bar__item-desc {
-  font-size: 0.86rem;
+/* Tooltip */
+.activity-bar__tooltip {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(13, 17, 23, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 400;
+  padding: 4px 8px;
+  border-radius: 4px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  opacity: 0.85;
-  margin-top: 1px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.1s;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+.activity-bar__item:hover .activity-bar__tooltip {
+  opacity: 1;
 }
 
 /* Badge */
@@ -178,46 +165,85 @@
   opacity: 0.4;
 }
 
-/* Tab bar at bottom of activity bar */
-.activity-bar__tabs {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 2px;
-  padding: 6px 2px 2px;
-  margin-top: 6px;
-  border-top: 1px solid var(--border);
-  overflow-x: auto;
+/* Active card with expanded tabs: square off bottom corners so they connect */
+.activity-bar__item--expanded {
+  border-radius: 6px 6px 0 0;
+  border-bottom-color: transparent;
 }
-.activity-bar__tab {
-  flex: 0 0 auto;
-  padding: 4px 2px;
-  border: 1px solid transparent;
+
+/* Inline tabs under active group (tree-style) */
+.activity-bar__inline-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 8px 6px 20px;
+  margin: 0 0 2px 0;
+  border-left: none;
+  margin-left: 0;
+  background: rgba(13, 17, 23, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  animation: inline-tabs-expand 0.15s ease-out;
+  pointer-events: auto;
+}
+
+@keyframes inline-tabs-expand {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.activity-bar__inline-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: none;
   border-radius: 4px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   font-family: "IBM Plex Mono", monospace;
   cursor: pointer;
-  text-align: center;
+  text-align: left;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   transition:
     background 0.15s,
-    color 0.15s,
-    border-color 0.15s;
+    color 0.15s;
   position: relative;
-  letter-spacing: 0.3px;
 }
-.activity-bar__tab:hover {
-  background: rgba(255, 255, 255, 0.04);
+.activity-bar__inline-tab:hover {
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
 }
-.activity-bar__tab--active {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+.activity-bar__inline-tab--active {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
   color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
   font-weight: 600;
+}
+
+.activity-bar__inline-tab-dot {
+  font-size: 0.7rem;
+  width: 10px;
+  text-align: center;
+  color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.activity-bar__inline-tab--active .activity-bar__inline-tab-dot {
+  color: var(--accent);
+}
+
+.activity-bar__expand-indicator {
+  font-size: 0.7rem;
+  opacity: 0.5;
+  margin-left: 2px;
 }
 
 .activity-bar__tab-badge {

@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import CombatView from './CombatView';
-import BountiesPanel from './BountiesPanel';
-import CombatLogPanel from './CombatLogPanel';
-import type { SectorState } from '../hooks/useGameState';
+import { useState } from "react";
+import CombatView from "./CombatView";
+import BountiesPanel from "./BountiesPanel";
+import CombatLogPanel from "./CombatLogPanel";
+import type { SectorState } from "../hooks/useGameState";
 
 interface Props {
   sector: SectorState | null;
@@ -16,31 +16,56 @@ interface Props {
   bare?: boolean;
 }
 
-type TabView = 'targeting' | 'bounties' | 'log';
+type TabView = "targeting" | "bounties" | "log";
 
-export default function CombatGroupPanel({ sector, onFire, onFlee, weaponEnergy, combatAnimation, onCombatAnimationDone, playerName, refreshKey, bare }: Props) {
-  const [tab, setTab] = useState<TabView>('targeting');
+export default function CombatGroupPanel({
+  sector,
+  onFire,
+  onFlee,
+  weaponEnergy,
+  combatAnimation,
+  onCombatAnimationDone,
+  playerName,
+  refreshKey,
+  bare,
+}: Props) {
+  const [tab, setTab] = useState<TabView>("targeting");
 
   const tabBar = (
     <div className="group-panel-tabs">
-      <span onClick={() => setTab('targeting')} style={{ cursor: 'pointer', color: tab === 'targeting' ? '#0f0' : '#666' }}>
-        {tab === 'targeting' ? '[Targeting]' : 'Targeting'}
+      <span
+        onClick={() => setTab("targeting")}
+        style={{
+          cursor: "pointer",
+          color: tab === "targeting" ? "#0f0" : "#666",
+        }}
+      >
+        {tab === "targeting" ? "[Targeting]" : "Targeting"}
       </span>
-      <span style={{ color: '#444', margin: '0 0.5rem' }}>|</span>
-      <span onClick={() => setTab('bounties')} style={{ cursor: 'pointer', color: tab === 'bounties' ? '#0f0' : '#666' }}>
-        {tab === 'bounties' ? '[Bounties]' : 'Bounties'}
+      <span style={{ color: "#444", margin: "0 0.5rem" }}>|</span>
+      <span
+        onClick={() => setTab("bounties")}
+        style={{
+          cursor: "pointer",
+          color: tab === "bounties" ? "#0f0" : "#666",
+        }}
+      >
+        {tab === "bounties" ? "[Bounties]" : "Bounties"}
       </span>
-      <span style={{ color: '#444', margin: '0 0.5rem' }}>|</span>
-      <span onClick={() => setTab('log')} style={{ cursor: 'pointer', color: tab === 'log' ? '#0f0' : '#666' }}>
-        {tab === 'log' ? '[Log]' : 'Log'}
+      <span style={{ color: "#444", margin: "0 0.5rem" }}>|</span>
+      <span
+        onClick={() => setTab("log")}
+        style={{ cursor: "pointer", color: tab === "log" ? "#0f0" : "#666" }}
+      >
+        {tab === "log" ? "[Log]" : "Log"}
       </span>
     </div>
   );
 
   const content = (
-    <>
+    <div className="panel-sections">
       {tabBar}
-      {tab === 'targeting' && (
+      {tab === "targeting" && (
         <CombatView
           sector={sector}
           onFire={onFire}
@@ -51,9 +76,11 @@ export default function CombatGroupPanel({ sector, onFire, onFlee, weaponEnergy,
           bare
         />
       )}
-      {tab === 'bounties' && <BountiesPanel refreshKey={refreshKey} bare />}
-      {tab === 'log' && <CombatLogPanel playerName={playerName} refreshKey={refreshKey} bare />}
-    </>
+      {tab === "bounties" && <BountiesPanel refreshKey={refreshKey} bare />}
+      {tab === "log" && (
+        <CombatLogPanel playerName={playerName} refreshKey={refreshKey} bare />
+      )}
+    </div>
   );
 
   if (bare) return <div className="panel-content">{content}</div>;

@@ -3,7 +3,12 @@ import crypto from "crypto";
 import { requireAuth } from "../middleware/auth";
 import db from "../db/connection";
 import { notifyPlayer } from "../ws/handlers";
-import { settleCreditPlayer, settleDebitPlayer } from "../chain/tx-queue";
+import {
+  settleCreditPlayer,
+  settleDebitPlayer,
+  settleResourceCredit,
+  settleTransferPlanet,
+} from "../chain/tx-queue";
 
 const router = Router();
 
@@ -298,6 +303,13 @@ router.post("/:offerId/accept", requireAuth, async (req, res) => {
             quantity: offer.quantity,
           });
         }
+        // Chain settlement: credit resource to recipient
+        await settleResourceCredit(
+          playerId,
+          offer.resource_type,
+          offer.quantity,
+          "trade",
+        );
       } else {
         // Unique resource
         const pr = await db("planet_resources")
@@ -346,6 +358,17 @@ router.post("/:offerId/accept", requireAuth, async (req, res) => {
       await db("planets")
         .where({ id: offer.transfer_planet_id })
         .update({ owner_id: playerId });
+
+      // Chain settlement: transfer PlanetNFT ownership
+      try {
+        await settleTransferPlanet(
+          offer.transfer_planet_id,
+          offer.sender_id,
+          playerId,
+        );
+      } catch {
+        /* chain sync failure is non-critical */
+      }
     }
 
     // Handle credits

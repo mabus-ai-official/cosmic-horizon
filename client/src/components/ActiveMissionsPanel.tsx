@@ -178,9 +178,12 @@ export default function ActiveMissionsPanel({
 
   const activeContent =
     missions.length === 0 ? (
-      <div className="text-muted">No active missions</div>
+      <div className="panel-section">
+        <div className="text-muted">No active missions</div>
+      </div>
     ) : (
-      <>
+      <div className="panel-section panel-section--accent">
+        <div className="panel-section__header">Active ({missions.length})</div>
         {error && <div className="mall-error">{error}</div>}
         {missions.map((m) => (
           <div key={m.missionId} className="mission-item">
@@ -218,14 +221,19 @@ export default function ActiveMissionsPanel({
             </div>
           </div>
         ))}
-      </>
+      </div>
     );
 
   const completedContent =
     completed.length === 0 ? (
-      <div className="text-muted">No completed missions.</div>
+      <div className="panel-section">
+        <div className="text-muted">No completed missions.</div>
+      </div>
     ) : (
-      <>
+      <div className="panel-section panel-section--special">
+        <div className="panel-section__header panel-section__header--special">
+          Completed ({completed.length})
+        </div>
         {completed.map((m) => (
           <div key={m.missionId} className="mission-item">
             <div className="mission-item__title">{m.title}</div>
@@ -239,11 +247,11 @@ export default function ActiveMissionsPanel({
             </div>
           </div>
         ))}
-      </>
+      </div>
     );
 
   const content = (
-    <>
+    <div className="panel-sections">
       {tabBar}
       {tab === "story" && (
         <StoryMissionsTab
@@ -267,8 +275,13 @@ export default function ActiveMissionsPanel({
       {tab === "active" && activeContent}
       {tab === "board" &&
         (act1Complete === false ? (
-          <div className="text-muted" style={{ padding: "0.5rem 0" }}>
-            Complete Act 1 to unlock the mission board.
+          <div className="panel-section panel-section--warning">
+            <div className="panel-section__header panel-section__header--warning">
+              Locked
+            </div>
+            <div className="text-muted">
+              Complete Act 1 to unlock the mission board.
+            </div>
           </div>
         ) : (
           <MissionBoardTab
@@ -280,7 +293,7 @@ export default function ActiveMissionsPanel({
           />
         ))}
       {tab === "completed" && completedContent}
-    </>
+    </div>
   );
 
   if (bare) return <div className="panel-content">{content}</div>;

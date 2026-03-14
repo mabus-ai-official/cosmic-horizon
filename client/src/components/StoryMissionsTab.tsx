@@ -6,6 +6,7 @@ import {
   claimStoryMission,
   abandonStoryMission,
 } from "../services/api";
+import { getNarrationUrl } from "../config/narration-manifest";
 
 const ACT_TITLES: Record<number, string> = {
   1: "Call of Destiny",
@@ -84,6 +85,8 @@ export default function StoryMissionsTab({
         const act = data.act || 1;
         const actTitle = ACT_TITLES[act] || `Act ${act}`;
 
+        const narrationUrl = getNarrationUrl(storyOrder, "accept");
+
         if (storyOrder === 1) {
           // Very first mission — epic intro
           onStoryEvent({
@@ -93,6 +96,7 @@ export default function StoryMissionsTab({
             body:
               data.loreText ||
               "The stars await, pilot. Your journey through the Cosmic Horizon begins now.",
+            narrationUrl,
           });
         } else if (
           storyOrder === 11 ||
@@ -106,6 +110,7 @@ export default function StoryMissionsTab({
             title: `ACT ${act}`,
             subtitle: actTitle,
             body: data.loreText || `A new chapter unfolds. ${actTitle} begins.`,
+            narrationUrl,
           });
         } else {
           // Regular story mission accepted
@@ -113,7 +118,8 @@ export default function StoryMissionsTab({
             type: "mission_accept",
             title: "QUEST ACCEPTED",
             subtitle: `[${storyOrder}] ${data.title}`,
-            body: data.description,
+            body: data.loreText || data.description,
+            narrationUrl,
           });
         }
       }

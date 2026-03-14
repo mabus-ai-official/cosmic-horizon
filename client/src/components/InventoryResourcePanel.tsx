@@ -38,6 +38,7 @@ interface Props {
   refreshKey?: number;
   onAddLine?: (text: string, type?: LineType) => void;
   onRefreshStatus?: () => void;
+  onCommand?: (cmd: string) => void;
   colonistsByRace?: { race: string; count: number }[];
   sectorPlayers?: { id: string; username: string }[];
   playerId?: string;
@@ -148,11 +149,13 @@ export default function InventoryResourcePanel({
   refreshKey,
   onAddLine,
   onRefreshStatus,
+  onCommand,
   colonistsByRace,
   sectorPlayers,
   playerId,
 }: Props) {
   const [tab, setTab] = useState<TabView>("items");
+  const [confirmEject, setConfirmEject] = useState(false);
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [resources, setResources] = useState<PlayerResource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -459,6 +462,41 @@ export default function InventoryResourcePanel({
             </div>
           )}
         </>
+      )}
+
+      {/* Jettison cargo button */}
+      {tab === "items" && items.length > 0 && onCommand && (
+        <div
+          style={{
+            marginTop: 8,
+            paddingTop: 8,
+            borderTop: "1px solid var(--border)",
+          }}
+        >
+          <button
+            className={`btn-action${confirmEject ? " btn-action--combat" : ""}`}
+            style={
+              !confirmEject
+                ? {
+                    borderColor: "var(--yellow)",
+                    color: "var(--yellow)",
+                    width: "100%",
+                  }
+                : { width: "100%" }
+            }
+            onClick={() => {
+              if (!confirmEject) {
+                setConfirmEject(true);
+                return;
+              }
+              onCommand("eject");
+              setConfirmEject(false);
+            }}
+            onBlur={() => setConfirmEject(false)}
+          >
+            {confirmEject ? "CONFIRM — JETTISON ALL CARGO?" : "JETTISON CARGO"}
+          </button>
+        </div>
       )}
 
       {tab === "resources" && (

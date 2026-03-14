@@ -6,6 +6,7 @@ import MallGarageTab from "./MallGarageTab";
 import MallSalvageTab from "./MallSalvageTab";
 import MallCantinaTab from "./MallCantinaTab";
 import MallRefuelTab from "./MallRefuelTab";
+import type { ToastType } from "../hooks/useToast";
 
 type MallTab =
   | "trade"
@@ -38,6 +39,7 @@ interface Props {
   playerLevel?: number;
   onAction: () => void;
   onArcade?: () => void;
+  showToast?: (msg: string, type?: ToastType, duration?: number) => number;
   bare?: boolean;
 }
 
@@ -51,6 +53,7 @@ export default function MallPanel({
   playerLevel,
   onAction,
   onArcade,
+  showToast,
   bare,
 }: Props) {
   const [tab, setTab] = useState<MallTab>("trade");
@@ -99,13 +102,20 @@ export default function MallPanel({
           />
         );
       case "store":
-        return <MallStoreTab credits={credits} onAction={onAction} />;
+        return (
+          <MallStoreTab
+            credits={credits}
+            onAction={onAction}
+            showToast={showToast}
+          />
+        );
       case "dealer":
         return (
           <MallDealerTab
             credits={credits}
             playerLevel={playerLevel}
             onAction={onAction}
+            showToast={showToast}
           />
         );
       case "garage":

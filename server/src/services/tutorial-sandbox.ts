@@ -104,6 +104,7 @@ export async function handleTutorialStatus(req: Request, res: Response) {
         foodCargo: state.foodCargo,
         techCargo: state.techCargo,
         colonistsCargo: state.colonistsCargo,
+        hasPlanetaryScanner: true,
       },
     });
   } catch (err) {

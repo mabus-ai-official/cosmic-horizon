@@ -226,11 +226,12 @@ export default function MapPanel({
       <div className="action-buttons">
         {hasScanner && !isLanded && (
           <button
-            className="btn-action"
+            className="helm-dock-btn"
             data-tutorial="scan-btn"
             onClick={() => onCommand?.("scan")}
           >
-            SCAN
+            <span className="helm-dock-btn__icon">{"\u{1F4E1}"}</span>
+            <span className="helm-dock-btn__text">SCAN</span>
           </button>
         )}
         {hasPlanets && !isLanded && (

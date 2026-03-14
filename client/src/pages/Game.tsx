@@ -299,6 +299,7 @@ export default function Game({ onLogout }: GameProps) {
                     setShowArcade={effects.setShowArcade}
                     aria={aria}
                     eventOverlay={eventOverlay}
+                    showToast={showToast}
                   />
                 </div>
               </div>

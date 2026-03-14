@@ -142,6 +142,7 @@ export default function ActivityBar({
                       <button
                         key={tab.id}
                         className={`activity-bar__inline-tab${isActiveTab ? " activity-bar__inline-tab--active" : ""}`}
+                        data-tutorial={`tab-${tab.id}`}
                         onClick={() => onSelectTab(tab.id)}
                       >
                         <span className="activity-bar__inline-tab-dot">

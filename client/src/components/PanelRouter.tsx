@@ -26,6 +26,7 @@ import TradeHistoryPanel from "./TradeHistoryPanel";
 import ProfilePanel from "./ProfilePanel";
 import CodexPanel from "./CodexPanel";
 import type { ChatMessage, ChatChannel } from "./SectorChatPanel";
+import type { ToastType } from "../hooks/useToast";
 import {
   hasSeenFirstTime,
   markFirstTimeSeen,
@@ -62,6 +63,7 @@ interface PanelRouterProps {
   setShowArcade: React.Dispatch<React.SetStateAction<boolean>>;
   aria: any;
   eventOverlay: any;
+  showToast: (msg: string, type?: ToastType, duration?: number) => number;
 }
 
 export default function PanelRouter({
@@ -94,6 +96,7 @@ export default function PanelRouter({
   setShowArcade,
   aria,
   eventOverlay,
+  showToast,
 }: PanelRouterProps) {
   switch (activePanel) {
     case "nav":
@@ -162,6 +165,7 @@ export default function PanelRouter({
               }
             }}
             onArcade={() => setShowArcade(true)}
+            showToast={showToast}
             bare
           />
         );

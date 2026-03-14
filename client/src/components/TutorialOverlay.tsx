@@ -30,20 +30,22 @@ interface StepGuide {
 
 const STEPS: StepGuide[] = [
   // tutorialStep=0: server expects "look" action to advance to step 1
+  // Look fires automatically on sector load via scanning.ts, so auto-advance
   {
-    title: "LOOK AROUND",
-    desc: "Click LOOK to survey your current sector and see what's here.",
-    hint: "Click LOOK in the Helm panel",
-    target: "[data-tutorial='look-btn']",
-    arrow: "left",
+    title: "ORIENT YOURSELF",
+    desc: "Welcome, Commander. Your Helm shows navigation controls — adjacent sectors, docking, and more. The look command is running now...",
+    hint: "Your ship is scanning the sector automatically",
+    target: "[data-tutorial='group-helm']",
+    arrow: "right",
     autoPanel: "nav",
+    autoAdvanceAction: "look",
   },
   // tutorialStep=1: server expects "status" action to advance to step 2
   {
     title: "CHECK YOUR STATUS",
-    desc: "Click your PILOT profile to see your ship stats, credits, and energy level.",
-    hint: "Click the PILOT icon in the sidebar",
-    target: "[data-tutorial='panel-profile']",
+    desc: "Click the PILOT group to see your profile, ship stats, credits, and energy level.",
+    hint: "Click PILOT in the activity bar",
+    target: "[data-tutorial='group-pilot']",
     arrow: "right",
     advanceOnPanel: { panel: "profile", action: "status" },
   },
@@ -59,11 +61,11 @@ const STEPS: StepGuide[] = [
   // tutorialStep=3: server expects "scan" action to advance to step 4
   {
     title: "SCAN THE AREA",
-    desc: "Open the SCANNER panel to detect what's in nearby sectors before you fly there.",
-    hint: "Click the SCANNER icon in the sidebar",
-    target: "[data-tutorial='panel-explore']",
-    arrow: "right",
-    advanceOnPanel: { panel: "explore", action: "scan" },
+    desc: "Click the SCAN button in the Helm to detect what's in nearby sectors before you fly there.",
+    hint: "Click SCAN in the Helm panel",
+    target: "[data-tutorial='scan-btn']",
+    arrow: "left",
+    autoPanel: "nav",
   },
   // tutorialStep=4: server expects 2 "move" actions to advance to step 5
   {
@@ -86,9 +88,9 @@ const STEPS: StepGuide[] = [
   // tutorialStep=6: server expects "buy" action to advance to step 7
   {
     title: "BUY COMMODITIES",
-    desc: "You're docked! Open the MARKET panel to see what's for sale. Buy some Cyrillium to trade later.",
-    hint: "Click MARKET, then buy goods",
-    target: "[data-tutorial='panel-trade']",
+    desc: "You're docked! Click the STARMALL group and open the market. Buy some Cyrillium to trade later.",
+    hint: "Click STARMALL, then buy goods",
+    target: "[data-tutorial='group-starmall']",
     arrow: "right",
     autoPanel: "trade",
   },
@@ -96,22 +98,22 @@ const STEPS: StepGuide[] = [
   {
     title: "SELL FOR PROFIT",
     desc: "Undock and fly to sector 90004 (Frontier Post) via 90003. Dock there and sell your Cyrillium for a profit!",
-    hint: "Undock → fly 90003 → 90004 → dock → sell",
+    hint: "Undock \u2192 fly 90003 \u2192 90004 \u2192 dock \u2192 sell",
     autoPanel: "nav",
   },
   // tutorialStep=8: server expects "move" action (to 90005) to advance to step 9
   {
     title: "FIND A PLANET",
-    desc: "Fly to sector 90005 — click it in the adjacent sectors list below. That's where Nova Prime is!",
+    desc: "Fly to sector 90005 \u2014 click it in the adjacent sectors list below. That's where Nova Prime is!",
     hint: "Click sector 90005 in the Helm panel",
     autoPanel: "nav",
   },
   // tutorialStep=9: server expects "land" action to advance to step 10
   {
     title: "LAND ON THE PLANET",
-    desc: "Open the PLANETS panel and click LAND to touch down on Nova Prime.",
-    hint: "Click PLANETS, then LAND",
-    target: "[data-tutorial='panel-planets']",
+    desc: "Click the SHIP group and open the Planets tab, then click LAND to touch down on Nova Prime.",
+    hint: "Click SHIP \u2192 Planets \u2192 LAND",
+    target: "[data-tutorial='group-ship']",
     arrow: "right",
     autoPanel: "planets",
   },
@@ -120,7 +122,7 @@ const STEPS: StepGuide[] = [
     title: "CLAIM YOUR PLANET",
     desc: "Now claim this planet as your own! Click CLAIM in the Planets panel.",
     hint: "Click CLAIM on Nova Prime",
-    target: "[data-tutorial='panel-planets']",
+    target: "[data-tutorial='group-ship']",
     arrow: "right",
     autoPanel: "planets",
   },
@@ -145,9 +147,9 @@ const STEPS: StepGuide[] = [
   // tutorialStep=13: server expects "help" action to advance to step 14
   {
     title: "OPEN THE DATABANK",
-    desc: "The DATABANK has all available commands and game info. Click it in the sidebar — you can always come back here.",
-    hint: "Click DATABANK in the sidebar",
-    target: "[data-tutorial='panel-actions']",
+    desc: "The DATABASE group has all available commands and game info. Click it in the activity bar \u2014 you can always come back here.",
+    hint: "Click DATABASE in the activity bar",
+    target: "[data-tutorial='group-database']",
     arrow: "right",
     advanceOnPanel: { panel: "actions", action: "help" },
   },

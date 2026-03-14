@@ -1423,21 +1423,78 @@ function CameraController({
     camera: THREE.Vector3;
   } | null>(null);
 
-  // Default camera offset from target
+  // Default camera offset from target (close-in after travel)
   const CAM_OFFSET = new THREE.Vector3(3, -10, 18);
 
-  // Set initial camera — offset at an angle to show galaxy depth
+  // Set initial camera — always start with a wide cinematic galaxy view
+  // Low angle, looking up at the galactic disk edge-on
   useEffect(() => {
     if (target && !initialized.current) {
-      camera.position.copy(target.clone().add(CAM_OFFSET));
+      // Position camera below and far back for a panoramic edge-on view
+      const galaxyCenter = new THREE.Vector3(0, 0, 0);
+      camera.position.set(15, -175, 60);
+      // Shift look target slightly below center so galaxy appears higher on screen
+      galaxyCenter.set(8, 0, -10);
       if (controlsRef.current) {
-        controlsRef.current.target.copy(target);
+        controlsRef.current.target.copy(galaxyCenter);
         controlsRef.current.update();
       }
       prevTarget.current = target.clone();
       initialized.current = true;
     }
   }, [target, camera, controlsRef]);
+
+  // Zoom-to-cursor: on wheel, shift orbit target toward mouse world position.
+  // OrbitControls handles the actual dolly — we only nudge the target.
+  useEffect(() => {
+    const el = gl.domElement;
+    const handleWheel = (e: WheelEvent) => {
+      const controls = controlsRef.current;
+      if (!controls || travelAnim.current) return;
+
+      const zoomingIn = e.deltaY < 0;
+      const GALAXY_CENTER = new THREE.Vector3(8, 0, -10);
+
+      if (zoomingIn) {
+        // Zoom in → shift target toward mouse cursor
+        const rect = el.getBoundingClientRect();
+        const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        const mouseNDC = new THREE.Vector2(ndcX, ndcY);
+        const ray = new THREE.Raycaster();
+        ray.setFromCamera(mouseNDC, camera);
+        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+        const intersection = new THREE.Vector3();
+        if (!ray.ray.intersectPlane(plane, intersection)) return;
+
+        const camDist = camera.position.distanceTo(controls.target);
+        const shift = THREE.MathUtils.clamp(camDist / 800, 0.005, 0.04);
+
+        const offset = intersection
+          .clone()
+          .sub(controls.target)
+          .multiplyScalar(shift);
+        controls.target.add(offset);
+        camera.position.add(offset);
+      } else {
+        // Zoom out → drift target back toward galaxy center
+        const camDist = camera.position.distanceTo(controls.target);
+        const shift = THREE.MathUtils.clamp(camDist / 800, 0.005, 0.04);
+
+        const offset = GALAXY_CENTER.clone()
+          .sub(controls.target)
+          .multiplyScalar(shift);
+        controls.target.add(offset);
+        camera.position.add(offset);
+      }
+
+      controls.update();
+    };
+
+    el.addEventListener("wheel", handleWheel, { passive: true });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, [camera, gl.domElement, controlsRef]);
 
   // Detect sector change → start cinematic travel animation
   useEffect(() => {
@@ -1563,7 +1620,7 @@ function CameraController({
       enableDamping
       dampingFactor={0.1}
       minDistance={3}
-      maxDistance={250}
+      maxDistance={200}
       rotateSpeed={0.5}
       zoomSpeed={1.0}
       panSpeed={0.8}

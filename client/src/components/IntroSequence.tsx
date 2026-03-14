@@ -28,7 +28,7 @@ interface IntroSequenceProps {
 }
 
 const CHAR_DELAY = 30;
-const DUCK_VOLUME = 0.3;
+const DUCK_VOLUME = 0.5;
 
 export const INTRO_BEATS: LoreBeat[] = [
   {
@@ -191,28 +191,29 @@ export default function IntroSequence({
     audio.volume = narrationVolumeRef.current;
     audioRef.current = audio;
 
-    audio.addEventListener("ended", () => {
-      setNarrationPlaying(false);
-      narrationDoneRef.current = true;
-      audioRef.current = null;
-      setVolumeMultiplier?.(1.0);
-      checkAutoAdvance();
-    });
+    // Check if any future beat has narration — if so, keep music ducked between beats
+    const hasMoreNarration = narrationUrls
+      ?.slice(currentBeat + 1)
+      .some((u) => !!u);
 
-    audio.addEventListener("error", () => {
+    const onNarrationEnd = () => {
       setNarrationPlaying(false);
       narrationDoneRef.current = true;
       audioRef.current = null;
-      setVolumeMultiplier?.(1.0);
+      // Only restore music volume if no more narrated beats are coming
+      if (!hasMoreNarration) setVolumeMultiplier?.(1.0);
       checkAutoAdvance();
-    });
+    };
+
+    audio.addEventListener("ended", onNarrationEnd);
+    audio.addEventListener("error", onNarrationEnd);
 
     setVolumeMultiplier?.(DUCK_VOLUME);
     setNarrationPlaying(true);
     audio.play().catch(() => {
       setNarrationPlaying(false);
       narrationDoneRef.current = true;
-      setVolumeMultiplier?.(1.0);
+      if (!hasMoreNarration) setVolumeMultiplier?.(1.0);
       checkAutoAdvance();
     });
   }, [
@@ -270,27 +271,25 @@ export default function IntroSequence({
       const audio = new Audio(url);
       audio.volume = narrationVolumeRef.current;
       audioRef.current = audio;
-      audio.addEventListener("ended", () => {
+      const hasMoreNarration = narrationUrls
+        ?.slice(beatIndex + 1)
+        .some((u) => !!u);
+      const onEnd = () => {
         setNarrationPlaying(false);
         narrationDoneRef.current = true;
         audioRef.current = null;
-        setVolumeMultiplier?.(1.0);
+        if (!hasMoreNarration) setVolumeMultiplier?.(1.0);
         checkAutoAdvance();
-      });
-      audio.addEventListener("error", () => {
-        setNarrationPlaying(false);
-        narrationDoneRef.current = true;
-        audioRef.current = null;
-        setVolumeMultiplier?.(1.0);
-        checkAutoAdvance();
-      });
+      };
+      audio.addEventListener("ended", onEnd);
+      audio.addEventListener("error", onEnd);
       setVolumeMultiplier?.(DUCK_VOLUME);
       setNarrationPlaying(true);
       narrationDoneRef.current = false;
       audio.play().catch(() => {
         setNarrationPlaying(false);
         narrationDoneRef.current = true;
-        setVolumeMultiplier?.(1.0);
+        if (!hasMoreNarration) setVolumeMultiplier?.(1.0);
         checkAutoAdvance();
       });
     },

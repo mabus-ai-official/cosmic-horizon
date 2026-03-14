@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useEffect } from "react";
 
 const STORAGE_KEY = "cosmic-horizon-narration-enabled";
 const STORAGE_KEY_VOLUME = "cosmic-horizon-narration-volume";
-const DUCK_VOLUME = 0.3;
+const DUCK_VOLUME = 0.5;
 
 function getStoredEnabled(): boolean {
   try {

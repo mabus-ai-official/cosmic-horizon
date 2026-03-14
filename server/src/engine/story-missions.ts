@@ -286,6 +286,7 @@ export async function handleStoryMissionClaim(
         notifyPlayer(io, playerId, "story:lore_unlocked", {
           codexTitle: codexEntry.title,
           codexContent: codexEntry.content,
+          storyOrder,
         });
       }
     }

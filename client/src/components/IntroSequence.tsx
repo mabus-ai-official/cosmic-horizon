@@ -177,7 +177,6 @@ export default function IntroSequence({
 
     const url = narrationUrls?.[currentBeat];
     if (!url || !narrationEnabled) {
-      // No narration for this beat — mark as done immediately
       narrationDoneRef.current = true;
       return;
     }
@@ -259,6 +258,45 @@ export default function IntroSequence({
     setDisplayedText("");
   }, [beats.length, stopNarration]);
 
+  // Start narration for a specific beat (used on first user interaction)
+  const startBeatNarration = useCallback(
+    (beatIndex: number) => {
+      const url = narrationUrls?.[beatIndex];
+      if (!url || !narrationEnabled) return;
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      const audio = new Audio(url);
+      audio.volume = narrationVolumeRef.current;
+      audioRef.current = audio;
+      audio.addEventListener("ended", () => {
+        setNarrationPlaying(false);
+        narrationDoneRef.current = true;
+        audioRef.current = null;
+        setVolumeMultiplier?.(1.0);
+        checkAutoAdvance();
+      });
+      audio.addEventListener("error", () => {
+        setNarrationPlaying(false);
+        narrationDoneRef.current = true;
+        audioRef.current = null;
+        setVolumeMultiplier?.(1.0);
+        checkAutoAdvance();
+      });
+      setVolumeMultiplier?.(DUCK_VOLUME);
+      setNarrationPlaying(true);
+      narrationDoneRef.current = false;
+      audio.play().catch(() => {
+        setNarrationPlaying(false);
+        narrationDoneRef.current = true;
+        setVolumeMultiplier?.(1.0);
+        checkAutoAdvance();
+      });
+    },
+    [narrationUrls, narrationEnabled, setVolumeMultiplier, checkAutoAdvance],
+  );
+
   const advance = useCallback(() => {
     if (skipAll) return;
 
@@ -287,6 +325,7 @@ export default function IntroSequence({
     narrationPlaying,
     stopNarration,
     checkAutoAdvance,
+    startBeatNarration,
   ]);
 
   const isFinished = currentBeat >= beats.length;

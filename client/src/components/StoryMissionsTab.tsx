@@ -6,7 +6,7 @@ import {
   claimStoryMission,
   abandonStoryMission,
 } from "../services/api";
-import { getNarrationUrl } from "../config/narration-manifest";
+import { getNarrationUrl, CLAIM_TEXTS } from "../config/narration-manifest";
 
 const ACT_TITLES: Record<number, string> = {
   1: "Call of Destiny",
@@ -131,12 +131,29 @@ export default function StoryMissionsTab({
   };
 
   const handleClaim = async (missionId: string) => {
+    // Capture mission info before the API call refreshes state
+    const storyOrder = current?.mission?.storyOrder || 0;
+    const missionTitle = current?.mission?.title || "";
     setBusy(true);
     setError("");
     try {
-      await claimStoryMission(missionId);
+      const { data } = await claimStoryMission(missionId);
       refresh();
       onAction?.();
+
+      // Fire narrated claim overlay (Act 1 missions get narration audio)
+      if (onStoryEvent) {
+        const narrationUrl = getNarrationUrl(storyOrder, "claim") ?? undefined;
+        onStoryEvent({
+          type: "mission_complete",
+          title: "REWARD CLAIMED",
+          subtitle: missionTitle,
+          body:
+            CLAIM_TEXTS[storyOrder] ||
+            `+${data.creditsAwarded} cr  +${data.xpAwarded} XP`,
+          narrationUrl,
+        });
+      }
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to claim mission");
     } finally {

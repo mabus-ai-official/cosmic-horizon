@@ -20,7 +20,7 @@ import {
   ACT_OPENINGS,
   ACT_COMPLETIONS,
 } from "../config/story-interstitials";
-import { getNarrationUrl, CLAIM_TEXTS } from "../config/narration-manifest";
+import { getNarrationUrl } from "../config/narration-manifest";
 import {
   buildIdleSpaceScene,
   buildIdleOutpostScene,
@@ -827,13 +827,13 @@ export function useGameEffects({
         }) => {
           if (data.isStory) {
             const storyOrder = data.storyOrder || 0;
-            const claimText = CLAIM_TEXTS[storyOrder];
             eventOverlay.enqueueEvent({
               category: "story_mission",
               title: "STORY QUEST COMPLETE",
               subtitle: data.title,
-              body: claimText || "Claim your reward in the Story tab.",
-              narrationUrl: getNarrationUrl(storyOrder, "claim") ?? undefined,
+              body: "Objectives fulfilled. Claim your reward in the Story tab.",
+              narrationUrl:
+                getNarrationUrl(storyOrder, "complete") ?? undefined,
               colorScheme: "yellow",
               duration: 7000,
               dismissable: true,
@@ -882,12 +882,18 @@ export function useGameEffects({
       }),
       on(
         "story:lore_unlocked",
-        (data: { codexTitle: string; codexContent: string }) => {
+        (data: {
+          codexTitle: string;
+          codexContent: string;
+          storyOrder?: number;
+        }) => {
           eventOverlay.enqueueEvent({
             category: "lore_reveal",
             title: "CODEX ENTRY UNLOCKED",
             subtitle: data.codexTitle,
             body: data.codexContent,
+            narrationUrl:
+              getNarrationUrl(data.storyOrder || 0, "codex") ?? undefined,
             colorScheme: "purple",
             duration: 7000,
             priority: "interstitial",

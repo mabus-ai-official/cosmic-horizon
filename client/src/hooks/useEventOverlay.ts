@@ -129,11 +129,30 @@ export function useEventOverlay(
     [processNext],
   );
 
+  // Start the auto-dismiss timer for the current event (called after narration ends)
+  const startDismissTimer = useCallback(
+    (duration: number) => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      timerRef.current = setTimeout(() => {
+        setCurrentEvent((current) => {
+          current?.onDismiss?.();
+          return null;
+        });
+        setTimeout(() => processNext(), 50);
+      }, duration);
+    },
+    [processNext],
+  );
+
   return {
     currentEvent,
     queueLength: queueRef.current.length,
     enqueueEvent,
     dismissCurrent,
     handleAction,
+    startDismissTimer,
   };
 }

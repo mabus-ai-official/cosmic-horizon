@@ -96,6 +96,85 @@ const CLAIM_TEXTS: Record<number, string> = {
   10: "The Agaricalis has begun. Bioluminescent tendrils weave between the stars, and the galaxy will never be the same.",
 };
 
+// ── Mission complete texts (objectives fulfilled, before claiming) ───────────
+
+const COMPLETE_TEXTS: Record<number, string> = {
+  1: "Your first expedition is complete, pilot. The signal source awaits your return.",
+  2: "Supplies secured and delivered. The bioluminescent trail grows clearer.",
+  3: "Signal triangulated across multiple sectors. The convergence point is within reach.",
+  4: "The first node has been located. Its ancient pulse resonates with your ship's scanners.",
+  5: "Cyrillium shipment delivered to the research station. Dr. Vorn's analysis can begin.",
+  6: "Pirate forces neutralized. The research corridor is secure once more.",
+  7: "Funding objectives met. The Xenomycology Institute can continue its work.",
+  8: "Mapping complete. The dormant threads of the Spore Network are charted.",
+  9: "Colony established near the second node. Life takes root among the stars.",
+  10: "All objectives fulfilled. The Agaricalis unfolds across the galaxy.",
+};
+
+// ── Codex entry texts (unlocked on mission claim) ───────────────────────────
+
+const CODEX_TEXTS: Record<number, string> = {
+  1: `Long before the four great races turned their eyes skyward, the Mycelial Network already existed — a lattice of bio-luminescent filaments threaded through the vacuum between stars. No one built it. No one seeded it. It simply was, as fundamental to the cosmos as gravity or light.
+
+The first species to detect it were the Vedic, whose psionic meditation practices occasionally brushed against what they called 'the Under-Weave.' They described it as a low hum beneath all thought, a resonance that connected every living thing across impossible distances. For centuries they dismissed it as spiritual metaphor.
+
+It was not metaphor. When Muscarian bio-engineers accidentally spliced a strand of Network tissue into a communications relay in the year 3,411 of the Common Reckoning, the signal that erupted shattered every receiver within four parsecs. The Mycelial Network was real, it was alive, and it had been waiting to be found.`,
+
+  2: `The Muscarian homeworld of Agarica Prime is a dense jungle-planet where fungal ecosystems dominate every biome. Multicellular fungi the size of skyscrapers form the canopy, their root networks creating a planetary nervous system that the early Muscarians learned to interface with through spore-laced neural grafts.
+
+This symbiosis shaped their entire civilization. Where other species built machines to extend their reach, the Muscarians grew them. Their starships are partially alive — hulls of hardened chitin laced with metallic compounds, engines that metabolize exotic matter the way a truffle metabolizes soil. A Muscarian vessel does not launch so much as germinate.
+
+Their aggression in combat is not malice but instinct: the same territorial imperative that drives a colony organism to defend its substrate. To a Muscarian, every sector they enter becomes, on some primal level, an extension of home.`,
+
+  3: `Vedic civilization arose on Prisma, a world whose crust is riddled with crystalline formations that naturally amplify psionic energy. The earliest Vedic were unremarkable — small, fragile beings who survived by hiding in crystal caves from the planet's apex predators. But the caves changed them. Generations of exposure to resonant crystal fields awakened latent psionic potential encoded in their genome.
+
+By the time they emerged from the caves, they could sense the electromagnetic signatures of predators from kilometers away. Within a thousand years, they could project their consciousness across continents. Within ten thousand, across star systems.
+
+The Vedic do not consider themselves superior for these abilities. Their central philosophical text, the Luminari Codex, teaches that psionic power is a lens, not a light — it reveals what is already there. This humility is genuine, which makes them all the more unsettling to species who cannot read minds.`,
+
+  4: `The Kalin evolved on Lithara, a super-dense world with gravity three times the galactic standard. Everything on Lithara is built to endure: the trees have trunks of petrified wood laced with silicon, the oceans are thick with dissolved minerals, and the native fauna developed exoskeletons that can withstand atmospheric pressures that would crush steel.
+
+The Kalin themselves are stocky, dense-boned beings whose skin contains silicon-carbide deposits that function as natural armor plating. Their engineering tradition began not with tools but with their own bodies — early Kalin would reshape their silicon deposits through sustained pressure and heat, literally forging themselves into warriors.
+
+This practice evolved into a civilization-wide ethos: the Forge Doctrine. Everything must be tested. Everything must endure. A Kalin ship is overbuilt by any other species' standards, its hull rated for stresses it will never encounter, its weapons calibrated for enemies that may never exist. To the Kalin, this is not paranoia. It is respect for an uncaring universe.`,
+
+  5: `No one knows where the Tar'ri came from. Their own histories begin mid-sentence, as if the early chapters were deliberately torn out. What remains is the Song of Wandering — an oral tradition spanning tens of thousands of verses, each one describing a different star system, its trade goods, its dangers, and the optimal route to the next port.
+
+The Tar'ri do not have a homeworld. They have never had one, or if they did, they have chosen to forget it. Their civilization is a fleet — thousands of caravan ships ranging from single-family traders to city-sized bazaar vessels that serve as floating marketplaces. To be Tar'ri is to be in motion.
+
+This rootlessness gives them a unique perspective. While other species fight over territory, the Tar'ri see borders as suggestions and wars as market opportunities. They will sell weapons to both sides of a conflict, medical supplies to the aftermath, and reconstruction materials to whatever emerges from the ashes. They call this the Cycle of Commerce, and they consider it the only honest religion in the galaxy.`,
+
+  6: `When the Muscarians first tapped the Mycelial Network, they assumed it was a natural resource — theirs by right of discovery. They began constructing Tendril Relays: bio-engineered stations that could channel Network energy into faster-than-light communication beams. Within a decade, the Muscarian Sporarchy had a communication network that made all others obsolete.
+
+The other races objected. The Vedic, who had sensed the Network for millennia, considered the Muscarian approach crude and dangerous — like hammering nails into a living brain. The Kalin saw a strategic asset being monopolized. The Tar'ri saw a toll road being built across free space.
+
+The resulting conflict — the First Tendril War — lasted eleven years and reshaped the political landscape of the known galaxy. It ended not through military victory but through the Network itself, which began rejecting Muscarian relays with increasing violence, as if an immune system had finally identified an infection.`,
+
+  7: `The Spore is not a substance, though it can manifest as one. It is not an entity, though it sometimes behaves like one. The leading Vedic theorists describe it as 'a tendency encoded in the fabric of spacetime' — a bias toward complexity, growth, and connection that occasionally crystallizes into observable phenomena.
+
+When a new star ignites, there is a burst of Spore activity in the surrounding region. When a civilization achieves faster-than-light travel, Spore concentrations in their home system spike. When two species make first contact, the Spore between them becomes briefly visible — a shimmer in the void, like heat haze over a desert road.
+
+The Muscarians worship it. The Vedic study it. The Kalin distrust it. The Tar'ri trade in it. No one understands it. The few researchers who have claimed to grasp its nature have, without exception, disappeared — not violently, not mysteriously, but simply. One day they are there. The next, they are not. Their colleagues describe feeling, in the moment of their absence, a profound sense of completion.`,
+
+  8: `Between the stars, where the Mycelial Network grows thinnest, there are currents. The Tar'ri discovered them first — invisible rivers of low-density Spore energy that flow through the void in patterns that shift on timescales of centuries. A ship that catches a Drift Lane can travel at superluminal speeds without engaging its FTL drive, carried along like a seed on the wind.
+
+The Tar'ri guarded this knowledge jealously for generations, and it explains much about their mercantile dominance. While other species burned fuel and calculated jump coordinates, Tar'ri caravans simply rode the Drift, arriving at destinations faster, cheaper, and with cargo holds intact.
+
+Modern Drift Fuel is a synthetic approximation of this effect — a compound that temporarily aligns a ship's quantum signature with the nearest Drift Lane, allowing even non-Tar'ri vessels to catch the current. The Tar'ri consider the invention of Drift Fuel to be the single greatest act of theft in galactic history. They are not wrong.`,
+
+  9: `Beneath the surface of seventeen known worlds, explorers have discovered identical structures: vast underground chambers whose walls are lined with a crystalline material that does not match any known mineral. When a Vedic psion enters one of these chambers, they experience a flood of information — images, sensations, and mathematical concepts from a civilization that predates all four known races by at least two billion years.
+
+These are the Substrate Archives, and they represent the single greatest unsolved mystery in galactic archaeology. The civilization that built them — referred to in academic literature as the Progenitors — left no other trace. No cities, no ships, no bones. Only these archives, buried deep enough to survive the geological upheavals of eons.
+
+The information within them is fragmentary and often contradictory, as if the Progenitors could not agree on what was worth preserving. But one theme recurs across every archive on every world: a warning. Something is coming. Something came before. The distinction, in the Progenitor language, appears to be meaningless.`,
+
+  10: `The treaty that ended the First Tendril War was not negotiated at a diplomatic summit. It was grown. Muscarian bio-diplomats planted a ring of symbiotic fungi around a neutral space station, and representatives of all four races were invited to sit within the ring and breathe the spores. The effect was not mind control — the Vedic confirmed this repeatedly — but rather a profound deepening of empathy. Each delegate could feel, viscerally, the fears and hopes of the others.
+
+The resulting document, the Accord of Spores, established the framework that still governs interstellar relations. The Mycelial Network was declared a shared resource. Tendril Relays would be jointly operated. No single species could claim sovereignty over Network nodes.
+
+The Accord held for nearly a century. When it finally broke, it broke not because of betrayal or ambition, but because of something none of the signatories had anticipated: the Network began to change. Nodes that had been stable for millennia started migrating. New tendrils appeared in empty space. The Network was growing, and it was growing toward something.`,
+};
+
 // ── ElevenLabs TTS ───────────────────────────────────────────────────────────
 
 async function generateTTS(text: string): Promise<Buffer> {
@@ -231,6 +310,48 @@ async function main() {
     const text = CLAIM_TEXTS[i];
     if (!text) continue;
     console.log(`  claim ${num}: generating (${text.length} chars)...`);
+    const start = Date.now();
+    const audio = await generateTTS(text);
+    fs.writeFileSync(filePath, audio);
+    const sizeMB = (audio.length / (1024 * 1024)).toFixed(2);
+    const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+    console.log(`    → ${filename} (${sizeMB} MB, ${elapsed}s)`);
+  }
+
+  // Mission complete narration (m01_complete .. m10_complete)
+  console.log("\n── Mission Complete Narration ──");
+  for (let i = 1; i <= 10; i++) {
+    const num = String(i).padStart(2, "0");
+    const filename = `m${num}_complete.mp3`;
+    const filePath = path.join(OUTPUT_DIR, filename);
+    if (fs.existsSync(filePath)) {
+      console.log(`  [skip] ${filename} already exists`);
+      continue;
+    }
+    const text = COMPLETE_TEXTS[i];
+    if (!text) continue;
+    console.log(`  complete ${num}: generating (${text.length} chars)...`);
+    const start = Date.now();
+    const audio = await generateTTS(text);
+    fs.writeFileSync(filePath, audio);
+    const sizeMB = (audio.length / (1024 * 1024)).toFixed(2);
+    const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+    console.log(`    → ${filename} (${sizeMB} MB, ${elapsed}s)`);
+  }
+
+  // Codex entry narration (codex_01 .. codex_10)
+  console.log("\n── Codex Entry Narration ──");
+  for (let i = 1; i <= 10; i++) {
+    const num = String(i).padStart(2, "0");
+    const filename = `codex_${num}.mp3`;
+    const filePath = path.join(OUTPUT_DIR, filename);
+    if (fs.existsSync(filePath)) {
+      console.log(`  [skip] ${filename} already exists`);
+      continue;
+    }
+    const text = CODEX_TEXTS[i];
+    if (!text) continue;
+    console.log(`  codex ${num}: generating (${text.length} chars)...`);
     const start = Date.now();
     const audio = await generateTTS(text);
     fs.writeFileSync(filePath, audio);

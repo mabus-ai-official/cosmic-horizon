@@ -3,7 +3,7 @@
  * Includes ARIA comment toast, toasts, event overlay, SP complete modal,
  * settings overlay, arcade modal, and tutorial overlays.
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import AriaComment from "./AriaComment";
 import ToastManager from "./ToastManager";
 import EventOverlay from "./EventOverlay";
@@ -79,8 +79,8 @@ export default function ModalLayer({
 }: ModalLayerProps) {
   // Auto-play narration when a narrated event becomes current
   const lastNarratedEventId = useRef<number | null>(null);
-  const postNarrationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasPlayingRef = useRef(false);
+  const [postNarrationCountdown, setPostNarrationCountdown] = useState(0);
   const currentEvent = eventOverlay.currentEvent;
 
   useEffect(() => {
@@ -94,41 +94,27 @@ export default function ModalLayer({
     }
   }, [currentEvent, narration]);
 
-  // Auto-dismiss 2s after narration ends
+  // After narration ends, start the event's dismiss countdown (progress bar)
   useEffect(() => {
     if (narration.isPlaying) {
       wasPlayingRef.current = true;
-      // Clear any pending post-narration timer
-      if (postNarrationTimer.current) {
-        clearTimeout(postNarrationTimer.current);
-        postNarrationTimer.current = null;
-      }
+      setPostNarrationCountdown(0);
     } else if (wasPlayingRef.current && currentEvent?.narrationUrl) {
-      // Narration just ended — start 2s countdown
+      // Narration just ended — kick off the dismiss timer + show progress bar
       wasPlayingRef.current = false;
-      postNarrationTimer.current = setTimeout(() => {
-        postNarrationTimer.current = null;
-        eventOverlay.dismissCurrent();
-      }, 2000);
+      const duration = currentEvent.duration > 0 ? currentEvent.duration : 5000;
+      setPostNarrationCountdown(duration);
+      eventOverlay.startDismissTimer(duration);
     }
   }, [narration.isPlaying, currentEvent, eventOverlay]);
 
-  // Clean up timer on unmount or event change
+  // Reset countdown when event changes
   useEffect(() => {
-    return () => {
-      if (postNarrationTimer.current) {
-        clearTimeout(postNarrationTimer.current);
-        postNarrationTimer.current = null;
-      }
-    };
-  }, [currentEvent]);
+    setPostNarrationCountdown(0);
+  }, [currentEvent?.id]);
 
   // Wrap dismiss to also stop narration
   const handleDismiss = () => {
-    if (postNarrationTimer.current) {
-      clearTimeout(postNarrationTimer.current);
-      postNarrationTimer.current = null;
-    }
     wasPlayingRef.current = false;
     narration.skipNarration();
     eventOverlay.dismissCurrent();
@@ -136,10 +122,6 @@ export default function ModalLayer({
 
   // Wrap action handler to also stop narration
   const handleAction = (actionId: string) => {
-    if (postNarrationTimer.current) {
-      clearTimeout(postNarrationTimer.current);
-      postNarrationTimer.current = null;
-    }
     wasPlayingRef.current = false;
     narration.skipNarration();
     eventOverlay.handleAction(actionId);
@@ -160,6 +142,7 @@ export default function ModalLayer({
           onAction={handleAction}
           narrationPlaying={narration.isPlaying}
           onSkipNarration={narration.skipNarration}
+          postNarrationCountdown={postNarrationCountdown}
         />
       )}
       {showSPComplete && (

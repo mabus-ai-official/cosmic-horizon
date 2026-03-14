@@ -7,6 +7,7 @@ interface EventOverlayProps {
   onAction: (actionId: string) => void;
   narrationPlaying?: boolean;
   onSkipNarration?: () => void;
+  postNarrationCountdown?: number; // duration in ms, set when narration ends
 }
 
 // Typing effect for story/lore text bodies
@@ -99,9 +100,9 @@ export default function EventOverlay({
   onAction,
   narrationPlaying,
   onSkipNarration,
+  postNarrationCountdown,
 }: EventOverlayProps) {
   const hasNarration = !!event.narrationUrl;
-  const suppressAutoDismiss = hasNarration && narrationPlaying;
 
   const handleBackdropClick = () => {
     if (event.dismissable || hasNarration) onDismiss();
@@ -154,13 +155,21 @@ export default function EventOverlay({
             Skip Narration ▶▶
           </button>
         )}
-        {!suppressAutoDismiss && event.dismissable && event.duration > 0 && (
-          <DismissProgress duration={event.duration} eventId={event.id} />
+        {postNarrationCountdown && postNarrationCountdown > 0 ? (
+          <DismissProgress
+            duration={postNarrationCountdown}
+            eventId={event.id + 10000}
+          />
+        ) : (
+          !hasNarration &&
+          event.dismissable &&
+          event.duration > 0 && (
+            <DismissProgress duration={event.duration} eventId={event.id} />
+          )
         )}
-        {hasNarration ? (
+        {hasNarration || event.dismissable ? (
           <div className="event-overlay__hint">Click anywhere to dismiss</div>
         ) : (
-          event.dismissable &&
           !event.actions?.length && (
             <div className="event-overlay__hint">Click to dismiss</div>
           )

@@ -1,39 +1,36 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { TUTORIAL_WELCOME_NARRATION } from "../config/narration-manifest";
 
 interface Props {
   tutorialCompleted: boolean;
   onPlay: () => void;
   onSkip: () => void;
+  playNarration?: (url: string) => void;
+  skipNarration?: () => void;
+  narrationEnabled?: boolean;
 }
 
-const STORAGE_KEY = "coho_tutorial_welcome_seen";
-
 export default function TutorialWelcomeOverlay({
-  tutorialCompleted,
   onPlay,
   onSkip,
+  playNarration,
+  skipNarration,
+  narrationEnabled = true,
 }: Props) {
-  const [visible, setVisible] = useState(false);
-
+  // Play narration on mount
   useEffect(() => {
-    if (tutorialCompleted) return;
-    const seen = sessionStorage.getItem(STORAGE_KEY);
-    if (!seen) {
-      setVisible(true);
+    if (narrationEnabled && playNarration) {
+      playNarration(TUTORIAL_WELCOME_NARRATION);
     }
-  }, [tutorialCompleted]);
-
-  if (!visible) return null;
+  }, []);
 
   const handlePlay = () => {
-    sessionStorage.setItem(STORAGE_KEY, "1");
-    setVisible(false);
+    skipNarration?.();
     onPlay();
   };
 
   const handleSkip = () => {
-    sessionStorage.setItem(STORAGE_KEY, "1");
-    setVisible(false);
+    skipNarration?.();
     onSkip();
   };
 

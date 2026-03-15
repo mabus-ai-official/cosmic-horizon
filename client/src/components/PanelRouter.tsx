@@ -170,45 +170,15 @@ export default function PanelRouter({
           />
         );
       }
-      return (
-        <>
-          {activeOutpost ? (
-            <TradeTable
-              outpostId={activeOutpost}
-              onBuy={handleBuy}
-              onSell={handleSell}
-              bare
-            />
-          ) : (
-            <TradeComputerPanel bare />
-          )}
-          <TradeRoutesPanel
-            refreshKey={refreshKey}
-            onCommand={handleActionButton}
-            bare
-          />
-          <TradeOffersPanel
-            refreshKey={refreshKey}
-            onAction={() => {
-              game.refreshStatus();
-              setRefreshKey((k) => k + 1);
-              aria.triggerTrade();
-              if (!hasSeenFirstTime("first_trade")) {
-                markFirstTimeSeen("first_trade");
-                const ft = FIRST_TIME_EVENTS.trade;
-                eventOverlay.enqueueEvent({
-                  category: "first_time",
-                  title: ft.title,
-                  subtitle: ft.subtitle,
-                  body: ft.body,
-                  colorScheme: ft.colorScheme,
-                  duration: ft.duration,
-                });
-              }
-            }}
-            bare
-          />
-        </>
+      return activeOutpost ? (
+        <TradeTable
+          outpostId={activeOutpost}
+          onBuy={handleBuy}
+          onSell={handleSell}
+          bare
+        />
+      ) : (
+        <TradeComputerPanel bare />
       );
     }
     case "combat":
@@ -408,6 +378,28 @@ export default function PanelRouter({
       return <NotesPanel refreshKey={refreshKey} bare />;
     case "intel":
       return <IntelLogPanel refreshKey={refreshKey} bare />;
+    case "trade-routes":
+      return (
+        <TradeRoutesPanel
+          refreshKey={refreshKey}
+          onCommand={handleActionButton}
+          currentSectorId={game.player?.currentSectorId}
+          atStarMall={!!activeOutpost && !!game.sector?.hasStarMall}
+          activeOutpost={activeOutpost}
+          bare
+        />
+      );
+    case "trade-offers":
+      return (
+        <TradeOffersPanel
+          refreshKey={refreshKey}
+          onAction={() => {
+            game.refreshStatus();
+            setRefreshKey((k) => k + 1);
+          }}
+          bare
+        />
+      );
     case "trade-history":
       return <TradeHistoryPanel refreshKey={refreshKey} bare />;
     case "codex":

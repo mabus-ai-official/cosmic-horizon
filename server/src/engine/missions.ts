@@ -32,6 +32,7 @@ export interface MissionProgress {
   colonistsDeposited?: number;
   unitsTraded?: number;
   scansCompleted?: number;
+  scannedSectorIds?: number[];
   cargoDelivered?: number;
 }
 
@@ -100,8 +101,13 @@ export function checkMissionProgress(
 
     case "scan_sectors":
       if (action === "scan") {
-        p.scansCompleted = (p.scansCompleted || 0) + 1;
-        updated = true;
+        const sectorId = data.sectorId;
+        if (!p.scannedSectorIds) p.scannedSectorIds = [];
+        if (!p.scannedSectorIds.includes(sectorId)) {
+          p.scannedSectorIds.push(sectorId);
+          p.scansCompleted = p.scannedSectorIds.length;
+          updated = true;
+        }
       }
       break;
 

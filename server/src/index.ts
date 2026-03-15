@@ -37,6 +37,7 @@ import adminRouter from "./api/admin";
 import authMatrixRouter from "./api/auth-matrix";
 import aiAssistantRouter from "./api/ai-assistant";
 import planetTradesRouter from "./api/planet-trades";
+import barterRouter from "./api/barter";
 import planetCombatRouter from "./api/planet-combat";
 import dailyMissionsRouter from "./api/daily-missions";
 import tradeHistoryRouter from "./api/trade-history";
@@ -280,6 +281,13 @@ app.use(
   blockDuringTutorial,
   loadSPContext,
   planetTradesRouter,
+);
+app.use(
+  "/api/barter",
+  loadTutorialState,
+  blockDuringTutorial,
+  loadSPContext,
+  barterRouter,
 );
 app.use(
   "/api/planet-combat",

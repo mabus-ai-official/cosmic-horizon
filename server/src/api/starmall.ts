@@ -284,9 +284,16 @@ router.post("/garage/install/:id", requireAuth, async (req, res) => {
     if (!player!.current_ship_id)
       return res.status(400).json({ error: "No active ship" });
 
-    // Check affordability
-    if (Number(player!.credits) < upgradeType.price) {
-      return res.status(400).json({ error: "Not enough credits" });
+    // Check if player has this upgrade in their inventory (free install)
+    const inventoryUpgrade = await db("player_upgrade_inventory")
+      .where({ player_id: player!.id, upgrade_type_id: upgradeTypeId })
+      .first();
+
+    if (!inventoryUpgrade) {
+      // Must buy — check affordability
+      if (Number(player!.credits) < upgradeType.price) {
+        return res.status(400).json({ error: "Not enough credits" });
+      }
     }
 
     // Check if can install
@@ -310,13 +317,20 @@ router.post("/garage/install/:id", requireAuth, async (req, res) => {
       stackPosition,
     );
 
-    // Deduct credits
-    await db("players")
-      .where({ id: player!.id })
-      .update({
-        credits: Number(player!.credits) - upgradeType.price,
-      });
-    await settleDebitPlayer(player!.id, upgradeType.price, "store");
+    let newCredits = Number(player!.credits);
+    if (inventoryUpgrade) {
+      // Consume from inventory — no credit cost
+      await db("player_upgrade_inventory")
+        .where({ id: inventoryUpgrade.id })
+        .del();
+    } else {
+      // Deduct credits
+      newCredits -= upgradeType.price;
+      await db("players")
+        .where({ id: player!.id })
+        .update({ credits: newCredits });
+      await settleDebitPlayer(player!.id, upgradeType.price, "store");
+    }
 
     // Install
     const installId = crypto.randomUUID();
@@ -334,7 +348,8 @@ router.post("/garage/install/:id", requireAuth, async (req, res) => {
       name: upgradeType.name,
       slot: upgradeType.slot,
       effectiveBonus,
-      newCredits: Number(player!.credits) - upgradeType.price,
+      newCredits,
+      fromInventory: !!inventoryUpgrade,
     });
   } catch (err) {
     console.error("Install upgrade error:", err);
@@ -363,6 +378,14 @@ router.post("/garage/uninstall/:id", requireAuth, async (req, res) => {
     if (!ship) return res.status(403).json({ error: "Not your ship" });
 
     await db("ship_upgrades").where({ id: upgrade.id }).del();
+
+    // Store in player's upgrade inventory instead of losing it
+    await db("player_upgrade_inventory").insert({
+      id: crypto.randomUUID(),
+      player_id: player!.id,
+      upgrade_type_id: upgrade.upgrade_type_id,
+      acquired_at: new Date(),
+    });
 
     res.json({ uninstalled: true, upgradeId: upgrade.id });
   } catch (err) {

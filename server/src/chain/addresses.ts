@@ -14,24 +14,24 @@ export const chainConfig = {
 
 export const contractAddresses = {
   // ERC-20 fungible tokens
-  credits: "0x5FbDB2315678afecb367f032d93F642f64180aa3" as `0x${string}`,
-  cyrillium: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512" as `0x${string}`,
-  food: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0" as `0x${string}`,
-  tech: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9" as `0x${string}`,
-  driftFuel: "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9" as `0x${string}`,
+  credits: "0x95401dc811bb5740090279Ba06cfA8fcF6113778" as `0x${string}`,
+  cyrillium: "0x998abeb3E57409262aE5b751f60747921B33613E" as `0x${string}`,
+  food: "0x70e0bA845a1A0F2DA3359C97E0285013525FFC49" as `0x${string}`,
+  tech: "0x4826533B4897376654Bb4d4AD88B7faFD0C98528" as `0x${string}`,
+  driftFuel: "0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf" as `0x${string}`,
 
   // ERC-721 NFTs
-  shipNft: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707" as `0x${string}`,
-  equipmentNft: "0x0165878A594ca255338adfa4d48449f69242Eb8F" as `0x${string}`,
-  characterNft: "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853" as `0x${string}`,
-  planetNft: "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6" as `0x${string}`,
+  shipNft: "0x0E801D84Fa97b50751Dbf25036d067dCf18858bF" as `0x${string}`,
+  equipmentNft: "0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf" as `0x${string}`,
+  characterNft: "0x9d4454B023096f34B160D6B654540c56A1F81688" as `0x${string}`,
+  planetNft: "0x5eb3Bc0a489C5A8288765d2336659EbCA68FCd00" as `0x${string}`,
 
   // Factory + per-player clones
-  memberFactory: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318" as `0x${string}`,
+  memberFactory: "0x36C02dA8a0983159322a80FFE9F24b1acfF8B570" as `0x${string}`,
 
   // Syndicate DAO factory
   syndicateFactory:
-    "0x610178dA211FEF7D417bC0e6FeD39F05609AD788" as `0x${string}`,
+    "0x809d550fca64d94Bd9F66E60752A544199cfAC3D" as `0x${string}`,
 } as const;
 
 // Map game resource names (as used in DB/game logic) to token contract addresses

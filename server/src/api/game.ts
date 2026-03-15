@@ -1132,7 +1132,12 @@ router.post("/scan", requireAuth, async (req, res) => {
 
     // Mission progress: scan
     const io = req.app.get("io");
-    checkAndUpdateMissions(player.id, "scan", {}, io);
+    checkAndUpdateMissions(
+      player.id,
+      "scan",
+      { sectorId: player.current_sector_id },
+      io,
+    );
     updateDailyMissionProgress(player.id, "scan_sectors").catch(() => {});
 
     // Resource events in scanned sectors (current + adjacent)

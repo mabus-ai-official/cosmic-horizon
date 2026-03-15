@@ -116,14 +116,17 @@ export function useEventOverlay(
 
   const handleAction = useCallback(
     (actionId: string) => {
+      let action: ((id: string) => void) | undefined;
       setCurrentEvent((current) => {
-        current?.onAction?.(actionId);
+        action = current?.onAction;
         return null;
       });
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
       }
+      // Fire onAction outside of setCurrentEvent to avoid nested setState issues
+      action?.(actionId);
       setTimeout(() => processNext(), 50);
     },
     [processNext],

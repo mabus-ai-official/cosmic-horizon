@@ -153,6 +153,18 @@ export default function StoryMissionsTab({
             `+${data.creditsAwarded} cr  +${data.xpAwarded} XP`,
           narrationUrl,
         });
+
+        // Enqueue codex overlay from HTTP response (avoids socket race condition)
+        if (data.codex) {
+          onStoryEvent({
+            type: "lore_reveal",
+            title: "CODEX ENTRY UNLOCKED",
+            subtitle: data.codex.title,
+            body: data.codex.content,
+            narrationUrl:
+              getNarrationUrl(data.codex.storyOrder, "codex") ?? undefined,
+          });
+        }
       }
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to claim mission");

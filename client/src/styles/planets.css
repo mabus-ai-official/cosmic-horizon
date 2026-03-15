@@ -20,7 +20,6 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 6px;
 }
 
 .planet-panel-item__name {
@@ -34,32 +33,97 @@
   color: var(--cyan);
 }
 
-.planet-panel-item__details {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 4px 12px;
-  font-size: 0.8rem;
+/* === Planet Sections === */
+.planet-section {
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.planet-section__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--comment);
-  margin-top: 6px;
-  padding: 6px 0;
-  border-top: 1px solid var(--border);
+  margin-bottom: 6px;
 }
 
-.planet-panel-item__stocks {
+/* === Stat Grid === */
+.planet-stat-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px 12px;
-  font-size: 0.8rem;
-  color: var(--yellow);
-  margin-top: 6px;
-  padding: 6px 0;
-  border-top: 1px solid var(--border);
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 16px;
 }
 
-.planet-panel-item__production {
-  font-size: 0.769rem;
-  color: var(--green);
-  margin-top: 4px;
+.planet-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.planet-stat__label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--comment);
+}
+
+.planet-stat__value {
+  font-size: 0.85rem;
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+/* === Population Breakdown === */
+.planet-pop-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.planet-pop-tag {
+  font-size: 0.7rem;
+  color: var(--comment);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+/* === Resource Bars === */
+.planet-resource-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.planet-resource {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.planet-resource__name {
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+
+.planet-resource__value {
+  color: var(--foreground);
+  text-align: right;
+}
+
+.planet-resource__rate {
+  font-size: 0.7rem;
+  min-width: 80px;
+  text-align: right;
 }
 
 /* === Planet Actions === */

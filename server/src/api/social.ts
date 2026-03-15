@@ -26,7 +26,7 @@ async function chainAddSyndicateMember(playerId: string, syndicateId: string) {
   try {
     const player = await db("players")
       .where({ id: playerId })
-      .select("wallet_address")
+      .select("wallet_address", "character_nft_id")
       .first();
     const syndicate = await db("syndicates")
       .where({ id: syndicateId })
@@ -38,6 +38,13 @@ async function chainAddSyndicateMember(playerId: string, syndicateId: string) {
       syndicateIndex: BigInt(syndicate.chain_index),
       member: player.wallet_address as Address,
     });
+    if (player.character_nft_id != null) {
+      enqueue({
+        type: "updateCharacterSyndicate",
+        tokenId: BigInt(player.character_nft_id),
+        syndicateIndex: BigInt(syndicate.chain_index),
+      });
+    }
   } catch (err) {
     console.warn("Chain addSyndicateMember enqueue failed:", err);
   }
@@ -51,7 +58,7 @@ async function chainRemoveSyndicateMember(
   try {
     const player = await db("players")
       .where({ id: playerId })
-      .select("wallet_address")
+      .select("wallet_address", "character_nft_id")
       .first();
     const syndicate = await db("syndicates")
       .where({ id: syndicateId })
@@ -63,6 +70,13 @@ async function chainRemoveSyndicateMember(
       syndicateIndex: BigInt(syndicate.chain_index),
       member: player.wallet_address as Address,
     });
+    if (player.character_nft_id != null) {
+      enqueue({
+        type: "updateCharacterSyndicate",
+        tokenId: BigInt(player.character_nft_id),
+        syndicateIndex: 0n,
+      });
+    }
   } catch (err) {
     console.warn("Chain removeSyndicateMember enqueue failed:", err);
   }

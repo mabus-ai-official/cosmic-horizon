@@ -522,46 +522,120 @@ export default function PlanetsPanel({
 
               {expanded && (
                 <>
-                  <div className="planet-panel-item__details">
-                    <span>Sector {p.sectorId}</span>
-                    <span>Level {p.upgradeLevel}</span>
-                    <span>{p.colonists.toLocaleString()} colonists</span>
-                    <span style={{ color: happinessColor }}>
-                      {p.happinessTier} ({Math.round(p.happiness)})
-                    </span>
-                    {bestRace && (
-                      <span style={{ color: "var(--cyan)" }}>
-                        Best: {RACE_LABELS[bestRace.race] || bestRace.race} (
-                        {Math.round(bestRace.multiplier * 100)}%)
-                      </span>
+                  {/* Status section */}
+                  <div className="planet-section">
+                    <div className="planet-stat-grid">
+                      <div className="planet-stat">
+                        <span className="planet-stat__label">Sector</span>
+                        <span className="planet-stat__value">{p.sectorId}</span>
+                      </div>
+                      <div className="planet-stat">
+                        <span className="planet-stat__label">Colonists</span>
+                        <span className="planet-stat__value">
+                          {p.colonists.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="planet-stat">
+                        <span className="planet-stat__label">Happiness</span>
+                        <span
+                          className="planet-stat__value"
+                          style={{ color: happinessColor }}
+                        >
+                          {p.happinessTier} ({Math.round(p.happiness)})
+                        </span>
+                      </div>
+                      {bestRace && (
+                        <div className="planet-stat">
+                          <span className="planet-stat__label">Best Race</span>
+                          <span
+                            className="planet-stat__value"
+                            style={{ color: "var(--cyan)" }}
+                          >
+                            {RACE_LABELS[bestRace.race] || bestRace.race} (
+                            {Math.round(bestRace.multiplier * 100)}%)
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    {p.racePopulations && p.racePopulations.length > 0 && (
+                      <div className="planet-pop-breakdown">
+                        {p.racePopulations.map((rp) => (
+                          <span key={rp.race} className="planet-pop-tag">
+                            {RACE_LABELS[rp.race] || rp.race}:{" "}
+                            {rp.count.toLocaleString()}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
-                  <div className="planet-panel-item__stocks">
-                    <span title="Cyrillium">Cyr: {p.cyrilliumStock}</span>
-                    <span title="Food" style={{ color: foodColor }}>
-                      Food: {p.foodStock} (
-                      {p.foodConsumption > 0
-                        ? `-${p.foodConsumption}/tick`
-                        : "no consumption"}
-                      )
-                    </span>
-                    <span title="Tech">Tech: {p.techStock}</span>
-                  </div>
-                  <div className="planet-panel-item__production">
-                    Production: Cyr={p.production.cyrillium} Tech=
-                    {p.production.tech}
-                  </div>
-                  {p.racePopulations && p.racePopulations.length > 0 && (
-                    <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>
-                      Pop:{" "}
-                      {p.racePopulations
-                        .map(
-                          (rp) =>
-                            `${RACE_LABELS[rp.race] || rp.race}:${rp.count.toLocaleString()}`,
-                        )
-                        .join(", ")}
+
+                  {/* Resources section */}
+                  <div className="planet-section">
+                    <div className="planet-section__label">Resources</div>
+                    <div className="planet-resource-bars">
+                      <div className="planet-resource">
+                        <span
+                          className="planet-resource__name"
+                          style={{ color: "var(--magenta)" }}
+                        >
+                          CYR
+                        </span>
+                        <span className="planet-resource__value">
+                          {p.cyrilliumStock}
+                        </span>
+                        <span
+                          className="planet-resource__rate"
+                          style={{ color: "var(--green)" }}
+                        >
+                          +{p.production.cyrillium}/tick
+                        </span>
+                      </div>
+                      <div className="planet-resource">
+                        <span
+                          className="planet-resource__name"
+                          style={{ color: foodColor }}
+                        >
+                          FOOD
+                        </span>
+                        <span
+                          className="planet-resource__value"
+                          style={{ color: foodColor }}
+                        >
+                          {p.foodStock}
+                        </span>
+                        <span
+                          className="planet-resource__rate"
+                          style={{
+                            color:
+                              p.foodConsumption > 0
+                                ? "var(--orange)"
+                                : "var(--comment)",
+                          }}
+                        >
+                          {p.foodConsumption > 0
+                            ? `-${p.foodConsumption}/tick`
+                            : "self-sustaining"}
+                        </span>
+                      </div>
+                      <div className="planet-resource">
+                        <span
+                          className="planet-resource__name"
+                          style={{ color: "var(--cyan)" }}
+                        >
+                          TECH
+                        </span>
+                        <span className="planet-resource__value">
+                          {p.techStock}
+                        </span>
+                        <span
+                          className="planet-resource__rate"
+                          style={{ color: "var(--green)" }}
+                        >
+                          +{p.production.tech}/tick
+                        </span>
+                      </div>
                     </div>
-                  )}
+                  </div>
                   <div className="planet-actions">
                     <button
                       className="btn-sm btn-buy"

@@ -21,6 +21,7 @@ interface ContextPanelProps {
   onChatSend: (message: string, channel: ChatChannel) => void;
   onCommand: (cmd: string) => void;
   hasSyndicate: boolean;
+  syndicateInfo?: { name: string; role: string } | null;
   hasAlliance: boolean;
   refreshKey?: number;
 }
@@ -49,6 +50,7 @@ export default function ContextPanel({
   onChatSend,
   onCommand,
   hasSyndicate,
+  syndicateInfo,
   hasAlliance,
   refreshKey,
 }: ContextPanelProps) {
@@ -197,6 +199,16 @@ export default function ContextPanel({
           <div className="profile-section__race" style={{ color: raceColor }}>
             {player?.race || "Unknown"}
           </div>
+          {syndicateInfo && (
+            <div className="profile-section__syndicate">
+              <span style={{ color: "var(--cyan)" }}>{syndicateInfo.name}</span>
+              <span
+                style={{ color: "#6e7681", fontSize: "0.7rem", marginLeft: 4 }}
+              >
+                [{syndicateInfo.role}]
+              </span>
+            </div>
+          )}
           <div className="profile-section__credits">
             <span className="text-trade">
               {player?.credits?.toLocaleString() ?? 0}

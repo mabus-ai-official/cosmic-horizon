@@ -4,8 +4,6 @@ import {
   changeRace,
   changePassword,
   deleteAccount,
-  transitionToMP,
-  transitionToSP,
 } from "../services/api";
 import ControlsTab from "./ControlsTab";
 import type { KeyBinding } from "../hooks/useKeybindings";
@@ -20,7 +18,6 @@ const RACES = [
 interface SettingsPanelProps {
   playerRace?: string;
   playerUsername?: string;
-  gameMode?: string;
   volume: number;
   onVolumeChange: (v: number) => void;
   narrationEnabled: boolean;
@@ -28,7 +25,6 @@ interface SettingsPanelProps {
   narrationVolume: number;
   onNarrationVolumeChange: (v: number) => void;
   onLogout: () => void;
-  onRefresh: () => void;
   keybindings: KeyBinding[];
   keybindConflicts: Map<string, string[]>;
   onRebind: (action: string, newKey: string) => void;
@@ -39,7 +35,6 @@ interface SettingsPanelProps {
 export default function SettingsPanel({
   playerRace,
   playerUsername,
-  gameMode,
   volume,
   onVolumeChange,
   narrationEnabled,
@@ -47,7 +42,6 @@ export default function SettingsPanel({
   narrationVolume,
   onNarrationVolumeChange,
   onLogout,
-  onRefresh,
   keybindings,
   keybindConflicts,
   onRebind,
@@ -72,10 +66,6 @@ export default function SettingsPanel({
   const [confirmPw, setConfirmPw] = useState("");
   const [pwMsg, setPwMsg] = useState("");
   const [pwBusy, setPwBusy] = useState(false);
-
-  // Game Mode
-  const [modeMsg, setModeMsg] = useState("");
-  const [modeBusy, setModeBusy] = useState(false);
 
   // Delete
   const [deletePw, setDeletePw] = useState("");
@@ -229,50 +219,6 @@ export default function SettingsPanel({
                 </span>
               </div>
             )}
-          </div>
-
-          {/* Game Mode */}
-          <div className="settings-section">
-            <h4 className="settings-section__title">Game Mode</h4>
-            <p className="settings-hint">
-              Current:{" "}
-              <strong>
-                {gameMode === "singleplayer" ? "Single Player" : "Multiplayer"}
-              </strong>
-            </p>
-            <div className="settings-row">
-              <button
-                className="btn btn-primary btn-sm"
-                disabled={modeBusy}
-                onClick={async () => {
-                  setModeBusy(true);
-                  setModeMsg("");
-                  try {
-                    if (gameMode === "singleplayer") {
-                      await transitionToMP(true);
-                      setModeMsg("Switched to Multiplayer. Refreshing...");
-                    } else {
-                      await transitionToSP();
-                      setModeMsg("Switched to Single Player. Refreshing...");
-                    }
-                    setTimeout(() => {
-                      onRefresh();
-                    }, 1000);
-                  } catch (err: any) {
-                    setModeMsg(err.response?.data?.error || "Failed");
-                  } finally {
-                    setModeBusy(false);
-                  }
-                }}
-              >
-                {modeBusy
-                  ? "SWITCHING..."
-                  : gameMode === "singleplayer"
-                    ? "SWITCH TO MULTIPLAYER"
-                    : "SWITCH TO SINGLE PLAYER"}
-              </button>
-            </div>
-            {modeMsg && <p className="settings-msg">{modeMsg}</p>}
           </div>
 
           {/* Change Username */}

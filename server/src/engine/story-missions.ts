@@ -2,6 +2,7 @@ import db from "../db/connection";
 import crypto from "crypto";
 import { GAME_CONFIG } from "../config/game";
 import { notifyPlayer } from "../ws/handlers";
+import { playerRoom } from "../ws/events";
 import type { Server as SocketIOServer } from "socket.io";
 
 export interface StoryProgress {
@@ -250,16 +251,21 @@ export async function handleStoryMissionClaim(
   playerId: string,
   missionId: string,
   io?: SocketIOServer,
-): Promise<void> {
+  excludeSocketId?: string,
+): Promise<{ codex?: { title: string; content: string; storyOrder: number } }> {
+  let result: {
+    codex?: { title: string; content: string; storyOrder: number };
+  } = {};
+
   const playerMission = await db("player_missions")
     .where({ id: missionId })
     .first();
-  if (!playerMission) return;
+  if (!playerMission) return result;
 
   const template = await db("mission_templates")
     .where({ id: playerMission.template_id })
     .first();
-  if (!template || template.source !== "story") return;
+  if (!template || template.source !== "story") return result;
 
   const act = template.act;
   const storyOrder = template.story_order;
@@ -282,12 +288,29 @@ export async function handleStoryMissionClaim(
         unlocked_at: new Date().toISOString(),
       });
 
+      result.codex = {
+        title: codexEntry.title,
+        content: codexEntry.content,
+        storyOrder,
+      };
+
+      // Emit to other sessions (skip the claiming socket to avoid race)
       if (io) {
-        notifyPlayer(io, playerId, "story:lore_unlocked", {
-          codexTitle: codexEntry.title,
-          codexContent: codexEntry.content,
-          storyOrder,
-        });
+        if (excludeSocketId) {
+          io.to(playerRoom(playerId))
+            .except(excludeSocketId)
+            .emit("story:lore_unlocked", {
+              codexTitle: codexEntry.title,
+              codexContent: codexEntry.content,
+              storyOrder,
+            });
+        } else {
+          notifyPlayer(io, playerId, "story:lore_unlocked", {
+            codexTitle: codexEntry.title,
+            codexContent: codexEntry.content,
+            storyOrder,
+          });
+        }
       }
     }
   }
@@ -323,6 +346,8 @@ export async function handleStoryMissionClaim(
   await db("players")
     .where({ id: playerId })
     .update({ story_difficulty_modifier: 1.0 });
+
+  return result;
 }
 
 export async function getStoryRecap(

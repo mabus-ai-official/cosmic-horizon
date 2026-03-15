@@ -247,18 +247,28 @@
 }
 
 .activity-bar__tab-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--cyan);
   color: var(--bg-primary);
-  font-size: 0.55rem;
-  min-width: 10px;
-  height: 10px;
-  border-radius: 5px;
-  line-height: 10px;
-  text-align: center;
+  font-size: 0.6rem;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 7px;
   font-weight: 700;
-  margin-left: 3px;
-  vertical-align: middle;
+  margin-left: 4px;
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 /* Selection animation */

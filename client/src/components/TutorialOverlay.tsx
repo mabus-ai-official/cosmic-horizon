@@ -88,9 +88,9 @@ const STEPS: StepGuide[] = [
   // tutorialStep=6: server expects "buy" action to advance to step 7
   {
     title: "BUY COMMODITIES",
-    desc: "You're docked! Click the STARMALL group and open the market. Buy some Cyrillium to trade later.",
-    hint: "Click STARMALL, then buy goods",
-    target: "[data-tutorial='group-starmall']",
+    desc: "You're docked! Click the COMMERCE group and open the market. Buy some Cyrillium to trade later.",
+    hint: "Click COMMERCE, then buy goods",
+    target: "[data-tutorial='group-commerce']",
     arrow: "right",
     autoPanel: "trade",
   },

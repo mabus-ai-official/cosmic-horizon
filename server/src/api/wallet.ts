@@ -138,23 +138,20 @@ router.post("/verify", async (req, res) => {
   }
 });
 
-// Disconnect wallet
+// Disconnect wallet — also destroys session to force re-login
 router.post("/disconnect", async (req, res) => {
   try {
     await db("players").where({ id: req.session.playerId }).update({
       wallet_address: null,
       wallet_connected_at: null,
     });
-    const io = req.app.get("io");
-    if (io)
-      syncPlayer(
-        io,
-        req.session.playerId!,
-        "sync:status",
-        req.headers["x-socket-id"] as string | undefined,
-      );
 
-    res.json({ success: true });
+    // Destroy the session so the player is logged out
+    req.session.destroy((err) => {
+      if (err) console.error("Session destroy error:", err);
+    });
+
+    res.json({ success: true, loggedOut: true });
   } catch (err) {
     console.error("Wallet disconnect error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -201,6 +198,7 @@ router.get("/status", async (req, res) => {
       walletAddress: player?.wallet_address || null,
       connectedAt: player?.wallet_connected_at || null,
       hasMemberContract: !!player?.member_contract_address,
+      memberContractAddress: player?.member_contract_address || null,
     });
   } catch (err) {
     console.error("Wallet status error:", err);
@@ -464,6 +462,138 @@ router.post("/withdraw-tokens", async (req, res) => {
   } catch (err) {
     console.error("Withdraw tokens error:", err);
     res.status(500).json({ error: "Withdrawal failed" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Deposits — move tokens from external wallet back into game
+// ---------------------------------------------------------------------------
+
+// Build reverse map: token address (lowercased) → resource name
+const tokenToResource: Record<string, string> = {};
+for (const [resource, addr] of Object.entries(resourceToToken)) {
+  tokenToResource[addr.toLowerCase()] = resource;
+}
+
+router.post("/deposit-confirm", async (req, res) => {
+  try {
+    const { txHash } = req.body;
+    if (!txHash) {
+      return res.status(400).json({ error: "Missing txHash" });
+    }
+
+    const playerId = req.session.playerId!;
+
+    // Check for duplicate
+    const existing = await db("deposit_confirmations")
+      .where({ tx_hash: txHash.toLowerCase() })
+      .first();
+    if (existing) {
+      return res.status(409).json({ error: "Transaction already confirmed" });
+    }
+
+    const player = await db("players")
+      .where({ id: playerId })
+      .select("wallet_address", "member_contract_address")
+      .first();
+
+    if (!player?.wallet_address) {
+      return res.status(400).json({ error: "No wallet linked" });
+    }
+    if (!player?.member_contract_address) {
+      return res.status(400).json({ error: "No member contract" });
+    }
+
+    const memberAddr = player.member_contract_address.toLowerCase();
+
+    // Read the transaction receipt from game chain
+    const receipt = await gameClient.getTransactionReceipt({
+      hash: txHash as `0x${string}`,
+    });
+
+    // Verify the transaction sender is the player's wallet
+    const tx = await gameClient.getTransaction({
+      hash: txHash as `0x${string}`,
+    });
+    if (tx.from.toLowerCase() !== player.wallet_address.toLowerCase()) {
+      return res
+        .status(403)
+        .json({ error: "Transaction sender does not match your wallet" });
+    }
+
+    // Look for Deposited(address indexed token, uint256 amount) event
+    // from the player's MemberContract
+    const depositedTopic =
+      "0x1b851e1031ef35a238e6c67d0c7991162390df915f70eaf97571f128d5ee5710"; // keccak256("Deposited(address,uint256)")
+
+    const depositLog = receipt.logs.find(
+      (log) =>
+        log.address.toLowerCase() === memberAddr &&
+        log.topics[0] === depositedTopic,
+    );
+
+    if (!depositLog) {
+      return res.status(400).json({
+        error: "No Deposited event found from your MemberContract in this tx",
+      });
+    }
+
+    // Parse the event: topic[1] = token address (indexed), data = amount
+    const tokenAddr = ("0x" + depositLog.topics[1]!.slice(26)).toLowerCase();
+    const amount = BigInt(depositLog.data);
+
+    const resource = tokenToResource[tokenAddr];
+    if (!resource) {
+      return res.status(400).json({ error: "Unknown token deposited" });
+    }
+
+    // Convert from 1e18 wei to game units
+    const gameAmount = Number(amount) / 1e18;
+
+    // Credit the player's DB balance
+    if (resource === "credits") {
+      await db("players")
+        .where({ id: playerId })
+        .update({ credits: db.raw("credits + ?", [gameAmount]) });
+    } else {
+      const { adjustPlayerResource } = await import("../engine/crafting");
+      await adjustPlayerResource(playerId, resource, gameAmount);
+    }
+
+    // Record confirmation
+    await db("deposit_confirmations").insert({
+      player_id: playerId,
+      tx_hash: txHash.toLowerCase(),
+      token_address: tokenAddr,
+      resource,
+      amount: amount.toString(),
+      confirmed_at: new Date().toISOString(),
+    });
+
+    // Push updated state
+    const io = req.app.get("io");
+    if (io)
+      syncPlayer(
+        io,
+        playerId,
+        "sync:status",
+        req.headers["x-socket-id"] as string | undefined,
+      );
+
+    const display = TOKEN_DISPLAY[resource];
+    console.log(
+      `[wallet] Deposit confirmed: ${gameAmount} ${display?.symbol ?? resource} from tx ${txHash} (player ${playerId})`,
+    );
+
+    res.json({
+      success: true,
+      resource,
+      amount: gameAmount,
+      symbol: display?.symbol ?? resource.toUpperCase(),
+    });
+  } catch (err) {
+    console.error("Deposit confirm error:", err);
+    res.status(500).json({ error: "Deposit confirmation failed" });
   }
 });
 

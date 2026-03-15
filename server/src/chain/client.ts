@@ -274,6 +274,7 @@ export interface CharacterData {
   totalMissionXp: bigint;
   totalTradeXp: bigint;
   totalExploreXp: bigint;
+  syndicateIndex: bigint;
 }
 
 /** Mint a character NFT, returns the token ID */
@@ -325,6 +326,19 @@ export async function updateFactionRep(
     parsedCharacterNftAbi,
     "updateFactionRep",
     [tokenId, factionHash, rep],
+  );
+}
+
+/** Update syndicate affiliation on the character NFT */
+export async function updateCharacterSyndicate(
+  tokenId: bigint,
+  syndicateIndex: bigint,
+): Promise<Hash> {
+  return write(
+    contractAddresses.characterNft,
+    parsedCharacterNftAbi,
+    "updateSyndicate",
+    [tokenId, syndicateIndex],
   );
 }
 

@@ -707,8 +707,9 @@ async function checkProjectFullyFunded(projectId: string) {
   });
 }
 
-export async function checkAndCompleteProjects() {
+export async function checkAndCompleteProjects(): Promise<string[]> {
   const now = new Date();
+  const completedSyndicateIds: string[] = [];
   const buildingProjects = await db("syndicate_projects")
     .where({ status: "building" })
     .whereNotNull("build_started_at");
@@ -743,8 +744,12 @@ export async function checkAndCompleteProjects() {
         status: "completed",
         completed_at: now.toISOString(),
       });
+
+      completedSyndicateIds.push(project.syndicate_id);
     }
   }
+
+  return completedSyndicateIds;
 }
 
 export async function getProjectDetail(projectId: string) {

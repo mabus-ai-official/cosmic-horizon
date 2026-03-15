@@ -492,12 +492,6 @@ export async function collectPlanetResources(
       name: "Cyrillium",
     },
     {
-      field: "food_stock",
-      cargoField: "food_cargo",
-      resourceId: "food",
-      name: "Food",
-    },
-    {
       field: "tech_stock",
       cargoField: "tech_cargo",
       resourceId: "tech",

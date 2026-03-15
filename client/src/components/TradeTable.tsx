@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { getOutpost } from '../services/api';
-import CollapsiblePanel from './CollapsiblePanel';
-import PixelSprite from './PixelSprite';
+import { useState, useEffect } from "react";
+import { getOutpost } from "../services/api";
+import CollapsiblePanel from "./CollapsiblePanel";
+import PixelSprite from "./PixelSprite";
 
 interface TradeTableProps {
   outpostId: string | null;
@@ -14,21 +14,47 @@ interface OutpostData {
   outpostId: string;
   name: string;
   treasury: number;
-  prices: Record<string, {
-    price: number;
-    stock: number;
-    capacity: number;
-    mode: string;
-  }>;
+  prices: Record<
+    string,
+    {
+      price: number;
+      stock: number;
+      capacity: number;
+      mode: string;
+    }
+  >;
 }
 
-export default function TradeTable({ outpostId, onBuy, onSell, bare }: TradeTableProps) {
+export default function TradeTable({
+  outpostId,
+  onBuy,
+  onSell,
+  bare,
+}: TradeTableProps) {
   const [data, setData] = useState<OutpostData | null>(null);
   const [qty, setQty] = useState(10);
 
   useEffect(() => {
-    if (!outpostId) { setData(null); return; }
-    getOutpost(outpostId).then(res => setData(res.data)).catch(() => setData(null));
+    if (!outpostId) {
+      setData(null);
+      return;
+    }
+    let cancelled = false;
+    const fetchData = () => {
+      getOutpost(outpostId)
+        .then((res) => {
+          if (!cancelled) setData(res.data);
+        })
+        .catch(() => {
+          if (!cancelled) setData(null);
+        });
+    };
+    fetchData();
+    const interval = setInterval(fetchData, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [outpostId]);
 
   if (!data) {
@@ -52,20 +78,45 @@ export default function TradeTable({ outpostId, onBuy, onSell, bare }: TradeTabl
         <tbody>
           {Object.entries(data.prices).map(([commodity, info]) => (
             <tr key={commodity}>
-              <td className="commodity-name"><span className="commodity-cell"><PixelSprite spriteKey={`commodity_${commodity}`} size={14} />{commodity}</span></td>
+              <td className="commodity-name">
+                <span className="commodity-cell">
+                  <PixelSprite spriteKey={`commodity_${commodity}`} size={14} />
+                  {commodity}
+                </span>
+              </td>
               <td className="text-trade">{info.price} cr</td>
-              <td>{info.stock}/{info.capacity}</td>
-              <td className={info.mode === 'buy' ? 'text-success' : info.mode === 'sell' ? 'text-combat' : ''}>
-                {info.mode === 'buy' ? 'Buying' : info.mode === 'sell' ? 'Selling' : info.mode}
+              <td>
+                {info.stock}/{info.capacity}
+              </td>
+              <td
+                className={
+                  info.mode === "buy"
+                    ? "text-success"
+                    : info.mode === "sell"
+                      ? "text-combat"
+                      : ""
+                }
+              >
+                {info.mode === "buy"
+                  ? "Buying"
+                  : info.mode === "sell"
+                    ? "Selling"
+                    : info.mode}
               </td>
               <td>
-                {info.mode === 'sell' && (
-                  <button className="btn-sm btn-buy" onClick={() => onBuy(data.outpostId, commodity, qty)}>
+                {info.mode === "sell" && (
+                  <button
+                    className="btn-sm btn-buy"
+                    onClick={() => onBuy(data.outpostId, commodity, qty)}
+                  >
                     Buy
                   </button>
                 )}
-                {info.mode === 'buy' && (
-                  <button className="btn-sm btn-sell" onClick={() => onSell(data.outpostId, commodity, qty)}>
+                {info.mode === "buy" && (
+                  <button
+                    className="btn-sm btn-sell"
+                    onClick={() => onSell(data.outpostId, commodity, qty)}
+                  >
                     Sell
                   </button>
                 )}
@@ -80,7 +131,7 @@ export default function TradeTable({ outpostId, onBuy, onSell, bare }: TradeTabl
           type="number"
           min={1}
           value={qty}
-          onChange={e => setQty(Math.max(1, parseInt(e.target.value) || 1))}
+          onChange={(e) => setQty(Math.max(1, parseInt(e.target.value) || 1))}
           className="qty-input"
         />
       </div>
@@ -88,5 +139,9 @@ export default function TradeTable({ outpostId, onBuy, onSell, bare }: TradeTabl
   );
 
   if (bare) return <div className="panel-content">{content}</div>;
-  return <CollapsiblePanel title={`TRADE - ${data.name}`}>{content}</CollapsiblePanel>;
+  return (
+    <CollapsiblePanel title={`TRADE - ${data.name}`}>
+      {content}
+    </CollapsiblePanel>
+  );
 }

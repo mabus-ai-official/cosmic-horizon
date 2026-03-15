@@ -235,12 +235,9 @@ export default function MapPanel({
           </button>
         )}
         {hasPlanets && !isLanded && (
-          <button
-            className="btn-action"
-            onClick={() => onLandClick?.()}
-            style={{ borderColor: "var(--green)", color: "var(--green)" }}
-          >
-            PLANETS
+          <button className="helm-dock-btn" onClick={() => onLandClick?.()}>
+            <span className="helm-dock-btn__icon">🌍</span>
+            <span className="helm-dock-btn__text">PLANETS</span>
           </button>
         )}
       </div>

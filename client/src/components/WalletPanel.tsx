@@ -7,6 +7,7 @@ import {
   useSwitchChain,
 } from "wagmi";
 import { mainnet } from "wagmi/chains";
+import { parseUnits } from "viem";
 import {
   getWalletNonce,
   verifyWallet,
@@ -17,7 +18,15 @@ import {
   getWalletHoldings,
   withdrawTokens,
   withdrawNft,
+  confirmDeposit,
 } from "../services/api";
+import { gameChain } from "../config/wagmi";
+import {
+  RESOURCE_TO_TOKEN,
+  TOKEN_DISPLAY,
+  ERC20_ABI,
+  MEMBER_CONTRACT_DEPOSIT_ABI,
+} from "../config/contracts";
 
 // ---- shared types ----
 
@@ -354,11 +363,237 @@ function InGameTab() {
         </div>
       )}
 
+      {/* Deposit section — show when wallet is linked */}
+      {hasWallet && <DepositSection />}
+
       {!hasWallet && (
         <div className="wallet-hint">
-          Link a wallet in the Wallet tab to enable withdrawals.
+          Link a wallet in the Wallet tab to enable withdrawals and deposits.
         </div>
       )}
+    </div>
+  );
+}
+
+// ---- Deposit Section ----
+
+type DepositState =
+  | "idle"
+  | "switching"
+  | "approving"
+  | "depositing"
+  | "confirming"
+  | "done"
+  | "error";
+
+function DepositSection() {
+  const { address } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
+  const [memberContract, setMemberContract] = useState<string | null>(null);
+  const [holdings, setHoldings] = useState<
+    { resource: string; symbol: string; name: string; balance: string }[]
+  >([]);
+  const [depositAmts, setDepositAmts] = useState<Record<string, string>>({});
+  const [depositState, setDepositState] = useState<
+    Record<string, DepositState>
+  >({});
+  const [depositMsg, setDepositMsg] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    getWalletStatus()
+      .then(({ data }) => {
+        if (data.hasMemberContract) {
+          // We need the member contract address — get it from status
+          // The status endpoint doesn't return it directly, but we stored it
+          setMemberContract(data.memberContractAddress || null);
+        }
+      })
+      .catch(() => {});
+    getWalletHoldings()
+      .then(({ data }) => setHoldings(data.tokens || []))
+      .catch(() => {});
+  }, []);
+
+  const handleDeposit = async (resource: string) => {
+    const amtStr = depositAmts[resource];
+    const amt = parseFloat(amtStr || "0");
+    if (!amt || amt <= 0 || !address || !memberContract) return;
+
+    const tokenAddr = RESOURCE_TO_TOKEN[resource] as `0x${string}`;
+    if (!tokenAddr) return;
+
+    const memberAddr = memberContract as `0x${string}`;
+    const amountWei = parseUnits(amtStr, 18);
+
+    setDepositMsg((p) => ({ ...p, [resource]: "" }));
+
+    try {
+      // Step 1: Switch to game chain
+      setDepositState((p) => ({ ...p, [resource]: "switching" }));
+      await switchChainAsync({ chainId: gameChain.id });
+
+      // Step 2: Check allowance and approve if needed
+      setDepositState((p) => ({ ...p, [resource]: "approving" }));
+
+      const { writeContract, readContract, waitForTransactionReceipt } =
+        await import("@wagmi/core");
+      const { wagmiConfig } = await import("../config/wagmi");
+
+      // Check current allowance
+      const currentAllowance = (await readContract(wagmiConfig, {
+        address: tokenAddr,
+        abi: ERC20_ABI,
+        functionName: "allowance",
+        args: [address, memberAddr],
+      })) as bigint;
+
+      if (currentAllowance < amountWei) {
+        // Approve the member contract to spend tokens
+        const approveTx = await writeContract(wagmiConfig, {
+          address: tokenAddr,
+          abi: ERC20_ABI,
+          functionName: "approve",
+          args: [memberAddr, amountWei],
+        });
+        await waitForTransactionReceipt(wagmiConfig, { hash: approveTx });
+      }
+
+      // Step 3: Call deposit on MemberContract
+      setDepositState((p) => ({ ...p, [resource]: "depositing" }));
+      const depositTx = await writeContract(wagmiConfig, {
+        address: memberAddr,
+        abi: MEMBER_CONTRACT_DEPOSIT_ABI,
+        functionName: "deposit",
+        args: [tokenAddr, amountWei],
+      });
+
+      await waitForTransactionReceipt(wagmiConfig, { hash: depositTx });
+
+      // Step 4: Confirm with server
+      setDepositState((p) => ({ ...p, [resource]: "confirming" }));
+      const { data } = await confirmDeposit(depositTx);
+
+      setDepositState((p) => ({ ...p, [resource]: "done" }));
+      setDepositMsg((p) => ({
+        ...p,
+        [resource]: `Deposited ${data.amount} ${data.symbol}`,
+      }));
+      setDepositAmts((p) => ({ ...p, [resource]: "" }));
+
+      // Refresh holdings
+      getWalletHoldings()
+        .then(({ data: h }) => setHoldings(h.tokens || []))
+        .catch(() => {});
+
+      // Reset state after a moment
+      setTimeout(() => {
+        setDepositState((p) => ({ ...p, [resource]: "idle" }));
+      }, 3000);
+    } catch (err: any) {
+      setDepositState((p) => ({ ...p, [resource]: "error" }));
+      const msg =
+        err?.shortMessage ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Deposit failed";
+      setDepositMsg((p) => ({ ...p, [resource]: msg }));
+      setTimeout(() => {
+        setDepositState((p) => ({ ...p, [resource]: "idle" }));
+      }, 5000);
+    }
+  };
+
+  const stateLabel = (state: DepositState) => {
+    switch (state) {
+      case "switching":
+        return "SWITCHING...";
+      case "approving":
+        return "APPROVING...";
+      case "depositing":
+        return "DEPOSITING...";
+      case "confirming":
+        return "CONFIRMING...";
+      case "done":
+        return "DONE";
+      case "error":
+        return "ERROR";
+      default:
+        return "DEPOSIT";
+    }
+  };
+
+  if (holdings.length === 0) return null;
+
+  return (
+    <div className="wallet-section">
+      <div className="wallet-section__header">DEPOSIT INTO GAME</div>
+      <div className="text-muted" style={{ fontSize: 12, marginBottom: 4 }}>
+        Transfer tokens from your wallet back into the game.
+      </div>
+      <div className="wallet-tokens__grid">
+        {holdings.map((t) => {
+          const display = TOKEN_DISPLAY[t.resource];
+          const state = depositState[t.resource] || "idle";
+          const msg = depositMsg[t.resource];
+          const isBusy =
+            state !== "idle" && state !== "done" && state !== "error";
+
+          return (
+            <div key={t.resource} className="wallet-tokens__row">
+              <span
+                className="wallet-tokens__symbol"
+                style={{
+                  color: display?.color || "var(--text-primary)",
+                }}
+              >
+                {t.symbol}
+              </span>
+              <span className="wallet-tokens__name">External: {t.balance}</span>
+              <div className="wallet-withdraw-inline">
+                <input
+                  type="number"
+                  className="wallet-withdraw-input"
+                  placeholder="Amt"
+                  value={depositAmts[t.resource] || ""}
+                  onChange={(e) =>
+                    setDepositAmts((p) => ({
+                      ...p,
+                      [t.resource]: e.target.value,
+                    }))
+                  }
+                  min="0"
+                  max={t.balance}
+                  step="0.01"
+                  disabled={isBusy}
+                />
+                <button
+                  className="btn btn-sm wallet-withdraw-btn"
+                  onClick={() => handleDeposit(t.resource)}
+                  disabled={
+                    isBusy ||
+                    !depositAmts[t.resource] ||
+                    parseFloat(depositAmts[t.resource]) <= 0
+                  }
+                >
+                  {stateLabel(state)}
+                </button>
+              </div>
+              {msg && (
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: state === "error" ? "var(--red)" : "var(--green)",
+                    marginTop: 2,
+                    width: "100%",
+                  }}
+                >
+                  {msg}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -444,9 +679,8 @@ function WalletTab({
 
           <DisconnectButton
             onDisconnected={() => {
-              setLinkedAddress(null);
-              setEthBalance(null);
-              setHoldings([]);
+              // Server destroys session on disconnect — force reload to login
+              window.location.reload();
             }}
           />
         </>

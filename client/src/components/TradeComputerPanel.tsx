@@ -62,14 +62,30 @@ export default function TradeComputerPanel({ bare }: TradeComputerPanelProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   useEffect(() => {
+    let cancelled = false;
+    const fetchData = () => {
+      getTradeDirectory()
+        .then((res) => {
+          if (!cancelled) {
+            setOutposts(res.data.outposts);
+            setError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setError("Failed to load trade directory");
+            setLoading(false);
+          }
+        });
+    };
     setLoading(true);
-    getTradeDirectory()
-      .then((res) => {
-        setOutposts(res.data.outposts);
-        setError(null);
-      })
-      .catch(() => setError("Failed to load trade directory"))
-      .finally(() => setLoading(false));
+    fetchData();
+    const interval = setInterval(fetchData, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   // Reset visible count when filter changes

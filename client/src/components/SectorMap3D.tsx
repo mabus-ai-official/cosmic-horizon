@@ -1637,6 +1637,7 @@ interface Props {
   currentSectorId: number | null;
   adjacentSectorIds: number[];
   onMoveToSector: (sectorId: number) => void;
+  onCurrentSectorClick?: () => void;
 }
 
 export default function SectorMap3D({
@@ -1644,6 +1645,7 @@ export default function SectorMap3D({
   currentSectorId,
   adjacentSectorIds,
   onMoveToSector,
+  onCurrentSectorClick,
 }: Props) {
   const controlsRef = useRef<any>(null);
   const [highlightedSector, setHighlightedSector] = useState<number | null>(
@@ -1725,6 +1727,10 @@ export default function SectorMap3D({
   // Click non-adjacent explored sector → show its edges for 5s
   const handleSectorClick = useCallback(
     (sectorId: number, isAdjacent: boolean) => {
+      if (sectorId === currentSectorId) {
+        onCurrentSectorClick?.();
+        return;
+      }
       if (isAdjacent) {
         onMoveToSector(sectorId);
         return;
@@ -1737,7 +1743,7 @@ export default function SectorMap3D({
         setHighlightedSector(null);
       }, 5000);
     },
-    [onMoveToSector],
+    [onMoveToSector, currentSectorId, onCurrentSectorClick],
   );
 
   if (!mapData || currentSectorId == null) return null;

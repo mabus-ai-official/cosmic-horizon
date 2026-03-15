@@ -21,6 +21,7 @@ import {
   createSyndicate,
   addSyndicateMember,
   removeSyndicateMember,
+  updateCharacterSyndicate,
   getMemberAddress,
   mintPlanet,
   transferPlanet,
@@ -109,6 +110,11 @@ export type ChainOp =
       type: "removeSyndicateMember";
       syndicateIndex: bigint;
       member: Address;
+    }
+  | {
+      type: "updateCharacterSyndicate";
+      tokenId: bigint;
+      syndicateIndex: bigint;
     }
   | {
       type: "creditMemberByWallet";
@@ -513,6 +519,8 @@ async function executeOp(op: ChainOp): Promise<unknown> {
       return addSyndicateMember(op.syndicateIndex, op.member);
     case "removeSyndicateMember":
       return removeSyndicateMember(op.syndicateIndex, op.member);
+    case "updateCharacterSyndicate":
+      return updateCharacterSyndicate(op.tokenId, op.syndicateIndex);
     case "creditMemberByWallet": {
       const memberAddr = await getMemberAddress(op.playerWallet);
       return creditMember(memberAddr, op.resource, op.amount);

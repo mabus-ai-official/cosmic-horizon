@@ -36,15 +36,17 @@ export const equipmentNftAbi = [
 ] as const;
 
 export const characterNftAbi = [
-  "function mintCharacter(address to, (string race, uint32 level, uint64 xp, uint64 totalCombatXp, uint64 totalMissionXp, uint64 totalTradeXp, uint64 totalExploreXp) data) returns (uint256)",
-  "function updateCharacter(uint256 tokenId, (string race, uint32 level, uint64 xp, uint64 totalCombatXp, uint64 totalMissionXp, uint64 totalTradeXp, uint64 totalExploreXp) data)",
+  "function mintCharacter(address to, (string race, uint32 level, uint64 xp, uint64 totalCombatXp, uint64 totalMissionXp, uint64 totalTradeXp, uint64 totalExploreXp, uint256 syndicateIndex) data) returns (uint256)",
+  "function updateCharacter(uint256 tokenId, (string race, uint32 level, uint64 xp, uint64 totalCombatXp, uint64 totalMissionXp, uint64 totalTradeXp, uint64 totalExploreXp, uint256 syndicateIndex) data)",
+  "function updateSyndicate(uint256 tokenId, uint256 syndicateIndex)",
   "function updateFactionRep(uint256 tokenId, bytes32 factionId, int64 rep)",
-  "function getCharacter(uint256 tokenId) view returns ((string race, uint32 level, uint64 xp, uint64 totalCombatXp, uint64 totalMissionXp, uint64 totalTradeXp, uint64 totalExploreXp))",
+  "function getCharacter(uint256 tokenId) view returns ((string race, uint32 level, uint64 xp, uint64 totalCombatXp, uint64 totalMissionXp, uint64 totalTradeXp, uint64 totalExploreXp, uint256 syndicateIndex))",
   "function getFactionRep(uint256 tokenId, bytes32 factionId) view returns (int64)",
   "function ownerOf(uint256 tokenId) view returns (address)",
   "function balanceOf(address owner) view returns (uint256)",
   "event CharacterMinted(uint256 indexed tokenId, address indexed owner, string race)",
   "event CharacterUpdated(uint256 indexed tokenId)",
+  "event SyndicateUpdated(uint256 indexed tokenId, uint256 syndicateIndex)",
   "event FactionRepUpdated(uint256 indexed tokenId, bytes32 indexed factionId, int64 rep)",
 ] as const;
 

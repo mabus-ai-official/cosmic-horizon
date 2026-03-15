@@ -18,7 +18,13 @@ import {
   processDefenseDecay,
   isDeployableExpired,
 } from "./decay";
-import { notifyPlayer, getConnectedPlayers } from "../ws/handlers";
+import {
+  notifyPlayer,
+  notifySector,
+  notifySyndicate,
+  getConnectedPlayers,
+} from "../ws/handlers";
+import { syncPlayer } from "../ws/sync";
 import { spawnSectorEvents, expireSectorEvents } from "./events";
 import { refreshLeaderboardCache } from "./leaderboards";
 import { producePlanetUniqueResources } from "./crafting";
@@ -89,6 +95,7 @@ export async function gameTick(io: SocketIOServer): Promise<void> {
       .update({ weapon_energy: db.raw("max_weapon_energy") });
 
     // 2. Planet production — MP planets only (SP planets processed via on-demand tick)
+    const planetOwnerIds = new Set<string>();
     const planets = await db("planets")
       .whereNotNull("owner_id")
       .where("colonists", ">", 0)
@@ -97,6 +104,7 @@ export async function gameTick(io: SocketIOServer): Promise<void> {
     for (const planet of planets) {
       const planetConfig = PLANET_TYPES[planet.planet_class];
       if (!planetConfig) continue;
+      planetOwnerIds.add(planet.owner_id);
 
       // Load race populations for this planet
       let racePopulations: RacePopulation[] = [];
@@ -210,6 +218,11 @@ export async function gameTick(io: SocketIOServer): Promise<void> {
       }
     }
 
+    // Notify planet owners of production updates
+    for (const ownerId of planetOwnerIds) {
+      syncPlayer(io, ownerId, "sync:status");
+    }
+
     // 2b. Planet unique resource production
     try {
       for (const planet of planets) {
@@ -231,6 +244,7 @@ export async function gameTick(io: SocketIOServer): Promise<void> {
     }
 
     // 2d. Factory planet production → syndicate pool
+    const factorySyndicateIds = new Set<string>();
     try {
       const factories = await db("planets")
         .where({ is_syndicate_factory: true })
@@ -238,6 +252,12 @@ export async function gameTick(io: SocketIOServer): Promise<void> {
         .where("colonists", ">", 0);
       for (const factory of factories) {
         await processFactoryProduction(factory);
+        if (factory.factory_syndicate_id) {
+          factorySyndicateIds.add(factory.factory_syndicate_id);
+        }
+      }
+      for (const syndicateId of factorySyndicateIds) {
+        notifySyndicate(io, syndicateId, "syndicate:economy_update", {});
       }
     } catch {
       /* syndicate economy tables may not exist yet */
@@ -288,6 +308,7 @@ export async function gameTick(io: SocketIOServer): Promise<void> {
     }
 
     // Delete expired deployables
+    const deployableExpiredSectors = new Set<number>();
     const deployables = await db("deployables").select("*");
     for (const dep of deployables) {
       if (
@@ -297,34 +318,64 @@ export async function gameTick(io: SocketIOServer): Promise<void> {
           now,
         )
       ) {
+        deployableExpiredSectors.add(dep.sector_id);
         await db("deployables").where({ id: dep.id }).del();
       }
+    }
+    for (const sectorId of deployableExpiredSectors) {
+      notifySector(io, sectorId, "sync:sector", {});
     }
 
     // Expire timed missions
     try {
-      await db("player_missions")
+      const expiringMissions = await db("player_missions")
         .where({ status: "active" })
         .whereNotNull("expires_at")
         .where("expires_at", "<", now.toISOString())
-        .update({ status: "failed" });
+        .select("player_id");
+      if (expiringMissions.length > 0) {
+        await db("player_missions")
+          .where({ status: "active" })
+          .whereNotNull("expires_at")
+          .where("expires_at", "<", now.toISOString())
+          .update({ status: "failed" });
+        const expiredPlayerIds = new Set(
+          expiringMissions.map((m: any) => m.player_id),
+        );
+        for (const playerId of expiredPlayerIds) {
+          syncPlayer(io, playerId, "sync:status");
+          notifyPlayer(io, playerId, "notification", {
+            type: "mission_expired",
+            message: "A timed mission has expired.",
+          });
+        }
+      }
     } catch {
       /* table may not exist yet */
     }
 
     // Sector events: spawn new events and expire old ones
     try {
-      await spawnSectorEvents();
-      await expireSectorEvents();
+      const spawnedSectors = await spawnSectorEvents();
+      const expiredSectors = await expireSectorEvents();
+      const eventSectors = new Set([...spawnedSectors, ...expiredSectors]);
+      for (const sectorId of eventSectors) {
+        notifySector(io, sectorId, "sync:sector", {});
+      }
     } catch {
       /* table may not exist yet */
     }
 
     // Resource events: expire every tick, spawn wave every N ticks
     try {
-      await expireResourceEvents();
+      const expiredResSectors = await expireResourceEvents();
+      let spawnedResSectors: number[] = [];
       if (tickCount % GAME_CONFIG.RARE_EVENT_SPAWN_INTERVAL_TICKS === 0) {
-        await spawnResourceEvents();
+        spawnedResSectors = await spawnResourceEvents();
+      }
+      const resSectors = new Set([...expiredResSectors, ...spawnedResSectors]);
+      for (const sectorId of resSectors) {
+        notifySector(io, sectorId, "sync:sector", {});
       }
     } catch {
       /* table may not exist yet */
@@ -343,7 +394,10 @@ export async function gameTick(io: SocketIOServer): Promise<void> {
     // Mega-project completion check every 10 ticks
     if (tickCount % 10 === 0) {
       try {
-        await checkAndCompleteProjects();
+        const completedSyndicateIds = await checkAndCompleteProjects();
+        for (const syndicateId of completedSyndicateIds) {
+          notifySyndicate(io, syndicateId, "syndicate:project_completed", {});
+        }
       } catch {
         /* syndicate economy tables may not exist yet */
       }
@@ -359,10 +413,19 @@ export async function gameTick(io: SocketIOServer): Promise<void> {
 
     // Pirate flag expiry
     try {
-      await db("players")
+      const expiringPirates = await db("players")
         .whereNotNull("pirate_until")
         .where("pirate_until", "<", now.toISOString())
-        .update({ pirate_until: null });
+        .select("id");
+      if (expiringPirates.length > 0) {
+        await db("players")
+          .whereNotNull("pirate_until")
+          .where("pirate_until", "<", now.toISOString())
+          .update({ pirate_until: null });
+        for (const p of expiringPirates) {
+          syncPlayer(io, p.id, "sync:status");
+        }
+      }
     } catch {
       /* column may not exist yet */
     }

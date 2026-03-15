@@ -112,17 +112,26 @@ export default function ExplorePanel({
   const [factions, setFactions] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
-    getSectorEvents()
-      .then(({ data }) => setEvents(data.events || []))
-      .catch(() => setEvents([]));
+    const fetchEvents = () => {
+      getSectorEvents()
+        .then(({ data }) => setEvents(data.events || []))
+        .catch(() => setEvents([]));
+    };
+    fetchEvents();
+    const interval = setInterval(fetchEvents, 30000);
+    return () => clearInterval(interval);
   }, [refreshKey]);
 
   useEffect(() => {
-    if (tab === "resources") {
+    if (tab !== "resources") return;
+    const fetchResources = () => {
       getResourceEvents()
         .then(({ data }) => setResourceEvents(data.resourceEvents || []))
         .catch(() => setResourceEvents([]));
-    }
+    };
+    fetchResources();
+    const interval = setInterval(fetchResources, 30000);
+    return () => clearInterval(interval);
   }, [tab, refreshKey]);
 
   const fetchSectorInfo = async () => {

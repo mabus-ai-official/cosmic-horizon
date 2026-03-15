@@ -109,6 +109,10 @@ export const INTRO_NARRATION: string[] = [
   "/audio/narration/intro_10.mp3",
 ];
 
+/** Tutorial welcome narration */
+export const TUTORIAL_WELCOME_NARRATION =
+  "/audio/narration/tutorial_welcome.mp3";
+
 /** Post-tutorial beat narration URLs (0-indexed) */
 export const POST_TUTORIAL_NARRATION: string[] = [
   "/audio/narration/posttut_01.mp3",

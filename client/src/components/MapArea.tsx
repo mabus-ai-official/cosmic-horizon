@@ -10,6 +10,7 @@ interface MapAreaProps {
   currentSectorId: number | null;
   adjacentSectorIds: number[];
   onMoveToSector: (sectorId: number) => void;
+  onCurrentSectorClick?: () => void;
 }
 
 export default function MapArea({
@@ -18,6 +19,7 @@ export default function MapArea({
   currentSectorId,
   adjacentSectorIds,
   onMoveToSector,
+  onCurrentSectorClick,
 }: MapAreaProps) {
   return (
     <div
@@ -28,6 +30,7 @@ export default function MapArea({
         currentSectorId={currentSectorId}
         adjacentSectorIds={adjacentSectorIds}
         onMoveToSector={onMoveToSector}
+        onCurrentSectorClick={onCurrentSectorClick}
       />
     </div>
   );

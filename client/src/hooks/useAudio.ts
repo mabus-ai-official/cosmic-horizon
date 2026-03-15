@@ -49,10 +49,40 @@ function getStoredVolume(): number {
   }
 }
 
-function pickRandom(tracks: AudioTrack[], lastId: string | null): AudioTrack {
+// Fisher-Yates shuffle
+function shuffleArray<T>(arr: T[]): T[] {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// Shuffle queue — plays through all tracks before repeating any
+let shuffleQueue: AudioTrack[] = [];
+let shufflePoolKey = ""; // serialized pool identity to detect changes
+
+function getPoolKey(tracks: AudioTrack[]): string {
+  return tracks
+    .map((t) => t.id)
+    .sort()
+    .join(",");
+}
+
+function pickNext(tracks: AudioTrack[], lastId: string | null): AudioTrack {
   if (tracks.length === 1) return tracks[0];
-  const candidates = tracks.filter((t) => t.id !== lastId);
-  return candidates[Math.floor(Math.random() * candidates.length)];
+
+  const key = getPoolKey(tracks);
+
+  // Rebuild queue if pool changed or queue is empty
+  if (key !== shufflePoolKey || shuffleQueue.length === 0) {
+    shufflePoolKey = key;
+    const candidates = tracks.filter((t) => t.id !== lastId);
+    shuffleQueue = shuffleArray(candidates);
+  }
+
+  return shuffleQueue.shift()!;
 }
 
 function getPlaylistForContext(contextId: string): AudioTrack[] | null {
@@ -70,7 +100,7 @@ function resolveTrack(
   const playlist = getPlaylistForContext(trackId);
   if (playlist) {
     if (playlist.length === 0) return null;
-    const picked = pickRandom(playlist, null);
+    const picked = pickNext(playlist, null);
     return { track: picked, isPlaylist: true, playlist };
   }
   const found = AUDIO_TRACKS.find((t) => t.id === trackId);
@@ -211,7 +241,7 @@ export function useAudio() {
             playlist === GAMEPLAY_TRACKS
               ? moodTrackFilter
               : playlist;
-          const next = pickRandom(pickFrom, track.id);
+          const next = pickNext(pickFrom, track.id);
           startTrack(next, true, mutedRef.current, volumeRef.current, playlist);
         };
         onEndedRef.current = onEnded;
@@ -354,7 +384,7 @@ export function useAudio() {
 
     await fadeOut();
 
-    const next = pickRandom(playlist, currentTrackIdRef.current);
+    const next = pickNext(playlist, currentTrackIdRef.current);
     await startTrack(next, true, mutedRef.current, volumeRef.current, playlist);
   }, [fadeOut, startTrack]);
 

@@ -8,7 +8,6 @@ import AriaComment from "./AriaComment";
 import ToastManager from "./ToastManager";
 import EventOverlay from "./EventOverlay";
 import ArcadeModal from "./ArcadeModal";
-import TutorialWelcomeOverlay from "./TutorialWelcomeOverlay";
 import TutorialOverlay from "./TutorialOverlay";
 import SettingsPanel from "./SettingsPanel";
 import type { ChatMessage } from "./SectorChatPanel";
@@ -113,17 +112,21 @@ export default function ModalLayer({
     setPostNarrationCountdown(0);
   }, [currentEvent?.id]);
 
-  // Wrap dismiss to also stop narration
+  // Wrap dismiss to also stop narration (only if current event has narration)
   const handleDismiss = () => {
     wasPlayingRef.current = false;
-    narration.skipNarration();
+    if (currentEvent?.narrationUrl) {
+      narration.skipNarration();
+    }
     eventOverlay.dismissCurrent();
   };
 
-  // Wrap action handler to also stop narration
+  // Wrap action handler to also stop narration (only if current event has narration)
   const handleAction = (actionId: string) => {
     wasPlayingRef.current = false;
-    narration.skipNarration();
+    if (currentEvent?.narrationUrl) {
+      narration.skipNarration();
+    }
     eventOverlay.handleAction(actionId);
   };
 
@@ -227,7 +230,6 @@ export default function ModalLayer({
             <SettingsPanel
               playerRace={game.player?.race ?? undefined}
               playerUsername={game.player?.username ?? undefined}
-              gameMode={game.player?.gameMode ?? undefined}
               volume={audio.volume}
               onVolumeChange={audio.setVolume}
               narrationEnabled={narration.narrationEnabled}
@@ -235,11 +237,6 @@ export default function ModalLayer({
               narrationVolume={narration.narrationVolume}
               onNarrationVolumeChange={narration.setNarrationVolume}
               onLogout={onLogout ?? (() => {})}
-              onRefresh={() => {
-                game.refreshStatus();
-                game.refreshSector();
-                game.refreshMap();
-              }}
               keybindings={keybindings}
               keybindConflicts={keybindConflicts}
               onRebind={onRebind}
@@ -259,11 +256,6 @@ export default function ModalLayer({
           sectorPlayers={game.sector?.players ?? []}
         />
       )}
-      <TutorialWelcomeOverlay
-        tutorialCompleted={game.player?.tutorialCompleted ?? true}
-        onPlay={() => {}}
-        onSkip={game.skipTutorial}
-      />
       <TutorialOverlay
         tutorialStep={game.player?.tutorialStep ?? 0}
         tutorialCompleted={game.player?.tutorialCompleted ?? true}

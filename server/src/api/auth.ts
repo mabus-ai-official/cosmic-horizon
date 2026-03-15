@@ -202,6 +202,7 @@ router.post("/register", async (req, res) => {
               totalMissionXp: 0n,
               totalTradeXp: 0n,
               totalExploreXp: 0n,
+              syndicateIndex: 0n,
             },
             shipData: {
               shipType: raceConfig.starterShipType,

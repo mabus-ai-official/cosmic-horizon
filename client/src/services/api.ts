@@ -350,6 +350,8 @@ export const withdrawTokens = (resource: string, amount: number) =>
   api.post("/wallet/withdraw-tokens", { resource, amount });
 export const withdrawNft = (nftType: string, tokenId: number) =>
   api.post("/wallet/withdraw-nft", { nftType, tokenId });
+export const confirmDeposit = (txHash: string) =>
+  api.post("/wallet/deposit-confirm", { txHash });
 
 // NPCs
 export const getNPCsInSector = () => api.get("/npcs/sector");
@@ -416,6 +418,33 @@ export const rejectTrade = (offerId: string) =>
   api.post(`/planet-trades/${offerId}/reject`);
 export const cancelTrade = (offerId: string) =>
   api.post(`/planet-trades/${offerId}/cancel`);
+
+// Barter Trade System
+export const getTradeableAssets = () => api.get("/barter/tradeable-assets");
+export const createBarterOffer = (data: {
+  recipientName: string;
+  message?: string;
+  parentOfferId?: string;
+  offeredItems: {
+    itemType: string;
+    itemId?: string;
+    quantity: number;
+  }[];
+  requestedItems: {
+    itemType: string;
+    itemId?: string;
+    quantity: number;
+  }[];
+}) => api.post("/barter/offer", data);
+export const getBarterIncoming = () => api.get("/barter/incoming");
+export const getBarterOutgoing = () => api.get("/barter/outgoing");
+export const getBarterHistory = () => api.get("/barter/history");
+export const acceptBarterOffer = (id: string) =>
+  api.post(`/barter/${id}/accept`);
+export const rejectBarterOffer = (id: string) =>
+  api.post(`/barter/${id}/reject`);
+export const cancelBarterOffer = (id: string) =>
+  api.post(`/barter/${id}/cancel`);
 
 // AI Assistant
 export const askAI = (question: string) => api.post("/ai/ask", { question });
@@ -626,8 +655,13 @@ export const deleteTradeRoute = (id: string) =>
   api.delete(`/trade-routes/${id}`);
 export const toggleRouteFuel = (id: string, fuelPaid: boolean) =>
   api.patch(`/trade-routes/${id}`, { fuelPaid });
+export const renameRoute = (id: string, name: string) =>
+  api.patch(`/trade-routes/${id}`, { name });
+export const pauseRoute = (id: string) => api.post(`/trade-routes/${id}/pause`);
 export const resumeRoute = (id: string) =>
   api.post(`/trade-routes/${id}/resume`);
+export const batchRoutes = (action: "pause" | "resume") =>
+  api.post("/trade-routes/batch", { action });
 export const getSectorCaravans = () => api.get("/trade-routes/caravans");
 export const ransackCaravan = (caravanId: string) =>
   api.post("/trade-routes/ransack", { caravanId });

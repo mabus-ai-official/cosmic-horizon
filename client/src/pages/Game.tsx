@@ -85,6 +85,7 @@ export default function Game({ onLogout }: GameProps) {
     incrementBadge,
     showToast,
     eventOverlay,
+    narration,
   });
 
   // All useCallback handlers for user interactions
@@ -200,6 +201,10 @@ export default function Game({ onLogout }: GameProps) {
             game.sector?.adjacentSectors?.map((a: any) => a.sectorId) || []
           }
           onMoveToSector={handlers.handleMove}
+          onCurrentSectorClick={() => {
+            selectPanel("nav");
+            setPanelMinimized(false);
+          }}
         />
       </div>
 
@@ -231,11 +236,9 @@ export default function Game({ onLogout }: GameProps) {
           keyToGroup={keyToGroup}
           onMapClick={() => setShow2DMap(true)}
           panelMinimized={panelMinimized}
-          viewportMinimized={viewportMinimized}
           onRestorePanel={() => setPanelMinimized(false)}
-          onRestoreViewport={() => setViewportMinimized(false)}
-          panelLabel={PANELS.find((p) => p.id === activePanel)?.label}
-          panelSpriteKey={PANELS.find((p) => p.id === activePanel)?.spriteKey}
+          viewportMinimized={viewportMinimized}
+          onToggleViewport={() => setViewportMinimized((v) => !v)}
         />
 
         {/* Notification log — floating bar under status bar */}
@@ -312,11 +315,11 @@ export default function Game({ onLogout }: GameProps) {
                   <button
                     className="game-card-toggle"
                     onClick={() => setViewportMinimized(true)}
-                    title="Minimize bridge"
+                    title="Minimize viewscreen"
                   >
                     [{"\u2212"}]
                   </button>
-                  <span className="game-card-label">BRIDGE VIEW</span>
+                  <span className="game-card-label">VIEWSCREEN</span>
                 </div>
                 <div className="game-viewport-card__body">
                   <SectorViewport
@@ -348,6 +351,7 @@ export default function Game({ onLogout }: GameProps) {
           onChatSend={handlers.handleChatSend}
           onCommand={handlers.onCommand}
           hasSyndicate={effects.hasSyndicate}
+          syndicateInfo={effects.syndicateInfo}
           hasAlliance={effects.hasAlliance}
           refreshKey={effects.refreshKey}
         />

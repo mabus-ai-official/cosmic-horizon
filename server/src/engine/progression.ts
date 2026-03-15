@@ -104,6 +104,11 @@ export async function awardXP(
         .select("character_nft_id", "race")
         .first();
       if (player?.character_nft_id != null) {
+        const membership = await db("syndicate_members")
+          .where({ player_id: playerId })
+          .join("syndicates", "syndicates.id", "syndicate_members.syndicate_id")
+          .select("syndicates.chain_index")
+          .first();
         enqueue({
           type: "updateCharacter",
           tokenId: BigInt(player.character_nft_id),
@@ -123,6 +128,7 @@ export async function awardXP(
             totalExploreXp: BigInt(
               updateData.total_explore_xp ?? prog.total_explore_xp ?? 0,
             ),
+            syndicateIndex: BigInt(membership?.chain_index ?? 0),
           },
         });
       }

@@ -7,6 +7,7 @@ import { resolveCombatVolley, type CombatState } from "./combat";
 import { adjustPlayerResource } from "./crafting";
 import { awardXP } from "./progression";
 import { notifyPlayer, notifySector } from "../ws/handlers";
+import { syncPlayer } from "../ws/sync";
 import { incrementStat, logActivity, checkMilestones } from "./profile-stats";
 import { settleCreditPlayer, settleResourceCredit } from "../chain/tx-queue";
 
@@ -175,6 +176,7 @@ export async function dispatchCaravans(io: SocketIOServer): Promise<void> {
       routeId: route.id,
       isProtected: !!isProtected,
     });
+    syncPlayer(io, route.owner_id, "sync:status");
 
     // Profile stats: dispatch
     incrementStat(route.owner_id, "caravans_dispatched", 1);
@@ -278,6 +280,7 @@ async function handleCaravanArrival(
     planetName: planet?.name || "Unknown",
     foodDelivered: caravan.food_cargo,
   });
+  syncPlayer(io, caravan.owner_id, "sync:status");
 
   // Profile stats: delivery
   incrementStat(caravan.owner_id, "caravans_delivered", 1);

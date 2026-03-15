@@ -52,6 +52,47 @@ router.get("/", requireAuth, async (req, res) => {
     const maxSlots = getMaxRouteSlots(progress.level);
     const activeCount = routes.filter((r) => r.status === "active").length;
 
+    // Aggregate delivery stats per route from caravan_logs
+    const statsRows =
+      routeIds.length > 0
+        ? await db("caravan_logs")
+            .whereIn("trade_route_id", routeIds)
+            .groupBy("trade_route_id")
+            .select(
+              "trade_route_id",
+              db.raw(
+                "SUM(CASE WHEN event_type = 'arrived' THEN COALESCE(food_amount, 0) ELSE 0 END) as total_food",
+              ),
+              db.raw(
+                "SUM(CASE WHEN event_type = 'arrived' THEN COALESCE(credits_amount, 0) ELSE 0 END) as total_credits",
+              ),
+              db.raw(
+                "SUM(CASE WHEN event_type = 'arrived' THEN 1 ELSE 0 END) as delivery_count",
+              ),
+              db.raw(
+                "MAX(CASE WHEN event_type = 'ransacked' THEN created_at ELSE NULL END) as last_ransacked_at",
+              ),
+            )
+        : [];
+
+    const statsMap = new Map<
+      string,
+      {
+        totalFood: number;
+        totalCredits: number;
+        deliveryCount: number;
+        lastRansackedAt: string | null;
+      }
+    >();
+    for (const s of statsRows) {
+      statsMap.set(s.trade_route_id, {
+        totalFood: Number(s.total_food) || 0,
+        totalCredits: Number(s.total_credits) || 0,
+        deliveryCount: Number(s.delivery_count) || 0,
+        lastRansackedAt: s.last_ransacked_at || null,
+      });
+    }
+
     res.json({
       maxSlots,
       activeCount,
@@ -59,8 +100,10 @@ router.get("/", requireAuth, async (req, res) => {
       routes: routes.map((r) => {
         const caravan = caravansByRoute.get(r.id);
         const path = JSON.parse(r.path_json);
+        const stats = statsMap.get(r.id);
         return {
           id: r.id,
+          name: r.name || null,
           sourceType: r.source_type,
           sourceId: r.source_id,
           sourceSectorId: r.source_sector_id,
@@ -74,6 +117,10 @@ router.get("/", requireAuth, async (req, res) => {
           status: r.status,
           createdAt: r.created_at,
           lastDispatchAt: r.last_dispatch_at,
+          totalFoodDelivered: stats?.totalFood ?? 0,
+          totalCreditsSpent: stats?.totalCredits ?? 0,
+          deliveryCount: stats?.deliveryCount ?? 0,
+          lastRansackedAt: stats?.lastRansackedAt ?? null,
           activeCaravan: caravan
             ? {
                 id: caravan.id,
@@ -280,28 +327,89 @@ router.delete("/:id", requireAuth, async (req, res) => {
   }
 });
 
-// Toggle fuel paid on/off
+// Update route — toggle fuel, rename
 router.patch("/:id", requireAuth, async (req, res) => {
   try {
     const playerId = req.session.playerId!;
-    const { fuelPaid } = req.body;
-    if (fuelPaid === undefined)
-      return res.status(400).json({ error: "Missing fuelPaid field" });
+    const { fuelPaid, name } = req.body;
+    if (fuelPaid === undefined && name === undefined)
+      return res
+        .status(400)
+        .json({ error: "Provide fuelPaid and/or name field" });
 
     const route = await db("trade_routes")
       .where({ id: req.params.id, owner_id: playerId })
       .first();
     if (!route) return res.status(404).json({ error: "Trade route not found" });
 
+    const updates: Record<string, any> = {};
+    if (fuelPaid !== undefined) updates.fuel_paid = fuelPaid ? 1 : 0;
+    if (name !== undefined) {
+      if (name && name.length > 40) {
+        return res
+          .status(400)
+          .json({ error: "Name must be 40 characters or less" });
+      }
+      updates.name = name || null;
+    }
+
+    await db("trade_routes").where({ id: route.id }).update(updates);
+
+    res.json({
+      success: true,
+      fuelPaid: fuelPaid !== undefined ? !!fuelPaid : !!route.fuel_paid,
+      name: name !== undefined ? name || null : route.name,
+    });
+  } catch (err) {
+    console.error("Update trade route error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Pause an active route
+router.post("/:id/pause", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.session.playerId!;
+    const route = await db("trade_routes")
+      .where({ id: req.params.id, owner_id: playerId })
+      .first();
+    if (!route) return res.status(404).json({ error: "Trade route not found" });
+    if (route.status !== "active")
+      return res.status(400).json({ error: "Route is not active" });
+
     await db("trade_routes")
       .where({ id: route.id })
-      .update({
-        fuel_paid: fuelPaid ? 1 : 0,
-      });
+      .update({ status: "paused" });
 
-    res.json({ success: true, fuelPaid: !!fuelPaid });
+    res.json({ success: true });
   } catch (err) {
-    console.error("Toggle trade route fuel error:", err);
+    console.error("Pause trade route error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Batch pause/resume all routes for a player
+router.post("/batch", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.session.playerId!;
+    const { action } = req.body;
+
+    if (!action || !["pause", "resume"].includes(action)) {
+      return res
+        .status(400)
+        .json({ error: 'action must be "pause" or "resume"' });
+    }
+
+    const fromStatus = action === "pause" ? "active" : "paused";
+    const toStatus = action === "pause" ? "paused" : "active";
+
+    const count = await db("trade_routes")
+      .where({ owner_id: playerId, status: fromStatus })
+      .update({ status: toStatus });
+
+    res.json({ success: true, affected: count });
+  } catch (err) {
+    console.error("Batch trade routes error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

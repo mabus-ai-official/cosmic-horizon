@@ -20,7 +20,10 @@ import {
   ACT_OPENINGS,
   ACT_COMPLETIONS,
 } from "../config/story-interstitials";
-import { getNarrationUrl } from "../config/narration-manifest";
+import {
+  getNarrationUrl,
+  TUTORIAL_WELCOME_NARRATION,
+} from "../config/narration-manifest";
 import {
   buildIdleSpaceScene,
   buildIdleOutpostScene,
@@ -74,6 +77,10 @@ interface UseGameEffectsParams {
   incrementBadge: (id: any) => void;
   showToast: (msg: string, type: any, duration?: number) => any;
   eventOverlay: any;
+  narration: {
+    playNarration: (url: string) => void;
+    narrationEnabled: boolean;
+  };
   onLogout?: () => void;
 }
 
@@ -88,6 +95,7 @@ export function useGameEffects({
   incrementBadge,
   showToast,
   eventOverlay,
+  narration: _narration,
 }: UseGameEffectsParams) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -102,6 +110,10 @@ export function useGameEffects({
     { fromId: string; fromName: string }[]
   >([]);
   const [hasSyndicate, setHasSyndicate] = useState(false);
+  const [syndicateInfo, setSyndicateInfo] = useState<{
+    name: string;
+    role: string;
+  } | null>(null);
   const [hasAlliance, setHasAlliance] = useState(false);
   const [crewInitialTab, setCrewInitialTab] = useState<
     "players" | "npcs" | "contacts" | undefined
@@ -124,6 +136,7 @@ export function useGameEffects({
   const prevMissionsCompleted = useRef<number | null>(null);
   const prevSectorRef = useRef(game.player?.currentSectorId);
   const prevDockedRef = useRef(game.player?.dockedAtOutpostId);
+  const hostileFanfareSectorRef = useRef<number | null>(null);
 
   const ARIA_MILESTONE_CATEGORIES = useMemo(
     () =>
@@ -201,6 +214,32 @@ export function useGameEffects({
       }
     }
   }, [game.player?.currentSectorId]);
+
+  // Hostile contact fanfare — red flash + overlay when entering a sector with other players
+  useEffect(() => {
+    const sectorId = game.sector?.sectorId ?? null;
+    const players = game.sector?.players ?? [];
+    if (
+      sectorId &&
+      players.length > 0 &&
+      hostileFanfareSectorRef.current !== sectorId
+    ) {
+      hostileFanfareSectorRef.current = sectorId;
+      setCombatFlash(true);
+      setTimeout(() => setCombatFlash(false), 2000);
+      mood.onCombatStart();
+      eventOverlay.enqueueEvent({
+        category: "hostile_contact",
+        title: "HOSTILE CONTACT",
+        subtitle: `${players.length} ship${players.length > 1 ? "s" : ""} detected`,
+        body: "Weapons ready. Engage or evade.",
+        colorScheme: "red",
+        duration: 3000,
+        priority: "interstitial",
+      });
+      selectPanel("combat");
+    }
+  }, [game.sector?.sectorId, game.sector?.players?.length]);
 
   // Resource event overlay when entering a new sector with events
   useEffect(() => {
@@ -486,9 +525,17 @@ export function useGameEffects({
 
   const refreshSyndicateStatus = useCallback(() => {
     getSyndicate()
-      .then(() => setHasSyndicate(true))
-      .catch(() => setHasSyndicate(false));
-  }, []);
+      .then(({ data }) => {
+        setHasSyndicate(true);
+        const playerId = game.player?.id;
+        const myMember = data.members?.find((m: any) => m.id === playerId);
+        setSyndicateInfo({ name: data.name, role: myMember?.role || "member" });
+      })
+      .catch(() => {
+        setHasSyndicate(false);
+        setSyndicateInfo(null);
+      });
+  }, [game.player?.id]);
 
   // Initial data load
   useEffect(() => {
@@ -558,13 +605,34 @@ export function useGameEffects({
     }
 
     const syncUnsubs = [
-      on("sync:status", () => debouncedSync("status", game.refreshStatus)),
-      on("sync:sector", () => debouncedSync("sector", game.refreshSector)),
+      on("sync:status", () =>
+        debouncedSync("status", () => {
+          game.refreshStatus();
+          setRefreshKey((k) => k + 1);
+        }),
+      ),
+      on("sync:sector", () =>
+        debouncedSync("sector", () => {
+          game.refreshSector();
+          setRefreshKey((k) => k + 1);
+        }),
+      ),
       on("sync:map", () => debouncedSync("map", game.refreshMap)),
       on("sync:full", () => {
-        debouncedSync("status", game.refreshStatus);
-        debouncedSync("sector", game.refreshSector);
+        debouncedSync("status", () => {
+          game.refreshStatus();
+          setRefreshKey((k) => k + 1);
+        });
+        debouncedSync("sector", () => {
+          game.refreshSector();
+          setRefreshKey((k) => k + 1);
+        });
         debouncedSync("map", game.refreshMap);
+      }),
+      on("syndicate:economy_update", () => setRefreshKey((k) => k + 1)),
+      on("syndicate:project_completed", () => {
+        setRefreshKey((k) => k + 1);
+        showToast("A mega-project has been completed!", "success", 6000);
       }),
     ];
 
@@ -579,6 +647,7 @@ export function useGameEffects({
     game.refreshStatus,
     game.refreshSector,
     game.refreshMap,
+    showToast,
   ]);
 
   // WebSocket event listeners
@@ -1008,6 +1077,25 @@ export function useGameEffects({
           "info",
         );
         game.addLine('Start by typing "look" to survey your sector.', "info");
+        // Show tutorial welcome overlay with narration
+        eventOverlay.enqueueEvent({
+          category: "tutorial_welcome",
+          title: "PILOT ORIENTATION",
+          subtitle:
+            "Welcome to the Cosmic Horizon training program, Commander.",
+          body: "ARIA will walk you through navigation, trading, scanning, and planet colonization. Each step highlights exactly where to click. Takes about 5 minutes.\n\nYou can always access the Databank (D) for help later.",
+          narrationUrl: TUTORIAL_WELCOME_NARRATION,
+          actions: [
+            { id: "begin", label: "BEGIN TRAINING", variant: "primary" },
+            { id: "skip", label: "SKIP TUTORIAL", variant: "secondary" },
+          ],
+          onAction: (actionId: string) => {
+            if (actionId === "skip") {
+              audio.resume();
+              game.skipTutorial();
+            }
+          },
+        });
       } else {
         game.addLine(
           'Type "help" for commands or "look" to view your sector.',
@@ -1074,6 +1162,7 @@ export function useGameEffects({
     alliedPlayerIds,
     pendingAllianceIds,
     hasSyndicate,
+    syndicateInfo,
     hasAlliance,
     crewInitialTab,
     setCrewInitialTab,

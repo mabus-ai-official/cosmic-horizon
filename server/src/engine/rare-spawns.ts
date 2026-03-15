@@ -164,7 +164,7 @@ function hoursToMs(hours: number): number {
 
 // === Spawn logic ===
 
-export async function spawnResourceEvents(): Promise<void> {
+export async function spawnResourceEvents(): Promise<number[]> {
   const activeCount = await db("sector_resource_events")
     .where("expires_at", ">", new Date().toISOString())
     .count("* as count")
@@ -174,9 +174,10 @@ export async function spawnResourceEvents(): Promise<void> {
     Number(activeCount?.count || 0) >=
     GAME_CONFIG.RARE_MAX_ACTIVE_RESOURCE_EVENTS
   )
-    return;
+    return [];
 
   const now = new Date();
+  const affectedSectors: number[] = [];
 
   // Asteroid fields
   const asteroidCount = randInt(
@@ -200,6 +201,7 @@ export async function spawnResourceEvents(): Promise<void> {
         now.getTime() + hoursToMs(durationHours),
       ).toISOString(),
     });
+    affectedSectors.push(sector.id);
   }
 
   // Derelict ships
@@ -225,6 +227,7 @@ export async function spawnResourceEvents(): Promise<void> {
       ).toISOString(),
       metadata: JSON.stringify({ tabletDropChance: 0.05 }),
     });
+    affectedSectors.push(sector.id);
   }
 
   // Anomalies
@@ -249,6 +252,7 @@ export async function spawnResourceEvents(): Promise<void> {
         now.getTime() + hoursToMs(durationHours),
       ).toISOString(),
     });
+    affectedSectors.push(sector.id);
   }
 
   // Alien cache (10% chance per spawn wave)
@@ -268,14 +272,25 @@ export async function spawnResourceEvents(): Promise<void> {
         guardian_hp: GAME_CONFIG.RARE_ALIEN_CACHE_GUARDIAN_HP,
         metadata: JSON.stringify({ guardianLevel: randInt(1, 5) }),
       });
+      affectedSectors.push(sector.id);
     }
   }
+
+  return [...new Set(affectedSectors)];
 }
 
-export async function expireResourceEvents(): Promise<void> {
+export async function expireResourceEvents(): Promise<number[]> {
+  const expiring = await db("sector_resource_events")
+    .where("expires_at", "<", new Date().toISOString())
+    .select("sector_id");
+
+  if (expiring.length === 0) return [];
+
   await db("sector_resource_events")
     .where("expires_at", "<", new Date().toISOString())
     .del();
+
+  return [...new Set(expiring.map((e: any) => e.sector_id))];
 }
 
 // === Harvest (asteroid_field / anomaly) ===

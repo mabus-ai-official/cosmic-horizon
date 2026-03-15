@@ -59,64 +59,60 @@ export default function CodexPanel({ refreshKey, bare }: Props) {
 
       {[1, 2, 3, 4].map((act) => {
         const entries = codex[act] || [];
-        const actUnlocked = entries.filter((e) => e.unlocked).length;
+        const visibleEntries = entries.filter((e) => e.unlocked);
         const isExpanded = expandedAct === act;
+        const hasVisible = visibleEntries.length > 0;
 
         return (
           <div key={act} className="panel-section">
             <div
               className="codex-act-header"
-              onClick={() => setExpandedAct(isExpanded ? null : act)}
+              onClick={() =>
+                hasVisible && setExpandedAct(isExpanded ? null : act)
+              }
+              style={{ cursor: hasVisible ? "pointer" : "default" }}
             >
               <span className="codex-act-toggle">
-                {isExpanded ? "[-]" : "[+]"}
+                {!hasVisible ? " " : isExpanded ? "[-]" : "[+]"}
               </span>
               <span className="codex-act-label">
                 ACT {act}: {ACT_TITLES[act]}
               </span>
               <span className="codex-act-count">
-                {actUnlocked}/{entries.length}
+                {visibleEntries.length}
+                {hasVisible ? `/${entries.length}` : "/??"}
               </span>
             </div>
 
-            {isExpanded && (
+            {isExpanded && hasVisible && (
               <div className="codex-entries">
-                {entries.map((entry) => (
+                {visibleEntries.map((entry) => (
                   <div
                     key={entry.id}
-                    className={`codex-entry ${entry.unlocked ? "codex-entry--unlocked" : "codex-entry--locked"}`}
+                    className="codex-entry codex-entry--unlocked"
                   >
                     <div
                       className="codex-entry-header"
                       onClick={() =>
-                        entry.unlocked &&
                         setExpandedEntry(
                           expandedEntry === entry.id ? null : entry.id,
                         )
                       }
-                      style={{
-                        cursor: entry.unlocked ? "pointer" : "default",
-                      }}
+                      style={{ cursor: "pointer" }}
                     >
                       <span className="codex-entry-order">
                         {entry.storyOrder}.
                       </span>
                       <span className="codex-entry-title">{entry.title}</span>
-                      {entry.chapter && entry.unlocked && (
+                      {entry.chapter && (
                         <span className="codex-entry-chapter">
                           {entry.chapter}
                         </span>
                       )}
                     </div>
 
-                    {expandedEntry === entry.id && entry.unlocked && (
+                    {expandedEntry === entry.id && (
                       <div className="codex-entry-content">{entry.content}</div>
-                    )}
-
-                    {!entry.unlocked && (
-                      <div className="codex-entry-locked">
-                        Complete mission {entry.storyOrder} to unlock
-                      </div>
                     )}
                   </div>
                 ))}

@@ -415,15 +415,15 @@ router.post("/claim/:missionId", requireAuth, async (req, res) => {
     await cleanupStoryNPCs(mission.missionId);
 
     // Handle story-specific claim logic (codex, act transitions, cooldowns)
-    await handleStoryMissionClaim(playerId, mission.missionId, io);
+    const socketId = req.headers["x-socket-id"] as string | undefined;
+    const claimResult = await handleStoryMissionClaim(
+      playerId,
+      mission.missionId,
+      io,
+      socketId,
+    );
 
-    if (io)
-      syncPlayer(
-        io,
-        playerId,
-        "sync:status",
-        req.headers["x-socket-id"] as string | undefined,
-      );
+    if (io) syncPlayer(io, playerId, "sync:status", socketId);
 
     const updatedPlayer = await db("players").where({ id: playerId }).first();
 
@@ -433,6 +433,7 @@ router.post("/claim/:missionId", requireAuth, async (req, res) => {
       creditsAwarded: rewards.credits,
       xpAwarded: rewards.xp,
       newCredits: Number(updatedPlayer?.credits || 0),
+      codex: claimResult.codex || null,
     });
   } catch (err) {
     console.error("Story claim error:", err);

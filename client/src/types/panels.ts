@@ -15,6 +15,8 @@ export type PanelId =
   | "actions"
   | "intel"
   | "trade-history"
+  | "trade-routes"
+  | "trade-offers"
   | "notes"
   | "codex"
   | "profile";
@@ -23,7 +25,7 @@ export type GroupId =
   | "pilot"
   | "helm"
   | "ship"
-  | "starmall"
+  | "commerce"
   | "social"
   | "database";
 
@@ -56,6 +58,7 @@ export const PANEL_GROUPS: PanelGroupDef[] = [
       { id: "profile", label: "Profile" },
       { id: "gear", label: "Loadout" },
       { id: "missions", label: "Missions" },
+      { id: "planets", label: "Planets" },
       { id: "wallet", label: "Wallet" },
       { id: "notes", label: "Notes" },
     ],
@@ -75,26 +78,27 @@ export const PANEL_GROUPS: PanelGroupDef[] = [
   {
     id: "ship",
     label: "SHIP",
-    description: "Cargo, combat & territory",
+    description: "Cargo, combat & scanning",
     spriteKey: "icon_gear",
     hotkey: "S",
     accentColor: "var(--green)",
     tabs: [
       { id: "inventory", label: "Cargo" },
       { id: "combat", label: "Combat" },
-      { id: "planets", label: "Planets" },
       { id: "explore", label: "Scanner" },
     ],
   },
   {
-    id: "starmall",
-    label: "STARMALL",
+    id: "commerce",
+    label: "COMMERCE",
     description: "Trade & economy",
     spriteKey: "icon_trade",
     hotkey: "M",
     accentColor: "var(--yellow)",
     tabs: [
       { id: "trade", label: "Market" },
+      { id: "trade-routes", label: "Routes" },
+      { id: "trade-offers", label: "Offers" },
       { id: "trade-history", label: "Ledger" },
     ],
   },

@@ -13,14 +13,12 @@ interface ActivityBarProps {
   keyToGroup?: (key: string) => GroupId | null;
   onMapClick?: () => void;
   panelMinimized?: boolean;
-  viewportMinimized?: boolean;
   onRestorePanel?: () => void;
-  onRestoreViewport?: () => void;
-  panelLabel?: string;
-  panelSpriteKey?: string;
+  viewportMinimized?: boolean;
+  onToggleViewport?: () => void;
 }
 
-const SEPARATOR_AFTER: GroupId[] = ["ship", "starmall"];
+const SEPARATOR_AFTER: GroupId[] = ["ship", "commerce"];
 
 export default function ActivityBar({
   activePanel,
@@ -32,11 +30,9 @@ export default function ActivityBar({
   keyToGroup,
   onMapClick,
   panelMinimized,
-  viewportMinimized,
   onRestorePanel,
-  onRestoreViewport,
-  panelLabel,
-  panelSpriteKey,
+  viewportMinimized,
+  onToggleViewport,
 }: ActivityBarProps) {
   const [expandedGroup, setExpandedGroup] = useState<GroupId | null>(
     activeGroup,
@@ -102,9 +98,11 @@ export default function ActivityBar({
                   } else {
                     onSelectGroup(group.id);
                     setExpandedGroup(group.id);
+                    if (panelMinimized) onRestorePanel?.();
                   }
                 }}
                 data-tutorial={`group-${group.id}`}
+                title={group.description}
               >
                 <div className="activity-bar__item-icon">
                   <PixelSprite spriteKey={group.spriteKey} size={20} />
@@ -123,9 +121,6 @@ export default function ActivityBar({
                 {badge > 0 && (
                   <span className="activity-bar__badge">{badge}</span>
                 )}
-                <span className="activity-bar__tooltip">
-                  {group.description}
-                </span>
               </button>
               {/* Inline tabs under active group */}
               {isActive && hasTabs && expandedGroup === group.id && (
@@ -143,7 +138,10 @@ export default function ActivityBar({
                         key={tab.id}
                         className={`activity-bar__inline-tab${isActiveTab ? " activity-bar__inline-tab--active" : ""}`}
                         data-tutorial={`tab-${tab.id}`}
-                        onClick={() => onSelectTab(tab.id)}
+                        onClick={() => {
+                          onSelectTab(tab.id);
+                          if (panelMinimized) onRestorePanel?.();
+                        }}
                       >
                         <span className="activity-bar__inline-tab-dot">
                           {isActiveTab ? "▸" : "·"}
@@ -175,6 +173,7 @@ export default function ActivityBar({
             className="activity-bar__item"
             style={{ "--accent": "var(--cyan)" } as React.CSSProperties}
             onClick={onMapClick}
+            title="Open 2D sector map"
           >
             <div className="activity-bar__item-icon">
               <PixelSprite spriteKey="icon_explore" size={20} />
@@ -182,43 +181,22 @@ export default function ActivityBar({
             <div className="activity-bar__item-text">
               <span className="activity-bar__item-label">MAP</span>
             </div>
-            <span className="activity-bar__tooltip">Open 2D sector map</span>
           </button>
         )}
 
-        {/* Restore minimized panels */}
-        {panelMinimized && onRestorePanel && (
+        {onToggleViewport && (
           <button
-            className="activity-bar__item"
-            style={{ "--accent": "var(--magenta)" } as React.CSSProperties}
-            onClick={onRestorePanel}
-          >
-            <div className="activity-bar__item-icon">
-              <PixelSprite spriteKey={panelSpriteKey ?? "icon_nav"} size={20} />
-            </div>
-            <div className="activity-bar__item-text">
-              <span className="activity-bar__item-label">
-                {panelLabel ?? "PANEL"}
-              </span>
-            </div>
-            <span className="activity-bar__tooltip">
-              Restore activity panel
-            </span>
-          </button>
-        )}
-        {viewportMinimized && onRestoreViewport && (
-          <button
-            className="activity-bar__item"
+            className={`activity-bar__item${!viewportMinimized ? " activity-bar__item--active" : ""}`}
             style={{ "--accent": "var(--cyan)" } as React.CSSProperties}
-            onClick={onRestoreViewport}
+            onClick={onToggleViewport}
+            title="Toggle viewscreen"
           >
             <div className="activity-bar__item-icon">
               <PixelSprite spriteKey="icon_nav" size={20} />
             </div>
             <div className="activity-bar__item-text">
-              <span className="activity-bar__item-label">BRIDGE</span>
+              <span className="activity-bar__item-label">VIEWSCREEN</span>
             </div>
-            <span className="activity-bar__tooltip">Restore bridge view</span>
           </button>
         )}
       </div>

@@ -75,6 +75,9 @@ export interface ServerEvents {
   "story:act_complete": { act: number; actTitle: string; actSummary: string };
   "story:act_unlocked": { message: string };
   "story:lore_unlocked": { codexTitle: string; codexContent: string };
+  // Syndicate economy events
+  "syndicate:economy_update": void;
+  "syndicate:project_completed": void;
   // Multi-session sync — no payload, client calls its own refresh
   "sync:status": void;
   "sync:sector": void;

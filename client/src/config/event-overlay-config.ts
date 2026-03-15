@@ -11,7 +11,8 @@ export type EventCategory =
   | "resource_discovery"
   | "daily_missions"
   | "mission_complete"
-  | "story_accept";
+  | "story_accept"
+  | "tutorial_welcome";
 
 export interface EventAction {
   id: string;
@@ -109,6 +110,12 @@ export const EVENT_DEFAULTS: Record<
     priority: "blocking",
     duration: 0,
     colorScheme: "yellow",
+    dismissable: false,
+  },
+  tutorial_welcome: {
+    priority: "blocking",
+    duration: 0,
+    colorScheme: "cyan",
     dismissable: false,
   },
 };

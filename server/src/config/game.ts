@@ -289,6 +289,12 @@ export const GAME_CONFIG = {
   STORY_DIFFICULTY_THRESHOLD: 5,
   STORY_DIFFICULTY_REDUCTION: 0.8,
   STORY_ACTS: { 1: 10, 2: 20, 3: 25, 4: 25 } as Record<number, number>,
+  STORY_CHAPTERS: { 1: 8, 2: 8, 3: 8, 4: 7, 5: 8, 6: 7, 7: 7, 8: 7 } as Record<
+    number,
+    number
+  >,
+  TOTAL_STORY_MISSIONS: 60,
+  TOTAL_CHAPTERS: 8,
 
   // Planet Conquest
   AP_COST_BOMBARD: 3,

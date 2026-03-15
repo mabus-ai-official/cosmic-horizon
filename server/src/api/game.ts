@@ -2,7 +2,9 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
 import { canAffordAction, deductEnergy, getActionCost } from "../engine/energy";
 import { checkAndUpdateMissions } from "../services/mission-tracker";
+import { checkRandomEvents } from "../engine/random-events";
 import { applyUpgradesToShip } from "../engine/upgrades";
+import { getFactionItemBonuses } from "../engine/faction-items";
 import {
   awardXP,
   getPlayerProgress,
@@ -344,6 +346,7 @@ router.post("/move/:sectorId", requireAuth, async (req, res) => {
     // Mission progress: move
     const io = req.app.get("io");
     checkAndUpdateMissions(player.id, "move", { sectorId: targetSectorId }, io);
+    checkRandomEvents(player.id, "explore", { sectorId: targetSectorId }, io);
     updateDailyMissionProgress(player.id, "visit_sectors").catch(() => {});
 
     // Award explore XP for new sector discovery
@@ -1113,12 +1116,40 @@ router.post("/scan", requireAuth, async (req, res) => {
     }
     const hasScanner = true;
 
-    const edges = await db("sector_edges").where({
-      from_sector_id: player.current_sector_id,
-    });
-    const adjacentIds = edges.map((e) => e.to_sector_id);
+    // Check for Mycelial Scanner faction item (extends scan range by 1 depth)
+    let scanDepth = 1;
+    try {
+      const factionBonuses = await getFactionItemBonuses(player.id);
+      scanDepth += factionBonuses.scanRangeBonus;
+    } catch {
+      /* player_story_flags table may not exist yet */
+    }
 
-    const adjacentSectors = await db("sectors").whereIn("id", adjacentIds);
+    // Gather all sector IDs within scan depth
+    let adjacentIds: number[] = [];
+    let frontier = [player.current_sector_id];
+    const visited = new Set<number>([player.current_sector_id]);
+    for (let depth = 0; depth < scanDepth; depth++) {
+      if (frontier.length === 0) break;
+      const edges = await db("sector_edges").whereIn(
+        "from_sector_id",
+        frontier,
+      );
+      const nextFrontier: number[] = [];
+      for (const e of edges) {
+        if (!visited.has(e.to_sector_id)) {
+          visited.add(e.to_sector_id);
+          adjacentIds.push(e.to_sector_id);
+          nextFrontier.push(e.to_sector_id);
+        }
+      }
+      frontier = nextFrontier;
+    }
+
+    const adjacentSectors =
+      adjacentIds.length > 0
+        ? await db("sectors").whereIn("id", adjacentIds)
+        : [];
     const adjacentPlanets =
       adjacentIds.length > 0
         ? await db("planets").whereIn("sector_id", adjacentIds)
@@ -1133,6 +1164,12 @@ router.post("/scan", requireAuth, async (req, res) => {
     // Mission progress: scan
     const io = req.app.get("io");
     checkAndUpdateMissions(
+      player.id,
+      "scan",
+      { sectorId: player.current_sector_id },
+      io,
+    );
+    checkRandomEvents(
       player.id,
       "scan",
       { sectorId: player.current_sector_id },

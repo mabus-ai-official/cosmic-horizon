@@ -84,6 +84,9 @@ const CATEGORY_ANIMATION_CLASS: Record<string, string> = {
   mission_complete: "event-overlay--milestone",
   resource_discovery: "event-overlay--discovery",
   player_choice: "event-overlay--choice",
+  npc_dialogue: "event-overlay--choice",
+  mission_choice: "event-overlay--choice",
+  phase_intro: "event-overlay--story",
 };
 
 // Categories that use typing effect for text body
@@ -118,10 +121,35 @@ export default function EventOverlay({
       onClick={handleBackdropClick}
     >
       <div
-        className="event-overlay__content"
+        className={`event-overlay__content ${event.portrait ? "event-overlay__content--with-portrait" : ""}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="event-overlay__burst" />
+        {event.portrait && (
+          <div className="event-overlay__portrait">
+            <div className="event-overlay__portrait-frame">
+              <div className="event-overlay__portrait-icon">
+                {event.portrait.npcRace === "Vedic"
+                  ? "🔮"
+                  : event.portrait.npcRace === "Kalin"
+                    ? "⚔️"
+                    : event.portrait.npcRace === "Tar'ri"
+                      ? "💰"
+                      : event.portrait.npcRace === "Muscarian"
+                        ? "🍄"
+                        : "👤"}
+              </div>
+            </div>
+            <div className="event-overlay__portrait-name">
+              {event.portrait.npcName}
+            </div>
+            {event.portrait.npcTitle && (
+              <div className="event-overlay__portrait-title">
+                {event.portrait.npcTitle}
+              </div>
+            )}
+          </div>
+        )}
         <div className="event-overlay__title">{event.title}</div>
         {event.subtitle && (
           <div className="event-overlay__subtitle">{event.subtitle}</div>

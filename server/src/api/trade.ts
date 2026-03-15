@@ -9,7 +9,9 @@ import {
 } from "../engine/trading";
 import { getRace, RaceId } from "../config/races";
 import { checkAndUpdateMissions } from "../services/mission-tracker";
+import { checkRandomEvents } from "../engine/random-events";
 import { applyUpgradesToShip } from "../engine/upgrades";
+import { getFactionItemBonuses } from "../engine/faction-items";
 import { awardXP } from "../engine/progression";
 import { checkAchievements } from "../engine/achievements";
 import { updateDailyMissionProgress } from "./daily-missions";
@@ -181,9 +183,22 @@ router.post("/buy", requireAuth, async (req, res) => {
 
     // Apply racial trade bonus (discount on buy for Tar'ri)
     const playerRace = player.race ? getRace(player.race as RaceId) : null;
-    const tradeDiscount = Math.floor(
+    let tradeDiscount = Math.floor(
       result.totalCost * (playerRace?.tradeBonus ?? 0),
     );
+
+    // Apply faction item trade bonus (Merchant's Ledger: +10% discount on buy)
+    try {
+      const factionBonuses = await getFactionItemBonuses(player.id);
+      if (factionBonuses.tradeMultiplier > 0) {
+        tradeDiscount += Math.floor(
+          result.totalCost * factionBonuses.tradeMultiplier,
+        );
+      }
+    } catch {
+      /* player_story_flags table may not exist yet */
+    }
+
     const adjustedCost = result.totalCost - tradeDiscount;
 
     // Check player can afford
@@ -256,6 +271,12 @@ router.post("/buy", requireAuth, async (req, res) => {
         tradeType: "buy",
         commodity,
       },
+      io,
+    );
+    checkRandomEvents(
+      player.id,
+      "trade",
+      { quantity: result.quantity, tradeType: "buy", commodity },
       io,
     );
     updateDailyMissionProgress(player.id, "trade_value", adjustedCost).catch(
@@ -419,9 +440,22 @@ router.post("/sell", requireAuth, async (req, res) => {
 
     // Apply racial trade bonus (boost on sell for Tar'ri)
     const playerRace = player.race ? getRace(player.race as RaceId) : null;
-    const tradeBoost = Math.floor(
+    let tradeBoost = Math.floor(
       result.totalCost * (playerRace?.tradeBonus ?? 0),
     );
+
+    // Apply faction item trade bonus (Merchant's Ledger: +10% boost on sell)
+    try {
+      const factionBonuses = await getFactionItemBonuses(player.id);
+      if (factionBonuses.tradeMultiplier > 0) {
+        tradeBoost += Math.floor(
+          result.totalCost * factionBonuses.tradeMultiplier,
+        );
+      }
+    } catch {
+      /* player_story_flags table may not exist yet */
+    }
+
     const adjustedRevenue = result.totalCost + tradeBoost;
 
     const newEnergy = deductEnergy(player.energy, "trade");
@@ -488,6 +522,12 @@ router.post("/sell", requireAuth, async (req, res) => {
         tradeType: "sell",
         commodity,
       },
+      io,
+    );
+    checkRandomEvents(
+      player.id,
+      "trade",
+      { quantity: result.quantity, tradeType: "sell", commodity },
       io,
     );
     updateDailyMissionProgress(player.id, "trade_value", adjustedRevenue).catch(

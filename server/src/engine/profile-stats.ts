@@ -291,6 +291,31 @@ export async function getProfile(playerId: string) {
     /* table may not exist yet */
   }
 
+  // Syndicate membership
+  let syndicate: {
+    id: string;
+    name: string;
+    tag: string;
+    role: string;
+  } | null = null;
+  try {
+    const mem = await db("syndicate_members")
+      .join("syndicates", "syndicates.id", "syndicate_members.syndicate_id")
+      .where({ "syndicate_members.player_id": playerId })
+      .select(
+        "syndicates.id",
+        "syndicates.name",
+        "syndicates.tag",
+        "syndicate_members.role",
+      )
+      .first();
+    if (mem) {
+      syndicate = { id: mem.id, name: mem.name, tag: mem.tag, role: mem.role };
+    }
+  } catch {
+    /* table may not exist yet */
+  }
+
   // Faction reputation
   let factionRep: any[] = [];
   try {
@@ -373,6 +398,7 @@ export async function getProfile(playerId: string) {
       fame: f.fame,
       infamy: f.infamy,
     })),
+    syndicate,
   };
 }
 

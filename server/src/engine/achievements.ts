@@ -71,6 +71,14 @@ async function evaluateAchievement(
   action: string,
   data: Record<string, any>,
 ): Promise<boolean> {
+  const evalType = def.eval_type || "legacy";
+
+  // Data-driven evaluation for new achievements
+  if (evalType !== "legacy") {
+    return evaluateDataDriven(playerId, def, action, data);
+  }
+
+  // Legacy hardcoded evaluation for existing achievements
   switch (def.id) {
     // Leveling
     case "reach_level_10":
@@ -177,6 +185,112 @@ async function evaluateAchievement(
       if (action !== "trade") return false;
       const player = await db("players").where({ id: playerId }).first();
       return Number(player?.credits || 0) >= 1000000;
+    }
+
+    default:
+      return false;
+  }
+}
+
+/**
+ * Data-driven achievement evaluator.
+ * Uses eval_type and eval_config from achievement_definitions to check
+ * conditions without requiring code changes per achievement.
+ */
+async function evaluateDataDriven(
+  playerId: string,
+  def: any,
+  action: string,
+  data: Record<string, any>,
+): Promise<boolean> {
+  // Only evaluate if the trigger action matches (or no trigger_action = always check)
+  if (def.trigger_action && def.trigger_action !== action) return false;
+
+  const config =
+    typeof def.eval_config === "string"
+      ? JSON.parse(def.eval_config)
+      : def.eval_config;
+  if (!config) return false;
+
+  switch (def.eval_type) {
+    case "stat_threshold": {
+      // Check player_stats.{stat_key} >= threshold
+      const stats = await db("player_stats")
+        .where({ player_id: playerId })
+        .first();
+      if (!stats) return false;
+      return Number(stats[config.stat_key] || 0) >= config.threshold;
+    }
+
+    case "count_query": {
+      // Count rows in a table matching conditions
+      let query = db(config.table).where({ player_id: playerId });
+      if (config.where) {
+        for (const [col, val] of Object.entries(config.where)) {
+          query = query.where(col, val as any);
+        }
+      }
+      if (config.column_key) {
+        // For JSON array length checks (e.g., explored_sectors)
+        const row = await db(config.table)
+          .where({ id: playerId })
+          .select(config.column_key)
+          .first();
+        if (!row) return false;
+        const arr = JSON.parse(row[config.column_key] || "[]");
+        return arr.length >= config.threshold;
+      }
+      const count = await query.count("* as c").first();
+      return Number(count?.c || 0) >= config.threshold;
+    }
+
+    case "flag_check": {
+      // Check player_story_flags for a specific flag
+      const flag = await db("player_story_flags")
+        .where({ player_id: playerId, flag_key: config.flag_key })
+        .first();
+      if (!flag) return false;
+      if (config.flag_value) {
+        return flag.flag_value === config.flag_value;
+      }
+      return true;
+    }
+
+    case "mission_count": {
+      // Count completed missions matching criteria
+      let query = db("player_missions").where({
+        player_id: playerId,
+        status: "completed",
+      });
+      if (config.source) {
+        query = query
+          .join(
+            "mission_templates",
+            "player_missions.template_id",
+            "mission_templates.id",
+          )
+          .where("mission_templates.source", config.source);
+      }
+      if (config.chapter) {
+        query = query.where("mission_templates.chapter", config.chapter);
+      }
+      const count = await query.count("* as c").first();
+      return Number(count?.c || 0) >= config.threshold;
+    }
+
+    case "composite": {
+      // Multiple conditions that must all be true
+      if (!config.conditions || !Array.isArray(config.conditions)) return false;
+      for (const condition of config.conditions) {
+        const subDef = {
+          ...def,
+          eval_type: condition.type,
+          eval_config: condition,
+        };
+        const met = await evaluateDataDriven(playerId, subDef, action, data);
+        if (!met) return false;
+      }
+      return true;
     }
 
     default:

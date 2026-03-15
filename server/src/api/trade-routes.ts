@@ -204,7 +204,10 @@ router.post("/", requireAuth, async (req, res) => {
       if (isNaN(sectorId))
         return res.status(400).json({ error: "Invalid star mall sector ID" });
       const sector = await db("sectors")
-        .where({ id: sectorId, has_star_mall: true })
+        .where({ id: sectorId })
+        .where((b) =>
+          b.where({ has_star_mall: true }).orWhere({ is_npc_starmall: true }),
+        )
         .first();
       if (!sector)
         return res.status(404).json({ error: "Star mall sector not found" });

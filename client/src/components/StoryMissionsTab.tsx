@@ -8,14 +8,37 @@ import {
 } from "../services/api";
 import { getNarrationUrl, CLAIM_TEXTS } from "../config/narration-manifest";
 
-const ACT_TITLES: Record<number, string> = {
+const CHAPTER_TITLES: Record<number, string> = {
   1: "Call of Destiny",
-  2: "The Rising Storm",
-  3: "Quest for Harmony",
-  4: "Legacy of the Stars",
+  2: "The Vedic Enigma",
+  3: "The Calvatian Odyssey",
+  4: "The Shadow of War",
+  5: "The Quest for Harmony",
+  6: "Unveiling the Shadows",
+  7: "A New Dawn",
+  8: "Legacy of the Stars",
 };
 
-const ACT_SIZES: Record<number, number> = { 1: 10, 2: 20, 3: 25, 4: 25 };
+const CHAPTER_SIZES: Record<number, number> = {
+  1: 8,
+  2: 8,
+  3: 8,
+  4: 7,
+  5: 8,
+  6: 7,
+  7: 7,
+  8: 7,
+};
+
+const TOTAL_STORY_MISSIONS = 60;
+
+// Compute first story_order of each chapter for overlay detection
+const CHAPTER_START_ORDERS: Record<number, number> = {};
+let _startOrder = 1;
+for (let c = 1; c <= 8; c++) {
+  CHAPTER_START_ORDERS[c] = _startOrder;
+  _startOrder += CHAPTER_SIZES[c] || 0;
+}
 
 interface Props {
   refreshKey?: number;
@@ -82,8 +105,8 @@ export default function StoryMissionsTab({
       // Fire overlay for mission acceptance
       if (onStoryEvent && data) {
         const storyOrder = data.storyOrder || 0;
-        const act = data.act || 1;
-        const actTitle = ACT_TITLES[act] || `Act ${act}`;
+        const chapter = data.chapter || data.act || 1;
+        const chapterTitle = CHAPTER_TITLES[chapter] || `Chapter ${chapter}`;
 
         const narrationUrl = getNarrationUrl(storyOrder, "accept");
 
@@ -92,24 +115,24 @@ export default function StoryMissionsTab({
           onStoryEvent({
             type: "journey_begin",
             title: "THE AGARICALIS SAGA",
-            subtitle: "Act 1: Call of Destiny",
+            subtitle: `Chapter 1: ${chapterTitle}`,
             body:
               data.loreText ||
               "The stars await, pilot. Your journey through the Cosmic Horizon begins now.",
             narrationUrl,
           });
         } else if (
-          storyOrder === 11 ||
-          storyOrder === 31 ||
-          storyOrder === 56
+          chapter > 1 &&
+          storyOrder === CHAPTER_START_ORDERS[chapter]
         ) {
-          // First mission of Acts 2, 3, 4
+          // First mission of a new chapter
           onStoryEvent({
             type: "act_begin",
-            act,
-            title: `ACT ${act}`,
-            subtitle: actTitle,
-            body: data.loreText || `A new chapter unfolds. ${actTitle} begins.`,
+            act: chapter,
+            title: `CHAPTER ${chapter}`,
+            subtitle: chapterTitle,
+            body:
+              data.loreText || `A new chapter unfolds. ${chapterTitle} begins.`,
             narrationUrl,
           });
         } else {
@@ -202,32 +225,33 @@ export default function StoryMissionsTab({
     return <div className="text-muted">Loading story progress...</div>;
   }
 
-  const act = progress.currentAct || 1;
-  const actTitle = ACT_TITLES[act] || `Act ${act}`;
-  const actSize = ACT_SIZES[act] || 10;
-  const actProgress = progress.missionsCompletedInAct || 0;
+  const chapter = progress.currentChapter || progress.currentAct || 1;
+  const chapterTitle = CHAPTER_TITLES[chapter] || `Chapter ${chapter}`;
+  const chapterSize = CHAPTER_SIZES[chapter] || 8;
+  const chapterProgress =
+    progress.missionsCompletedInChapter || progress.missionsCompletedInAct || 0;
   const totalCompleted = progress.totalStoryCompleted || 0;
 
   return (
     <div className="story-missions-tab">
-      {/* Act Header */}
+      {/* Chapter Header */}
       <div className="story-act-header">
         <div className="story-act-title">
-          ACT {act}: {actTitle}
+          CHAPTER {chapter}: {chapterTitle}
         </div>
         <div className="story-act-progress-row">
           <span className="story-act-count">
-            {actProgress}/{actSize}
+            {chapterProgress}/{chapterSize}
           </span>
           <div className="story-progress-bar">
             <div
               className="story-progress-fill"
-              style={{ width: `${(actProgress / actSize) * 100}%` }}
+              style={{ width: `${(chapterProgress / chapterSize) * 100}%` }}
             />
           </div>
         </div>
         <div className="text-muted" style={{ fontSize: "0.75em" }}>
-          Total story progress: {totalCompleted}/80
+          Total story progress: {totalCompleted}/{TOTAL_STORY_MISSIONS}
         </div>
       </div>
 
@@ -260,6 +284,74 @@ export default function StoryMissionsTab({
           <div className="story-mission-desc">
             {current.mission.description}
           </div>
+
+          {/* Phase Progress (multi-phase missions) */}
+          {current.mission.phaseInfo && (
+            <div className="story-phase-tracker" style={{ margin: "0.5rem 0" }}>
+              <div
+                style={{
+                  fontSize: "0.8em",
+                  color: "var(--cyan)",
+                  marginBottom: "0.25rem",
+                }}
+              >
+                Phase {current.mission.phaseInfo.currentPhase}/
+                {current.mission.phaseInfo.totalPhases}
+                {current.mission.phaseInfo.currentPhaseTitle && (
+                  <span style={{ color: "var(--text)" }}>
+                    {" "}
+                    — {current.mission.phaseInfo.currentPhaseTitle}
+                  </span>
+                )}
+              </div>
+              <div
+                className="story-progress-bar"
+                style={{ height: "3px", marginBottom: "0.25rem" }}
+              >
+                <div
+                  className="story-progress-fill"
+                  style={{
+                    width: `${((current.mission.phaseInfo.currentPhase - 1) / current.mission.phaseInfo.totalPhases) * 100}%`,
+                    background: "var(--cyan)",
+                  }}
+                />
+              </div>
+              <div style={{ display: "flex", gap: "4px", fontSize: "0.7em" }}>
+                {current.mission.phaseInfo.phases?.map((p: any) => (
+                  <span
+                    key={p.order}
+                    style={{
+                      padding: "1px 6px",
+                      borderRadius: "2px",
+                      background: p.completed
+                        ? "var(--green)"
+                        : p.current
+                          ? "var(--cyan)"
+                          : "var(--bg-light)",
+                      color:
+                        p.completed || p.current
+                          ? "var(--bg)"
+                          : "var(--text-muted)",
+                      fontWeight: p.current ? "bold" : "normal",
+                    }}
+                  >
+                    {p.order}
+                  </span>
+                ))}
+              </div>
+              {current.mission.phaseInfo.currentPhaseDescription && (
+                <div
+                  style={{
+                    fontSize: "0.75em",
+                    color: "var(--text-muted)",
+                    marginTop: "0.25rem",
+                  }}
+                >
+                  {current.mission.phaseInfo.currentPhaseDescription}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Objectives */}
           {current.mission.objectivesDetail?.map((obj: any, i: number) => (
@@ -394,7 +486,7 @@ export default function StoryMissionsTab({
       {!current?.active &&
         !current?.next &&
         !cooldownRemaining &&
-        totalCompleted >= 80 && (
+        totalCompleted >= TOTAL_STORY_MISSIONS && (
           <div
             className="text-muted"
             style={{ textAlign: "center", padding: "1rem" }}

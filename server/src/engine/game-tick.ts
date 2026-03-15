@@ -38,6 +38,7 @@ import {
   checkAndCompleteProjects,
 } from "./syndicate-economy";
 import { processCaravans, dispatchCaravans } from "./caravans";
+import { checkGameStateEvents } from "./random-events";
 
 let tickInterval: ReturnType<typeof setInterval> | null = null;
 let tickCount = 0;
@@ -517,6 +518,16 @@ export async function gameTick(io: SocketIOServer): Promise<void> {
           weaponEnergy,
           maxWeaponEnergy,
         });
+      }
+    }
+    // Game-state random events: check connected players every 10 ticks
+    if (tickCount % 10 === 0) {
+      try {
+        for (const [, playerId] of connectedPlayers) {
+          await checkGameStateEvents(playerId, io);
+        }
+      } catch {
+        /* random event tables may not exist yet */
       }
     }
   } catch (err) {

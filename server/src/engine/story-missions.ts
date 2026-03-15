@@ -7,8 +7,10 @@ import type { Server as SocketIOServer } from "socket.io";
 
 export interface StoryProgress {
   currentAct: number;
+  currentChapter: number;
   currentMissionOrder: number;
   missionsCompletedInAct: number;
+  missionsCompletedInChapter: number;
   totalStoryCompleted: number;
   actCooldownUntil: string | null;
   hasActiveStoryMission: boolean;
@@ -18,14 +20,19 @@ export interface StoryProgress {
     title: string;
     storyOrder: number;
     act: number;
+    chapter: number;
     status: string;
     claimStatus: string;
+    hasPhases: boolean;
+    currentPhase: number;
+    totalPhases: number;
   };
   nextMission?: {
     templateId: string;
     title: string;
     storyOrder: number;
     act: number;
+    chapter: number;
   };
 }
 
@@ -45,17 +52,20 @@ export async function getStoryProgress(
       "player_missions.status": "completed",
     })
     .whereIn("player_missions.claim_status", ["claimed", "auto"])
-    .select("mission_templates.story_order", "mission_templates.act");
+    .select(
+      "mission_templates.story_order",
+      "mission_templates.act",
+      "mission_templates.chapter",
+    );
 
   const totalStoryCompleted = completed.length;
 
-  // Determine current act based on completed missions
+  // Determine current act based on completed missions (legacy 4-act system)
   const completedOrders = new Set(completed.map((c: any) => c.story_order));
   let currentAct = 1;
   let missionsCompletedInAct = 0;
   const acts = GAME_CONFIG.STORY_ACTS;
 
-  let runningTotal = 0;
   for (let act = 1; act <= 4; act++) {
     const actSize = acts[act] || 0;
     const completedInThisAct = completed.filter(
@@ -63,12 +73,31 @@ export async function getStoryProgress(
     ).length;
 
     if (completedInThisAct >= actSize && act < 4) {
-      runningTotal += actSize;
       continue;
     }
 
     currentAct = act;
     missionsCompletedInAct = completedInThisAct;
+    break;
+  }
+
+  // Determine current chapter (new 8-chapter system)
+  const chapters = GAME_CONFIG.STORY_CHAPTERS;
+  let currentChapter = 1;
+  let missionsCompletedInChapter = 0;
+
+  for (let ch = 1; ch <= GAME_CONFIG.TOTAL_CHAPTERS; ch++) {
+    const chSize = chapters[ch] || 0;
+    const completedInChapter = completed.filter(
+      (c: any) => (c.chapter || c.act) === ch,
+    ).length;
+
+    if (completedInChapter >= chSize && ch < GAME_CONFIG.TOTAL_CHAPTERS) {
+      continue;
+    }
+
+    currentChapter = ch;
+    missionsCompletedInChapter = completedInChapter;
     break;
   }
 
@@ -97,10 +126,23 @@ export async function getStoryProgress(
       "mission_templates.title",
       "mission_templates.story_order as storyOrder",
       "mission_templates.act",
+      "mission_templates.chapter",
+      "mission_templates.has_phases as hasPhases",
       "player_missions.status",
       "player_missions.claim_status as claimStatus",
+      "player_missions.current_phase as currentPhase",
     )
     .first();
+
+  // Get total phases if mission has phases
+  let totalPhases = 0;
+  if (activeMission?.hasPhases) {
+    const phaseCount = await db("mission_phases")
+      .where({ template_id: activeMission.templateId })
+      .count("* as c")
+      .first();
+    totalPhases = Number(phaseCount?.c || 0);
+  }
 
   const hasActiveStoryMission = !!activeMission;
 
@@ -121,6 +163,7 @@ export async function getStoryProgress(
         title: next.title,
         storyOrder: next.story_order,
         act: next.act,
+        chapter: next.chapter || next.act,
       };
     }
   }
@@ -137,8 +180,10 @@ export async function getStoryProgress(
 
   return {
     currentAct,
+    currentChapter,
     currentMissionOrder,
     missionsCompletedInAct,
+    missionsCompletedInChapter,
     totalStoryCompleted,
     actCooldownUntil,
     hasActiveStoryMission,
@@ -149,8 +194,12 @@ export async function getStoryProgress(
           title: activeMission.title,
           storyOrder: activeMission.storyOrder,
           act: activeMission.act,
+          chapter: activeMission.chapter || activeMission.act,
           status: activeMission.status,
           claimStatus: activeMission.claimStatus,
+          hasPhases: !!activeMission.hasPhases,
+          currentPhase: activeMission.currentPhase || 1,
+          totalPhases,
         }
       : undefined,
     nextMission,
@@ -247,6 +296,17 @@ const ACT_TITLES: Record<number, string> = {
   4: "Legacy of the Stars",
 };
 
+export const CHAPTER_TITLES: Record<number, string> = {
+  1: "Call of Destiny",
+  2: "The Vedic Enigma",
+  3: "The Calvatian Odyssey",
+  4: "The Shadow of War",
+  5: "The Quest for Harmony",
+  6: "Unveiling the Shadows",
+  7: "A New Dawn",
+  8: "Legacy of the Stars",
+};
+
 export async function handleStoryMissionClaim(
   playerId: string,
   missionId: string,
@@ -315,16 +375,18 @@ export async function handleStoryMissionClaim(
     }
   }
 
-  // Check if this is the last mission in its act
-  const actSize = GAME_CONFIG.STORY_ACTS[act] || 0;
-  let actStartOrder = 1;
-  for (let a = 1; a < act; a++) {
-    actStartOrder += GAME_CONFIG.STORY_ACTS[a] || 0;
+  // Check if this is the last mission in its chapter
+  const chapter = template.chapter || act;
+  const chapterSize =
+    GAME_CONFIG.STORY_CHAPTERS[chapter] || GAME_CONFIG.STORY_ACTS[act] || 0;
+  let chapterStartOrder = 1;
+  for (let c = 1; c < chapter; c++) {
+    chapterStartOrder += GAME_CONFIG.STORY_CHAPTERS[c] || 0;
   }
-  const actEndOrder = actStartOrder + actSize - 1;
+  const chapterEndOrder = chapterStartOrder + chapterSize - 1;
 
-  if (storyOrder === actEndOrder && act < 4) {
-    // Set act cooldown
+  if (storyOrder === chapterEndOrder && chapter < GAME_CONFIG.TOTAL_CHAPTERS) {
+    // Set chapter cooldown
     const cooldownUntil = new Date(
       Date.now() + GAME_CONFIG.STORY_ACT_COOLDOWN_HOURS * 60 * 60 * 1000,
     ).toISOString();
@@ -333,11 +395,12 @@ export async function handleStoryMissionClaim(
       .where({ id: playerId })
       .update({ act_cooldown_until: cooldownUntil });
 
+    const chapterTitle = CHAPTER_TITLES[chapter] || `Chapter ${chapter}`;
     if (io) {
       notifyPlayer(io, playerId, "story:act_complete", {
-        act,
-        actTitle: ACT_TITLES[act] || `Act ${act}`,
-        actSummary: `You have completed Act ${act}: ${ACT_TITLES[act]}. The next chapter of your journey begins soon.`,
+        act: chapter,
+        actTitle: chapterTitle,
+        actSummary: `You have completed Chapter ${chapter}: ${chapterTitle}. The next chapter of your journey begins soon.`,
       });
     }
   }

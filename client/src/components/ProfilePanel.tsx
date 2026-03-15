@@ -129,6 +129,7 @@ export default function ProfilePanel({ refreshKey }: Props) {
     milestones,
     achievements,
     factionRep,
+    syndicate,
   } = profile;
   const currentStats: Record<string, number> =
     period === "allTime"
@@ -186,6 +187,23 @@ export default function ProfilePanel({ refreshKey }: Props) {
             {player.rank}
           </span>
         </div>
+        {syndicate && (
+          <div className="panel-kv">
+            <span className="panel-kv__label">Syndicate</span>
+            <span className="panel-kv__value" style={{ color: "var(--cyan)" }}>
+              [{syndicate.tag}] {syndicate.name}
+              <span
+                style={{
+                  color: "var(--text-muted)",
+                  fontSize: "0.75rem",
+                  marginLeft: 6,
+                }}
+              >
+                {syndicate.role}
+              </span>
+            </span>
+          </div>
+        )}
         <div className="panel-kv">
           <span className="panel-kv__label">Credits</span>
           <span className="panel-kv__value panel-kv__value--success">

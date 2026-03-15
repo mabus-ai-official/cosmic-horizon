@@ -43,6 +43,8 @@ import dailyMissionsRouter from "./api/daily-missions";
 import tradeHistoryRouter from "./api/trade-history";
 import storyMissionsRouter from "./api/story-missions";
 import arcadeRouter from "./api/arcade";
+import factionMissionsRouter from "./api/faction-missions";
+import randomEventsRouter from "./api/random-events";
 import { setupWebSocket } from "./ws/handlers";
 import { startGameTick } from "./engine/game-tick";
 import { startDiscordBridge } from "./services/discord-bridge";
@@ -327,6 +329,23 @@ app.use(
   blockDuringTutorial,
   loadSPContext,
   arcadeRouter,
+);
+
+app.use(
+  "/api/faction-missions",
+  loadTutorialState,
+  blockDuringTutorial,
+  loadSPContext,
+  blockInSinglePlayer,
+  factionMissionsRouter,
+);
+
+app.use(
+  "/api/random-events",
+  loadTutorialState,
+  blockDuringTutorial,
+  loadSPContext,
+  randomEventsRouter,
 );
 
 // WebSocket

@@ -19,6 +19,7 @@ export type PanelId =
   | "trade-offers"
   | "notes"
   | "codex"
+  | "factions"
   | "profile";
 
 export type GroupId =
@@ -112,6 +113,7 @@ export const PANEL_GROUPS: PanelGroupDef[] = [
     tabs: [
       { id: "comms", label: "Comms" },
       { id: "crew", label: "Contacts" },
+      { id: "factions", label: "Factions" },
       { id: "syndicate", label: "Syndicate" },
     ],
   },

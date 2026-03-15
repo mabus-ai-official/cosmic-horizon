@@ -9,8 +9,10 @@ import {
 import { SHIP_TYPES } from "../config/ship-types";
 import { getRace, RaceId } from "../config/races";
 import { checkAndUpdateMissions } from "../services/mission-tracker";
+import { checkRandomEvents } from "../engine/random-events";
 import { applyUpgradesToShip } from "../engine/upgrades";
 import { applyTabletBonuses, TabletBonuses } from "../engine/tablets";
+import { getFactionItemBonuses } from "../engine/faction-items";
 import { awardXP, getPlayerLevelBonuses } from "../engine/progression";
 import { checkAchievements } from "../engine/achievements";
 import { updateDailyMissionProgress } from "./daily-missions";
@@ -142,6 +144,15 @@ router.post("/fire", requireAuth, async (req, res) => {
       /* tablets table may not exist yet */
     }
 
+    // Faction item bonuses (Tactical Override Module: +15% damage)
+    let attackerFactionDamageMultiplier = 0;
+    try {
+      const factionBonuses = await getFactionItemBonuses(player.id);
+      attackerFactionDamageMultiplier = factionBonuses.damageMultiplier;
+    } catch {
+      /* player_story_flags table may not exist yet */
+    }
+
     const attackerState: CombatState = {
       weaponEnergy:
         attackerShip.weapon_energy +
@@ -155,7 +166,9 @@ router.post("/fire", requireAuth, async (req, res) => {
         attackerTablets.engineBonus,
       hullHp: attackerShip.hull_hp + attackerTablets.shieldBonus,
       attackRatio:
-        attackerType.attackRatio * (1 + (attackerRace?.attackRatioBonus ?? 0)),
+        attackerType.attackRatio *
+        (1 + (attackerRace?.attackRatioBonus ?? 0)) *
+        (1 + attackerFactionDamageMultiplier),
       defenseRatio:
         attackerType.defenseRatio *
         (1 + (attackerRace?.defenseRatioBonus ?? 0)),
@@ -414,6 +427,7 @@ router.post("/fire", requireAuth, async (req, res) => {
         }
       }
       checkAndUpdateMissions(player.id, "combat_destroy", {}, io);
+      checkRandomEvents(player.id, "combat_destroy", {}, io);
       updateDailyMissionProgress(player.id, "win_combat").catch(() => {});
 
       // Profile stats: kill/death (skip NPC-side stats — NPC is already deleted)
@@ -524,6 +538,20 @@ router.post("/flee", requireAuth, async (req, res) => {
       }
     } catch {
       /* tablets table may not exist yet */
+    }
+
+    // Apply faction item flee bonus (Cloaking Resonator: +25%)
+    try {
+      const factionBonuses = await getFactionItemBonuses(player.id);
+      if (factionBonuses.fleeBonus > 0) {
+        fleeResult.fleeChance = Math.min(
+          0.9,
+          fleeResult.fleeChance + factionBonuses.fleeBonus,
+        );
+        fleeResult.success = rng < fleeResult.fleeChance;
+      }
+    } catch {
+      /* player_story_flags table may not exist yet */
     }
 
     if (fleeResult.success) {

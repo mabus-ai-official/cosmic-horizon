@@ -4,7 +4,14 @@
  * daily missions, tutorial detection, and ARIA triggers.
  */
 import { useEffect, useCallback, useState, useRef, useMemo } from "react";
-import { getDailyMissions, getStoryRecap } from "../services/api";
+import {
+  getDailyMissions,
+  getStoryRecap,
+  acceptRandomEvent as apiAcceptRandomEvent,
+  declineRandomEvent as apiDeclineRandomEvent,
+  submitStoryChoice,
+  submitFactionChoice,
+} from "../services/api";
 import {
   getAlliances,
   getSyndicate,
@@ -990,6 +997,110 @@ export function useGameEffects({
             `Faction rank up: ${data.factionName} — ${data.newTier}`,
             "success",
           );
+        },
+      ),
+      on(
+        "random_event:triggered",
+        (data: {
+          eventInstanceId: string;
+          eventKey: string;
+          title: string;
+          description: string;
+          rewards: { credits?: number; xp?: number } | null;
+        }) => {
+          eventOverlay.enqueueEvent({
+            category: "resource_discovery",
+            title: "EVENT",
+            subtitle: data.title,
+            body: data.description,
+            colorScheme: "cyan",
+            duration: 0,
+            priority: "blocking",
+            actions: [
+              {
+                id: `accept:${data.eventInstanceId}`,
+                label: "Accept",
+                variant: "primary",
+              },
+              {
+                id: `decline:${data.eventInstanceId}`,
+                label: "Decline",
+                variant: "secondary",
+              },
+            ],
+            onAction: (actionId: string) => {
+              const [action, instanceId] = actionId.split(":");
+              if (action === "accept") {
+                apiAcceptRandomEvent(instanceId)
+                  .then(() => game.refreshStatus())
+                  .catch(() => {});
+              } else if (action === "decline") {
+                apiDeclineRandomEvent(instanceId).catch(() => {});
+              }
+            },
+          });
+          game.addLine(`Random event: ${data.title}`, "system");
+        },
+      ),
+      on(
+        "mission:phase_advanced",
+        (data: { phase: number; phaseTitle: string }) => {
+          eventOverlay.enqueueEvent({
+            category: "phase_intro",
+            title: "NEXT PHASE",
+            subtitle: data.phaseTitle,
+            body: `Phase ${data.phase} has begun.`,
+            colorScheme: "green",
+            duration: 5000,
+            dismissable: true,
+            priority: "interstitial",
+          });
+          setRefreshKey((k) => k + 1);
+        },
+      ),
+      on(
+        "mission:choice_required",
+        (data: {
+          missionId: string;
+          choiceId: string;
+          promptTitle: string;
+          promptBody: string;
+          options: { id: string; label: string; description: string }[];
+          isPermanent: boolean;
+        }) => {
+          eventOverlay.enqueueEvent({
+            category: data.isPermanent ? "player_choice" : "mission_choice",
+            title: data.isPermanent ? "TURNING POINT" : "DECISION",
+            subtitle: data.promptTitle,
+            body: data.promptBody,
+            colorScheme: data.isPermanent ? "magenta" : "cyan",
+            duration: 0,
+            priority: "blocking",
+            actions: data.options.map((opt) => ({
+              id: `choice:${data.missionId}:${data.choiceId}:${opt.id}`,
+              label: opt.label,
+              variant: "primary" as const,
+            })),
+            onAction: (actionId: string) => {
+              const parts = actionId.split(":");
+              if (parts[0] === "choice" && parts.length === 4) {
+                const [, missionId, choiceId, optionId] = parts;
+                submitStoryChoice(missionId, choiceId, optionId)
+                  .then(() => {
+                    game.refreshStatus();
+                    setRefreshKey((k) => k + 1);
+                  })
+                  .catch(() => {
+                    submitFactionChoice(missionId, choiceId, optionId)
+                      .then(() => {
+                        game.refreshStatus();
+                        setRefreshKey((k) => k + 1);
+                      })
+                      .catch(() => {});
+                  });
+              }
+            },
+          });
         },
       ),
     ];

@@ -279,6 +279,12 @@ export const abandonStoryMission = (missionId: string) =>
   api.post(`/story/abandon/${missionId}`);
 export const getStoryCodex = () => api.get("/story/codex");
 export const getStoryRecap = () => api.get("/story/recap");
+export const submitStoryChoice = (
+  missionId: string,
+  choiceId: string,
+  optionId: string,
+) => api.post("/story/choice", { missionId, choiceId, optionId });
+export const getStoryFlags = () => api.get("/story/flags");
 
 // Sector Events
 export const getSectorEvents = () => api.get("/events/sector");
@@ -691,5 +697,30 @@ export const changePassword = (currentPassword: string, newPassword: string) =>
   api.post("/auth/change-password", { currentPassword, newPassword });
 export const deleteAccount = (password: string) =>
   api.delete("/auth/account", { data: { password } });
+
+// ── Faction Questlines ──────────────────────────────────────
+export const getFactionQuestlines = () =>
+  api.get("/faction-missions/questlines");
+export const getFactionMissionCurrent = () =>
+  api.get("/faction-missions/current");
+export const acceptFactionMission = (templateId: string) =>
+  api.post("/faction-missions/accept", { templateId });
+export const claimFactionMission = (missionId: string) =>
+  api.post(`/faction-missions/claim/${missionId}`);
+export const abandonFactionMission = (missionId: string) =>
+  api.post(`/faction-missions/abandon/${missionId}`);
+export const submitFactionChoice = (
+  missionId: string,
+  choiceId: string,
+  optionId: string,
+) => api.post("/faction-missions/choice", { missionId, choiceId, optionId });
+
+// ── Random Events ───────────────────────────────────────────
+export const getPendingRandomEvents = () => api.get("/random-events/pending");
+export const acceptRandomEvent = (eventInstanceId: string) =>
+  api.post(`/random-events/accept/${eventInstanceId}`);
+export const declineRandomEvent = (eventInstanceId: string) =>
+  api.post(`/random-events/decline/${eventInstanceId}`);
+export const getRandomEventHistory = () => api.get("/random-events/history");
 
 export default api;

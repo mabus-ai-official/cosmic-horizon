@@ -11,7 +11,10 @@ import {
   getFailureCount,
 } from "../engine/story-missions";
 import { buildObjectivesDetail, checkPrerequisite } from "../engine/missions";
-import { awardMissionRewards } from "../services/mission-tracker";
+import {
+  awardMissionRewards,
+  handleMissionChoice,
+} from "../services/mission-tracker";
 import {
   spawnStoryNPCs,
   cleanupStoryNPCs,
@@ -55,16 +58,20 @@ router.get("/current", requireAuth, async (req, res) => {
           "mission_templates.description",
           "mission_templates.type",
           "mission_templates.act",
+          "mission_templates.chapter",
           "mission_templates.story_order as storyOrder",
           "mission_templates.lore_text as loreText",
           "mission_templates.objectives as templateObjectives",
           "mission_templates.hints",
+          "mission_templates.has_phases as hasPhases",
           "player_missions.progress",
           "player_missions.objectives_detail as objectivesDetail",
           "player_missions.reward_credits as rewardCredits",
           "mission_templates.reward_xp as rewardXp",
           "player_missions.status",
           "player_missions.claim_status as claimStatus",
+          "player_missions.current_phase as currentPhase",
+          "player_missions.phase_progress as phaseProgress",
         )
         .first();
 
@@ -85,10 +92,49 @@ router.get("/current", requireAuth, async (req, res) => {
             ? await getStoryNPCLocations(mission.missionId)
             : [];
 
+        // Load phase info for multi-phase missions
+        let phaseInfo = null;
+        if (mission.hasPhases) {
+          const phases = await db("mission_phases")
+            .where({ template_id: mission.templateId })
+            .orderBy("phase_order", "asc")
+            .select(
+              "id",
+              "phase_order",
+              "title",
+              "description",
+              "objective_type",
+              "is_optional",
+              "lore_text",
+            );
+
+          const currentPhaseNum = mission.currentPhase || 1;
+          const currentPhaseData = phases.find(
+            (p: any) => p.phase_order === currentPhaseNum,
+          );
+
+          phaseInfo = {
+            currentPhase: currentPhaseNum,
+            totalPhases: phases.length,
+            currentPhaseTitle: currentPhaseData?.title || null,
+            currentPhaseDescription: currentPhaseData?.description || null,
+            currentPhaseLore: currentPhaseData?.lore_text || null,
+            currentPhaseType: currentPhaseData?.objective_type || null,
+            phases: phases.map((p: any) => ({
+              order: p.phase_order,
+              title: p.title,
+              completed: p.phase_order < currentPhaseNum,
+              current: p.phase_order === currentPhaseNum,
+              optional: !!p.is_optional,
+            })),
+          };
+        }
+
         return res.json({
           active: true,
           mission: {
             ...mission,
+            chapter: mission.chapter || mission.act,
             templateObjectives:
               typeof mission.templateObjectives === "string"
                 ? JSON.parse(mission.templateObjectives)
@@ -97,6 +143,10 @@ router.get("/current", requireAuth, async (req, res) => {
               typeof mission.progress === "string"
                 ? JSON.parse(mission.progress)
                 : mission.progress,
+            phaseProgress:
+              typeof mission.phaseProgress === "string"
+                ? JSON.parse(mission.phaseProgress || "{}")
+                : mission.phaseProgress || {},
             objectivesDetail:
               typeof mission.objectivesDetail === "string"
                 ? JSON.parse(mission.objectivesDetail)
@@ -105,6 +155,7 @@ router.get("/current", requireAuth, async (req, res) => {
             failureCount,
             showHints,
             npcLocations,
+            phaseInfo,
           },
         });
       }
@@ -125,8 +176,10 @@ router.get("/current", requireAuth, async (req, res) => {
             description: template.description,
             type: template.type,
             act: template.act,
+            chapter: template.chapter || template.act,
             storyOrder: template.story_order,
             loreText: template.lore_text,
+            hasPhases: !!template.has_phases,
             objectives:
               typeof template.objectives === "string"
                 ? JSON.parse(template.objectives)
@@ -275,9 +328,34 @@ router.post("/accept", requireAuth, async (req, res) => {
       }
     }
 
+    // For multi-phase missions, use phase 1 objectives
+    let effectiveType = template.type;
+    let effectiveObjectives = objectives;
+    let totalPhases = 0;
+    let phase1Title: string | null = null;
+    let phase1Description: string | null = null;
+
+    if (template.has_phases) {
+      const phases = await db("mission_phases")
+        .where({ template_id: template.id })
+        .orderBy("phase_order", "asc");
+
+      totalPhases = phases.length;
+      if (phases.length > 0) {
+        const phase1 = phases[0];
+        effectiveType = phase1.objective_type;
+        effectiveObjectives =
+          typeof phase1.objectives === "string"
+            ? JSON.parse(phase1.objectives)
+            : phase1.objectives;
+        phase1Title = phase1.title;
+        phase1Description = phase1.description;
+      }
+    }
+
     const objectivesDetail = buildObjectivesDetail(
-      template.type,
-      objectives,
+      effectiveType,
+      effectiveObjectives,
       hints,
       descriptionSuffix,
     );
@@ -295,6 +373,8 @@ router.post("/accept", requireAuth, async (req, res) => {
       expires_at: null,
       objectives_detail: JSON.stringify(objectivesDetail),
       claim_status: "auto",
+      current_phase: 1,
+      phase_progress: JSON.stringify({}),
     });
 
     // For destroy_ship missions, spawn NPC enemies in explored sectors
@@ -339,16 +419,21 @@ router.post("/accept", requireAuth, async (req, res) => {
       missionId,
       title: template.title,
       description: template.description,
-      type: template.type,
+      type: effectiveType,
       act: template.act,
+      chapter: template.chapter || template.act,
       storyOrder: template.story_order,
       loreText: template.lore_text,
-      objectives,
+      objectives: effectiveObjectives,
       objectivesDetail,
       rewardCredits: template.reward_credits,
       rewardXp: template.reward_xp,
       difficultyReduced: failureCount >= GAME_CONFIG.STORY_DIFFICULTY_THRESHOLD,
       failureCount,
+      hasPhases: !!template.has_phases,
+      totalPhases,
+      phase1Title,
+      phase1Description,
     });
   } catch (err) {
     console.error("Story accept error:", err);
@@ -559,6 +644,55 @@ router.get("/codex", requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error("Codex error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Submit a mission choice (for multi-phase missions with branching)
+router.post("/choice", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.session.playerId!;
+    const { missionId, choiceId, optionId } = req.body;
+
+    if (!missionId || !choiceId || !optionId) {
+      return res
+        .status(400)
+        .json({ error: "missionId, choiceId, and optionId are required" });
+    }
+
+    const io = req.app.get("io");
+    const result = await handleMissionChoice(
+      playerId,
+      missionId,
+      choiceId,
+      optionId,
+      io,
+    );
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    const socketId = req.headers["x-socket-id"] as string | undefined;
+    if (io) syncPlayer(io, playerId, "sync:status", socketId);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Story choice error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get player's story flags
+router.get("/flags", requireAuth, async (req, res) => {
+  try {
+    const flags = await db("player_story_flags")
+      .where({ player_id: req.session.playerId! })
+      .select("flag_key", "flag_value", "set_at");
+
+    res.json({ flags });
+  } catch (err) {
+    console.error("Story flags error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

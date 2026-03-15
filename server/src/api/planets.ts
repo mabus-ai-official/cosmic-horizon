@@ -8,6 +8,7 @@ import {
 } from "../engine/planets";
 import { getHappinessTier, type RacePopulation } from "../engine/happiness";
 import { checkAndUpdateMissions } from "../services/mission-tracker";
+import { checkRandomEvents } from "../engine/random-events";
 import { checkPrerequisite } from "../engine/missions";
 import { applyUpgradesToShip } from "../engine/upgrades";
 import { awardXP } from "../engine/progression";
@@ -660,6 +661,7 @@ router.post("/:id/colonize", requireAuth, async (req, res) => {
     // Mission progress: colonize
     const io = req.app.get("io");
     checkAndUpdateMissions(player.id, "colonize", { quantity: toDeposit }, io);
+    checkRandomEvents(player.id, "colonize", { quantity: toDeposit }, io);
 
     // Award XP for colonizing
     const xpResult = await awardXP(
@@ -908,6 +910,7 @@ router.post("/:id/deposit-colonists", requireAuth, async (req, res) => {
     // Mission progress: colonize
     const io = req.app.get("io");
     checkAndUpdateMissions(player.id, "colonize", { quantity: toDeposit }, io);
+    checkRandomEvents(player.id, "colonize", { quantity: toDeposit }, io);
 
     res.json({
       deposited: toDeposit,

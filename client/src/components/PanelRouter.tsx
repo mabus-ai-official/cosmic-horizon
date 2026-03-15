@@ -25,6 +25,7 @@ import IntelLogPanel from "./IntelLogPanel";
 import TradeHistoryPanel from "./TradeHistoryPanel";
 import ProfilePanel from "./ProfilePanel";
 import CodexPanel from "./CodexPanel";
+import FactionQuestlinesPanel from "./FactionQuestlinesPanel";
 import type { ChatMessage, ChatChannel } from "./SectorChatPanel";
 import type { ToastType } from "../hooks/useToast";
 import {
@@ -404,6 +405,17 @@ export default function PanelRouter({
       return <TradeHistoryPanel refreshKey={refreshKey} bare />;
     case "codex":
       return <CodexPanel refreshKey={refreshKey} bare />;
+    case "factions":
+      return (
+        <FactionQuestlinesPanel
+          refreshKey={refreshKey}
+          onAction={() => {
+            game.refreshStatus();
+            setRefreshKey((k) => k + 1);
+          }}
+          bare
+        />
+      );
     case "profile":
       return <ProfilePanel refreshKey={refreshKey} bare />;
     default:

@@ -12,12 +12,22 @@ export type EventCategory =
   | "daily_missions"
   | "mission_complete"
   | "story_accept"
-  | "tutorial_welcome";
+  | "tutorial_welcome"
+  | "npc_dialogue"
+  | "mission_choice"
+  | "phase_intro";
 
 export interface EventAction {
   id: string;
   label: string;
   variant: "primary" | "secondary";
+}
+
+export interface NpcPortrait {
+  npcName: string;
+  npcTitle?: string;
+  npcRace?: string;
+  spriteConfig?: Record<string, any>;
 }
 
 export interface GameEvent {
@@ -32,6 +42,7 @@ export interface GameEvent {
   actions?: EventAction[];
   colorScheme: string;
   narrationUrl?: string;
+  portrait?: NpcPortrait;
   onDismiss?: () => void;
   onAction?: (actionId: string) => void;
 }
@@ -117,5 +128,23 @@ export const EVENT_DEFAULTS: Record<
     duration: 0,
     colorScheme: "cyan",
     dismissable: false,
+  },
+  npc_dialogue: {
+    priority: "blocking",
+    duration: 0,
+    colorScheme: "cyan",
+    dismissable: false,
+  },
+  mission_choice: {
+    priority: "blocking",
+    duration: 0,
+    colorScheme: "magenta",
+    dismissable: false,
+  },
+  phase_intro: {
+    priority: "interstitial",
+    duration: 5000,
+    colorScheme: "green",
+    dismissable: true,
   },
 };

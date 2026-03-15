@@ -7,7 +7,16 @@ export type MissionType =
   | "destroy_ship"
   | "colonize_planet"
   | "trade_units"
-  | "scan_sectors";
+  | "scan_sectors"
+  | "meet_npc"
+  | "escort"
+  | "intercept"
+  | "investigate"
+  | "survive_ambush"
+  | "timed_delivery"
+  | "choose"
+  | "defend_planet"
+  | "sabotage";
 
 export interface MissionObjectives {
   // deliver_cargo: deliver X units of commodity to a sector with an outpost
@@ -23,6 +32,29 @@ export interface MissionObjectives {
   unitsToTrade?: number;
   // scan_sectors: scan N times
   scansRequired?: number;
+  // meet_npc: meet a specific NPC
+  npcId?: string;
+  npcName?: string;
+  // escort: escort N caravans
+  caravansToEscort?: number;
+  // intercept: intercept N caravans
+  caravansToIntercept?: number;
+  // investigate: investigate N events
+  eventsToInvestigate?: number;
+  eventType?: string;
+  // survive_ambush: survive N ambushes
+  ambushesToSurvive?: number;
+  // timed_delivery: deliver commodity within time limit
+  timeMinutes?: number;
+  targetSectorId?: number;
+  // choose: present a choice (meta-type, auto-completes on selection)
+  choiceId?: string;
+  // defend_planet: repel N bombardments
+  bombardsToRepel?: number;
+  planetId?: string;
+  // sabotage: complete sabotage at target
+  targetId?: string;
+  targetType?: string;
 }
 
 export interface MissionProgress {
@@ -34,6 +66,16 @@ export interface MissionProgress {
   scansCompleted?: number;
   scannedSectorIds?: number[];
   cargoDelivered?: number;
+  // New objective type progress
+  npcMet?: boolean;
+  caravansEscorted?: number;
+  caravansIntercepted?: number;
+  eventsInvestigated?: number;
+  ambushesSurvived?: number;
+  timedDelivered?: number;
+  choiceMade?: boolean;
+  bombardsRepelled?: number;
+  sabotageCompleted?: boolean;
 }
 
 export interface ObjectiveDetail {
@@ -119,6 +161,78 @@ export function checkMissionProgress(
         }
       }
       break;
+
+    case "meet_npc":
+      if (action === "npc_encounter" && data.npcId === objectives.npcId) {
+        p.npcMet = true;
+        updated = true;
+      }
+      break;
+
+    case "escort":
+      if (action === "caravan_delivered") {
+        p.caravansEscorted = (p.caravansEscorted || 0) + 1;
+        updated = true;
+      }
+      break;
+
+    case "intercept":
+      if (action === "caravan_ransacked") {
+        p.caravansIntercepted = (p.caravansIntercepted || 0) + 1;
+        updated = true;
+      }
+      break;
+
+    case "investigate":
+      if (action === "event_investigated") {
+        if (!objectives.eventType || data.eventType === objectives.eventType) {
+          p.eventsInvestigated = (p.eventsInvestigated || 0) + 1;
+          updated = true;
+        }
+      }
+      break;
+
+    case "survive_ambush":
+      if (action === "combat_survive") {
+        p.ambushesSurvived = (p.ambushesSurvived || 0) + 1;
+        updated = true;
+      }
+      break;
+
+    case "timed_delivery":
+      if (action === "trade" && data.tradeType === "sell") {
+        if (data.commodity === objectives.commodity) {
+          p.timedDelivered = (p.timedDelivered || 0) + (data.quantity || 0);
+          updated = true;
+        }
+      }
+      break;
+
+    case "choose":
+      if (action === "choice_made" && data.choiceId === objectives.choiceId) {
+        p.choiceMade = true;
+        updated = true;
+      }
+      break;
+
+    case "defend_planet":
+      if (action === "planet_defended") {
+        if (!objectives.planetId || data.planetId === objectives.planetId) {
+          p.bombardsRepelled = (p.bombardsRepelled || 0) + 1;
+          updated = true;
+        }
+      }
+      break;
+
+    case "sabotage":
+      if (
+        action === "sabotage_complete" &&
+        data.targetId === objectives.targetId
+      ) {
+        p.sabotageCompleted = true;
+        updated = true;
+      }
+      break;
   }
 
   const completed = isMissionComplete(type, objectives, p);
@@ -149,6 +263,36 @@ function isMissionComplete(
       return (progress.scansCompleted || 0) >= (objectives.scansRequired || 0);
     case "deliver_cargo":
       return (progress.cargoDelivered || 0) >= (objectives.quantity || 0);
+    case "meet_npc":
+      return !!progress.npcMet;
+    case "escort":
+      return (
+        (progress.caravansEscorted || 0) >= (objectives.caravansToEscort || 0)
+      );
+    case "intercept":
+      return (
+        (progress.caravansIntercepted || 0) >=
+        (objectives.caravansToIntercept || 0)
+      );
+    case "investigate":
+      return (
+        (progress.eventsInvestigated || 0) >=
+        (objectives.eventsToInvestigate || 0)
+      );
+    case "survive_ambush":
+      return (
+        (progress.ambushesSurvived || 0) >= (objectives.ambushesToSurvive || 0)
+      );
+    case "timed_delivery":
+      return (progress.timedDelivered || 0) >= (objectives.quantity || 0);
+    case "choose":
+      return !!progress.choiceMade;
+    case "defend_planet":
+      return (
+        (progress.bombardsRepelled || 0) >= (objectives.bombardsToRepel || 0)
+      );
+    case "sabotage":
+      return !!progress.sabotageCompleted;
     default:
       return false;
   }
@@ -238,6 +382,90 @@ export function buildObjectivesDetail(
       });
       break;
     }
+    case "meet_npc":
+      details.push({
+        description: `Meet ${objectives.npcName || "NPC"}`,
+        target: 1,
+        current: 0,
+        complete: false,
+        hint,
+      });
+      break;
+    case "escort":
+      details.push({
+        description: `Escort ${objectives.caravansToEscort} caravan${(objectives.caravansToEscort || 0) > 1 ? "s" : ""}`,
+        target: objectives.caravansToEscort || 0,
+        current: 0,
+        complete: false,
+        hint,
+      });
+      break;
+    case "intercept":
+      details.push({
+        description: `Intercept ${objectives.caravansToIntercept} caravan${(objectives.caravansToIntercept || 0) > 1 ? "s" : ""}`,
+        target: objectives.caravansToIntercept || 0,
+        current: 0,
+        complete: false,
+        hint,
+      });
+      break;
+    case "investigate":
+      details.push({
+        description: `Investigate ${objectives.eventsToInvestigate} event${(objectives.eventsToInvestigate || 0) > 1 ? "s" : ""}`,
+        target: objectives.eventsToInvestigate || 0,
+        current: 0,
+        complete: false,
+        hint,
+      });
+      break;
+    case "survive_ambush":
+      details.push({
+        description: `Survive ${objectives.ambushesToSurvive} ambush${(objectives.ambushesToSurvive || 0) > 1 ? "es" : ""}`,
+        target: objectives.ambushesToSurvive || 0,
+        current: 0,
+        complete: false,
+        hint,
+      });
+      break;
+    case "timed_delivery": {
+      const tdComm = objectives.commodity || "unknown";
+      const capTdComm = tdComm.charAt(0).toUpperCase() + tdComm.slice(1);
+      details.push({
+        description: `Deliver ${objectives.quantity} ${capTdComm} within ${objectives.timeMinutes} minutes`,
+        target: objectives.quantity || 0,
+        current: 0,
+        complete: false,
+        hint,
+      });
+      break;
+    }
+    case "choose":
+      details.push({
+        description: "Make your choice",
+        target: 1,
+        current: 0,
+        complete: false,
+        hint,
+      });
+      break;
+    case "defend_planet":
+      details.push({
+        description: `Repel ${objectives.bombardsToRepel} bombardment${(objectives.bombardsToRepel || 0) > 1 ? "s" : ""}`,
+        target: objectives.bombardsToRepel || 0,
+        current: 0,
+        complete: false,
+        hint,
+      });
+      break;
+    case "sabotage":
+      details.push({
+        description: `Sabotage the ${objectives.targetType || "target"}`,
+        target: 1,
+        current: 0,
+        complete: false,
+        hint,
+      });
+      break;
   }
   return details;
 }
@@ -273,6 +501,33 @@ export function updateObjectivesDetail(
       break;
     case "deliver_cargo":
       updated[0].current = progress.cargoDelivered || 0;
+      break;
+    case "meet_npc":
+      updated[0].current = progress.npcMet ? 1 : 0;
+      break;
+    case "escort":
+      updated[0].current = progress.caravansEscorted || 0;
+      break;
+    case "intercept":
+      updated[0].current = progress.caravansIntercepted || 0;
+      break;
+    case "investigate":
+      updated[0].current = progress.eventsInvestigated || 0;
+      break;
+    case "survive_ambush":
+      updated[0].current = progress.ambushesSurvived || 0;
+      break;
+    case "timed_delivery":
+      updated[0].current = progress.timedDelivered || 0;
+      break;
+    case "choose":
+      updated[0].current = progress.choiceMade ? 1 : 0;
+      break;
+    case "defend_planet":
+      updated[0].current = progress.bombardsRepelled || 0;
+      break;
+    case "sabotage":
+      updated[0].current = progress.sabotageCompleted ? 1 : 0;
       break;
   }
 

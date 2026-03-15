@@ -194,6 +194,7 @@ export async function checkAndUpdateMissions(
       })
       .select(
         "player_missions.id as missionId",
+        "mission_templates.id as templateId",
         "mission_templates.type",
         "mission_templates.title",
         "mission_templates.objectives as templateObjectives",
@@ -206,136 +207,538 @@ export async function checkAndUpdateMissions(
         "mission_templates.reward_fame",
         "mission_templates.source",
         "mission_templates.story_order",
+        "mission_templates.has_phases",
+        "player_missions.current_phase",
+        "player_missions.phase_progress",
       );
 
     for (const mission of activeMissions) {
-      const objectives =
-        typeof mission.templateObjectives === "string"
-          ? JSON.parse(mission.templateObjectives)
-          : mission.templateObjectives;
-      const progress =
-        typeof mission.progress === "string"
-          ? JSON.parse(mission.progress)
-          : mission.progress;
-
-      const result = checkMissionProgress(
-        { type: mission.type, objectives, progress },
-        action,
-        data,
-      );
-
-      if (result.updated) {
-        // Update objectives_detail if present
-        let updatedDetail: ObjectiveDetail[] | null = null;
-        if (mission.objectives_detail) {
-          const detail =
-            typeof mission.objectives_detail === "string"
-              ? JSON.parse(mission.objectives_detail)
-              : mission.objectives_detail;
-          updatedDetail = updateObjectivesDetail(
-            mission.type,
-            result.progress,
-            detail,
-          );
-        }
-
-        if (result.completed) {
-          // Story missions always require manual claim
-          const isStory = mission.source === "story";
-          const requiresClaim = isStory || !!mission.requires_claim_at_mall;
-
-          if (requiresClaim) {
-            // Don't award rewards yet — player must claim at a Star Mall
-            await db("player_missions")
-              .where({ id: mission.missionId })
-              .update({
-                progress: JSON.stringify(result.progress),
-                objectives_detail: updatedDetail
-                  ? JSON.stringify(updatedDetail)
-                  : undefined,
-                status: "completed",
-                completed_at: new Date().toISOString(),
-                claim_status: "pending_claim",
-              });
-          } else {
-            // Auto-claim: award rewards immediately
-            await db("player_missions")
-              .where({ id: mission.missionId })
-              .update({
-                progress: JSON.stringify(result.progress),
-                objectives_detail: updatedDetail
-                  ? JSON.stringify(updatedDetail)
-                  : undefined,
-                status: "completed",
-                completed_at: new Date().toISOString(),
-                claim_status: "claimed",
-              });
-            await awardMissionRewards(
-              playerId,
-              {
-                reward_credits: mission.reward_credits,
-                reward_xp: mission.reward_xp,
-                reward_faction_id: mission.reward_faction_id,
-                reward_fame: mission.reward_fame,
-              },
-              io,
-            );
-          }
-
-          // Push mission:completed event to client
-          if (io) {
-            notifyPlayer(io, playerId, "mission:completed", {
-              missionId: mission.missionId,
-              title: mission.title || mission.type,
-              type: mission.type,
-              rewardCredits: mission.reward_credits,
-              rewardXp: mission.reward_xp || 0,
-              requiresClaim,
-              isStory,
-              storyOrder: mission.story_order || 0,
-            });
-          }
-
-          // Profile stats: mission completed
-          incrementStat(playerId, "missions_completed", 1);
-          logActivity(
-            playerId,
-            "mission_complete",
-            `Completed mission: ${mission.type}`,
-          );
-          checkMilestones(playerId);
-
-          // SP mission hooks: mall unlocking and tier auto-advance
-          try {
-            await handleSPMissionCompletion(playerId, mission.missionId);
-          } catch (spErr) {
-            console.error("SP mission hook error:", spErr);
-          }
-        } else {
-          const updateData: Record<string, any> = {
-            progress: JSON.stringify(result.progress),
-          };
-          if (updatedDetail) {
-            updateData.objectives_detail = JSON.stringify(updatedDetail);
-          }
-          await db("player_missions")
-            .where({ id: mission.missionId })
-            .update(updateData);
-
-          // Push live progress update to client
-          if (io) {
-            notifyPlayer(io, playerId, "mission:progress", {
-              missionId: mission.missionId,
-              progress: result.progress,
-              objectivesDetail: updatedDetail,
-            });
-          }
-        }
+      if (mission.has_phases) {
+        await handlePhasedMission(playerId, mission, action, data, io);
+      } else {
+        await handleSingleObjectiveMission(playerId, mission, action, data, io);
       }
     }
   } catch (err) {
     console.error("Mission tracker error:", err);
   }
+}
+
+/**
+ * Handle progress for a multi-phase mission.
+ * Checks progress against the current phase's objective, advances phases,
+ * and triggers choices when encountered.
+ */
+async function handlePhasedMission(
+  playerId: string,
+  mission: any,
+  action: string,
+  data: Record<string, any>,
+  io?: SocketIOServer,
+): Promise<void> {
+  const phases = await db("mission_phases")
+    .where({ template_id: mission.templateId })
+    .orderBy("phase_order", "asc");
+
+  if (phases.length === 0) return;
+
+  const currentPhaseIndex = (mission.current_phase || 1) - 1;
+  if (currentPhaseIndex >= phases.length) return;
+
+  const currentPhase = phases[currentPhaseIndex];
+  const phaseObjectives =
+    typeof currentPhase.objectives === "string"
+      ? JSON.parse(currentPhase.objectives)
+      : currentPhase.objectives;
+  const phaseProgress =
+    typeof mission.phase_progress === "string" && mission.phase_progress
+      ? JSON.parse(mission.phase_progress)
+      : mission.phase_progress || {};
+
+  const result = checkMissionProgress(
+    {
+      type: currentPhase.objective_type,
+      objectives: phaseObjectives,
+      progress: phaseProgress,
+    },
+    action,
+    data,
+  );
+
+  if (!result.updated) return;
+
+  // Build phase-level objectives detail
+  const phaseDetail = buildObjectivesDetail(
+    currentPhase.objective_type,
+    phaseObjectives,
+  );
+  const updatedPhaseDetail = updateObjectivesDetail(
+    currentPhase.objective_type,
+    result.progress,
+    phaseDetail,
+  );
+
+  if (result.completed) {
+    // Apply phase completion effects (rep shifts, flags)
+    if (currentPhase.on_complete_effects) {
+      const effects =
+        typeof currentPhase.on_complete_effects === "string"
+          ? JSON.parse(currentPhase.on_complete_effects)
+          : currentPhase.on_complete_effects;
+      await applyEffects(playerId, effects, io);
+    }
+
+    // Check for a choice at this phase
+    const choice = await db("mission_choices")
+      .where({ phase_id: currentPhase.id })
+      .first();
+
+    if (choice) {
+      // Pause mission until player makes choice
+      await db("player_missions")
+        .where({ id: mission.missionId })
+        .update({
+          status: "awaiting_choice",
+          phase_progress: JSON.stringify(result.progress),
+        });
+
+      if (io) {
+        const options =
+          typeof choice.options === "string"
+            ? JSON.parse(choice.options)
+            : choice.options;
+        notifyPlayer(io, playerId, "mission:choice_required", {
+          missionId: mission.missionId,
+          choiceId: choice.id,
+          choiceKey: choice.choice_key,
+          title: choice.prompt_title,
+          body: choice.prompt_body,
+          options,
+          isPermanent: !!choice.is_permanent,
+          narrationKey: choice.narration_key,
+        });
+      }
+    } else if (currentPhaseIndex + 1 < phases.length) {
+      // Advance to next phase
+      const nextPhase = phases[currentPhaseIndex + 1];
+      await db("player_missions")
+        .where({ id: mission.missionId })
+        .update({
+          current_phase: nextPhase.phase_order,
+          phase_progress: JSON.stringify({}),
+        });
+
+      if (io) {
+        notifyPlayer(io, playerId, "mission:phase_advanced", {
+          missionId: mission.missionId,
+          title: mission.title,
+          phaseOrder: nextPhase.phase_order,
+          phaseTitle: nextPhase.title,
+          phaseDescription: nextPhase.description,
+          totalPhases: phases.length,
+          loreText: nextPhase.lore_text,
+          narrationKey: nextPhase.narration_key,
+        });
+      }
+    } else {
+      // All phases complete — check for end-of-mission choice
+      const endChoice = await db("mission_choices")
+        .where({ template_id: mission.templateId, phase_id: null })
+        .first();
+
+      if (endChoice) {
+        await db("player_missions")
+          .where({ id: mission.missionId })
+          .update({
+            status: "awaiting_choice",
+            phase_progress: JSON.stringify(result.progress),
+          });
+
+        if (io) {
+          const options =
+            typeof endChoice.options === "string"
+              ? JSON.parse(endChoice.options)
+              : endChoice.options;
+          notifyPlayer(io, playerId, "mission:choice_required", {
+            missionId: mission.missionId,
+            choiceId: endChoice.id,
+            choiceKey: endChoice.choice_key,
+            title: endChoice.prompt_title,
+            body: endChoice.prompt_body,
+            options,
+            isPermanent: !!endChoice.is_permanent,
+            narrationKey: endChoice.narration_key,
+          });
+        }
+      } else {
+        // Complete the mission
+        await completeMission(playerId, mission, result.progress, io);
+      }
+    }
+  } else {
+    // Phase in progress — save progress
+    await db("player_missions")
+      .where({ id: mission.missionId })
+      .update({
+        phase_progress: JSON.stringify(result.progress),
+      });
+
+    if (io) {
+      notifyPlayer(io, playerId, "mission:phase_progress", {
+        missionId: mission.missionId,
+        phaseOrder: currentPhase.phase_order,
+        phaseTitle: currentPhase.title,
+        totalPhases: phases.length,
+        progress: result.progress,
+        objectivesDetail: updatedPhaseDetail,
+      });
+    }
+  }
+}
+
+/**
+ * Handle progress for a single-objective mission (existing behavior).
+ */
+async function handleSingleObjectiveMission(
+  playerId: string,
+  mission: any,
+  action: string,
+  data: Record<string, any>,
+  io?: SocketIOServer,
+): Promise<void> {
+  const objectives =
+    typeof mission.templateObjectives === "string"
+      ? JSON.parse(mission.templateObjectives)
+      : mission.templateObjectives;
+  const progress =
+    typeof mission.progress === "string"
+      ? JSON.parse(mission.progress)
+      : mission.progress;
+
+  const result = checkMissionProgress(
+    { type: mission.type, objectives, progress },
+    action,
+    data,
+  );
+
+  if (result.updated) {
+    let updatedDetail: ObjectiveDetail[] | null = null;
+    if (mission.objectives_detail) {
+      const detail =
+        typeof mission.objectives_detail === "string"
+          ? JSON.parse(mission.objectives_detail)
+          : mission.objectives_detail;
+      updatedDetail = updateObjectivesDetail(
+        mission.type,
+        result.progress,
+        detail,
+      );
+    }
+
+    if (result.completed) {
+      await completeMission(
+        playerId,
+        mission,
+        result.progress,
+        io,
+        updatedDetail,
+      );
+    } else {
+      const updateData: Record<string, any> = {
+        progress: JSON.stringify(result.progress),
+      };
+      if (updatedDetail) {
+        updateData.objectives_detail = JSON.stringify(updatedDetail);
+      }
+      await db("player_missions")
+        .where({ id: mission.missionId })
+        .update(updateData);
+
+      if (io) {
+        notifyPlayer(io, playerId, "mission:progress", {
+          missionId: mission.missionId,
+          progress: result.progress,
+          objectivesDetail: updatedDetail,
+        });
+      }
+    }
+  }
+}
+
+/**
+ * Complete a mission: update status, award rewards, notify, update stats.
+ */
+async function completeMission(
+  playerId: string,
+  mission: any,
+  progress: any,
+  io?: SocketIOServer,
+  updatedDetail?: ObjectiveDetail[] | null,
+): Promise<void> {
+  const isStory = mission.source === "story";
+  const requiresClaim = isStory || !!mission.requires_claim_at_mall;
+
+  const updatePayload: Record<string, any> = {
+    progress: JSON.stringify(progress),
+    status: "completed",
+    completed_at: new Date().toISOString(),
+    claim_status: requiresClaim ? "pending_claim" : "claimed",
+  };
+  if (updatedDetail) {
+    updatePayload.objectives_detail = JSON.stringify(updatedDetail);
+  }
+
+  await db("player_missions")
+    .where({ id: mission.missionId })
+    .update(updatePayload);
+
+  if (!requiresClaim) {
+    await awardMissionRewards(
+      playerId,
+      {
+        reward_credits: mission.reward_credits,
+        reward_xp: mission.reward_xp,
+        reward_faction_id: mission.reward_faction_id,
+        reward_fame: mission.reward_fame,
+      },
+      io,
+    );
+  }
+
+  if (io) {
+    notifyPlayer(io, playerId, "mission:completed", {
+      missionId: mission.missionId,
+      title: mission.title || mission.type,
+      type: mission.type,
+      rewardCredits: mission.reward_credits,
+      rewardXp: mission.reward_xp || 0,
+      requiresClaim,
+      isStory,
+      storyOrder: mission.story_order || 0,
+    });
+  }
+
+  incrementStat(playerId, "missions_completed", 1);
+  logActivity(
+    playerId,
+    "mission_complete",
+    `Completed mission: ${mission.title || mission.type}`,
+  );
+  checkMilestones(playerId);
+
+  try {
+    await handleSPMissionCompletion(playerId, mission.missionId);
+  } catch (spErr) {
+    console.error("SP mission hook error:", spErr);
+  }
+}
+
+/**
+ * Apply effects from phase completion or choice selection.
+ * Handles fame/infamy adjustments, NPC rep changes, story flags, and inline rewards.
+ */
+export async function applyEffects(
+  playerId: string,
+  effects: Record<string, any>,
+  io?: SocketIOServer,
+): Promise<void> {
+  try {
+    // Fame adjustments: { cosmic_scholars: 10, frontier_rangers: -5 }
+    if (effects.fame) {
+      for (const [factionId, amount] of Object.entries(effects.fame)) {
+        const fameAmount = amount as number;
+        if (fameAmount === 0) continue;
+        const existing = await db("player_faction_rep")
+          .where({ player_id: playerId, faction_id: factionId })
+          .first();
+        if (existing) {
+          if (fameAmount > 0) {
+            await db("player_faction_rep")
+              .where({ player_id: playerId, faction_id: factionId })
+              .increment("fame", fameAmount);
+          } else {
+            await db("player_faction_rep")
+              .where({ player_id: playerId, faction_id: factionId })
+              .increment("infamy", Math.abs(fameAmount));
+          }
+        } else {
+          await db("player_faction_rep").insert({
+            player_id: playerId,
+            faction_id: factionId,
+            fame: fameAmount > 0 ? fameAmount : 0,
+            infamy: fameAmount < 0 ? Math.abs(fameAmount) : 0,
+          });
+        }
+      }
+    }
+
+    // NPC reputation: { valandor: 15 }
+    if (effects.npc_rep) {
+      for (const [npcId, amount] of Object.entries(effects.npc_rep)) {
+        const repAmount = amount as number;
+        const existing = await db("player_npc_state")
+          .where({ player_id: playerId, npc_id: npcId })
+          .first();
+        if (existing) {
+          await db("player_npc_state")
+            .where({ player_id: playerId, npc_id: npcId })
+            .increment("reputation", repAmount);
+        }
+      }
+    }
+
+    // Story flags: { shared_data_with_vedic: true }
+    if (effects.flags) {
+      for (const [flagKey, flagValue] of Object.entries(effects.flags)) {
+        await db("player_story_flags")
+          .insert({
+            player_id: playerId,
+            flag_key: flagKey,
+            flag_value: String(flagValue),
+            set_at: new Date().toISOString(),
+          })
+          .onConflict(["player_id", "flag_key"])
+          .merge({ flag_value: String(flagValue) });
+      }
+    }
+
+    // Inline rewards: { credits: 5000, xp: 500 }
+    if (effects.rewards) {
+      if (effects.rewards.credits) {
+        await db("players")
+          .where({ id: playerId })
+          .increment("credits", effects.rewards.credits);
+      }
+      if (effects.rewards.xp) {
+        const { awardXP } = await import("../engine/progression");
+        await awardXP(playerId, effects.rewards.xp, "mission");
+      }
+    }
+  } catch (err) {
+    console.error("applyEffects error:", err);
+  }
+}
+
+/**
+ * Handle a player's choice response for a mission in 'awaiting_choice' state.
+ * Records the choice, applies effects, and advances the mission.
+ */
+export async function handleMissionChoice(
+  playerId: string,
+  missionId: string,
+  choiceId: string,
+  optionId: string,
+  io?: SocketIOServer,
+): Promise<{ success: boolean; error?: string }> {
+  const playerMission = await db("player_missions")
+    .where({ id: missionId, player_id: playerId, status: "awaiting_choice" })
+    .first();
+  if (!playerMission) {
+    return { success: false, error: "No awaiting choice for this mission" };
+  }
+
+  const choice = await db("mission_choices").where({ id: choiceId }).first();
+  if (!choice) {
+    return { success: false, error: "Choice not found" };
+  }
+
+  const options =
+    typeof choice.options === "string"
+      ? JSON.parse(choice.options)
+      : choice.options;
+  const selectedOption = options.find((o: any) => o.id === optionId);
+  if (!selectedOption) {
+    return { success: false, error: "Invalid option" };
+  }
+
+  // Record the choice
+  await db("player_mission_choices").insert({
+    id: crypto.randomUUID(),
+    player_id: playerId,
+    choice_id: choiceId,
+    option_selected: optionId,
+    effects_applied: selectedOption.effects
+      ? JSON.stringify(selectedOption.effects)
+      : null,
+    created_at: new Date().toISOString(),
+  });
+
+  // Apply effects from the chosen option
+  if (selectedOption.effects) {
+    await applyEffects(playerId, selectedOption.effects, io);
+  }
+
+  // Determine what happens next: advance phase or complete mission
+  const template = await db("mission_templates")
+    .where({ id: playerMission.template_id })
+    .first();
+
+  if (template?.has_phases) {
+    const phases = await db("mission_phases")
+      .where({ template_id: template.id })
+      .orderBy("phase_order", "asc");
+
+    const currentPhaseIndex = (playerMission.current_phase || 1) - 1;
+
+    // If this was a mid-mission choice (phase_id != null), advance to next phase
+    if (choice.phase_id && currentPhaseIndex + 1 < phases.length) {
+      const nextPhase = phases[currentPhaseIndex + 1];
+      await db("player_missions")
+        .where({ id: missionId })
+        .update({
+          status: "active",
+          current_phase: nextPhase.phase_order,
+          phase_progress: JSON.stringify({}),
+        });
+
+      if (io) {
+        notifyPlayer(io, playerId, "mission:phase_advanced", {
+          missionId,
+          title: template.title,
+          phaseOrder: nextPhase.phase_order,
+          phaseTitle: nextPhase.title,
+          phaseDescription: nextPhase.description,
+          totalPhases: phases.length,
+          loreText: nextPhase.lore_text,
+          narrationKey: nextPhase.narration_key,
+        });
+      }
+      return { success: true };
+    }
+  }
+
+  // End-of-mission choice or no more phases — complete the mission
+  const missionData = await db("player_missions")
+    .join(
+      "mission_templates",
+      "player_missions.template_id",
+      "mission_templates.id",
+    )
+    .where({ "player_missions.id": missionId })
+    .select(
+      "player_missions.id as missionId",
+      "mission_templates.type",
+      "mission_templates.title",
+      "player_missions.progress",
+      "player_missions.reward_credits",
+      "mission_templates.requires_claim_at_mall",
+      "mission_templates.reward_xp",
+      "mission_templates.reward_faction_id",
+      "mission_templates.reward_fame",
+      "mission_templates.source",
+      "mission_templates.story_order",
+    )
+    .first();
+
+  if (missionData) {
+    const progress =
+      typeof missionData.progress === "string"
+        ? JSON.parse(missionData.progress)
+        : missionData.progress;
+    await completeMission(playerId, missionData, progress, io);
+  }
+
+  return { success: true };
 }
 
 // SP mission IDs that trigger Star Mall unlocks

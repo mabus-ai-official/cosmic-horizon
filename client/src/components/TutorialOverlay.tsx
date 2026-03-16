@@ -111,9 +111,9 @@ const STEPS: StepGuide[] = [
   // tutorialStep=9: server expects "land" action to advance to step 10
   {
     title: "LAND ON THE PLANET",
-    desc: "Click the SHIP group and open the Planets tab, then click LAND to touch down on Nova Prime.",
-    hint: "Click SHIP \u2192 Planets \u2192 LAND",
-    target: "[data-tutorial='group-ship']",
+    desc: "Click the PILOT group and open the Planets tab, then click LAND to touch down on Nova Prime.",
+    hint: "Click PILOT \u2192 Planets \u2192 LAND",
+    target: "[data-tutorial='group-pilot']",
     arrow: "right",
     autoPanel: "planets",
   },
@@ -122,7 +122,7 @@ const STEPS: StepGuide[] = [
     title: "CLAIM YOUR PLANET",
     desc: "Now claim this planet as your own! Click CLAIM in the Planets panel.",
     hint: "Click CLAIM on Nova Prime",
-    target: "[data-tutorial='group-ship']",
+    target: "[data-tutorial='group-pilot']",
     arrow: "right",
     autoPanel: "planets",
   },

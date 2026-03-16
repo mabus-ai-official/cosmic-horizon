@@ -34,9 +34,9 @@ function getStoredMuted(): boolean {
 function getStoredVolume(): number {
   try {
     const v = localStorage.getItem(STORAGE_KEY_VOLUME);
-    return v ? parseFloat(v) : 1;
+    return v ? parseFloat(v) : 0.55;
   } catch {
-    return 1;
+    return 0.55;
   }
 }
 

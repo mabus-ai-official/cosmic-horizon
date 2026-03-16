@@ -567,6 +567,20 @@ export function useGameEffects({
       .catch(() => {});
   }, []);
 
+  // Reset panels to nav when entering main game (after intro/tutorial)
+  const hasResetPanels = useRef(false);
+  useEffect(() => {
+    if (!game.player) return;
+    if (
+      game.player.hasSeenIntro &&
+      game.player.hasSeenPostTutorial &&
+      !hasResetPanels.current
+    ) {
+      hasResetPanels.current = true;
+      selectPanel("nav");
+    }
+  }, [game.player?.hasSeenIntro, game.player?.hasSeenPostTutorial]);
+
   // Audio track switching based on game context
   useEffect(() => {
     if (!game.player) return;

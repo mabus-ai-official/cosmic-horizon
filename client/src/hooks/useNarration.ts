@@ -16,9 +16,9 @@ function getStoredEnabled(): boolean {
 function getStoredNarrationVolume(): number {
   try {
     const v = localStorage.getItem(STORAGE_KEY_VOLUME);
-    return v ? parseFloat(v) : 1;
+    return v ? parseFloat(v) : 0.8;
   } catch {
-    return 1;
+    return 0.8;
   }
 }
 

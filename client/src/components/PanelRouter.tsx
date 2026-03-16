@@ -277,6 +277,19 @@ export default function PanelRouter({
                 body: data.body,
                 narrationUrl: data.narrationUrl,
               });
+            } else if (data.type === "mission_choice") {
+              eventOverlay.enqueueEvent({
+                category: data.isPermanent ? "player_choice" : "mission_choice",
+                title: data.title,
+                subtitle: data.subtitle,
+                body: data.body,
+                narrationUrl: data.narrationUrl,
+                colorScheme: data.colorScheme || "cyan",
+                duration: 0,
+                priority: "blocking",
+                actions: data.actions,
+                onAction: data.onAction,
+              });
             } else {
               eventOverlay.enqueueEvent({
                 category: "story_accept",

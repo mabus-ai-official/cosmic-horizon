@@ -157,7 +157,24 @@ function getPhaseNarrationUrl(
 
 /** Known choice narration files that actually exist on disk */
 const CHOICE_NARRATION_FILES = new Set<string>([
-  // Add entries as choice narration MP3s are generated
+  // Story choices
+  "dying_star_data",
+  "philosopher_test",
+  "artifact_decision",
+  "espionage_data",
+  "coalition_structure",
+  "fragile_pact",
+  "weapon_configuration",
+  "council_structure",
+  "valandors_legacy",
+  // Faction choices
+  "network_resonance",
+  "scholars_dilemma",
+  "dominion_prisoners",
+  "kalin_secrets",
+  "market_policy",
+  "double_agent",
+  "galaxy_citizen",
 ]);
 
 /** Choice narration — keyed by choice_key */

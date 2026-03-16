@@ -5,8 +5,13 @@ import {
   acceptStoryMission,
   claimStoryMission,
   abandonStoryMission,
+  submitStoryChoice,
 } from "../services/api";
-import { getNarrationUrl, CLAIM_TEXTS } from "../config/narration-manifest";
+import {
+  getNarrationUrl,
+  CLAIM_TEXTS,
+  getChoiceNarrationUrl,
+} from "../config/narration-manifest";
 
 const CHAPTER_TITLES: Record<number, string> = {
   1: "Call of Destiny",
@@ -414,6 +419,94 @@ export default function StoryMissionsTab({
             </div>
           )}
 
+          {/* Pending Choice */}
+          {current.mission.pendingChoice && (
+            <div
+              style={{
+                background: "rgba(86, 212, 221, 0.08)",
+                border: "1px solid rgba(86, 212, 221, 0.3)",
+                borderRadius: 6,
+                padding: "8px 10px",
+                marginTop: 6,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "0.8em",
+                  fontWeight: 700,
+                  color: "var(--cyan)",
+                  marginBottom: 4,
+                }}
+              >
+                {current.mission.pendingChoice.title}
+              </div>
+              <div
+                style={{
+                  fontSize: "0.72em",
+                  color: "var(--text-secondary)",
+                  marginBottom: 6,
+                }}
+              >
+                {current.mission.pendingChoice.body}
+              </div>
+              {current.mission.pendingChoice.options.map(
+                (opt: { id: string; label: string; description: string }) => (
+                  <button
+                    key={opt.id}
+                    className="btn-sm"
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      textAlign: "left",
+                      marginBottom: 4,
+                      borderColor: "var(--cyan)",
+                      color: "var(--cyan)",
+                      fontSize: "0.72em",
+                      padding: "6px 8px",
+                    }}
+                    disabled={busy}
+                    onClick={() => {
+                      const pc = current.mission.pendingChoice;
+                      if (onStoryEvent) {
+                        onStoryEvent({
+                          type: "mission_choice",
+                          title: pc.isPermanent ? "TURNING POINT" : "DECISION",
+                          subtitle: pc.title,
+                          body: pc.body,
+                          narrationUrl:
+                            getChoiceNarrationUrl(pc.choiceKey) || undefined,
+                          colorScheme: "cyan",
+                          isPermanent: pc.isPermanent,
+                          actions: pc.options.map(
+                            (o: { id: string; label: string }) => ({
+                              id: `choice:${current.mission.missionId}:${pc.choiceId}:${o.id}`,
+                              label: o.label,
+                              variant: "primary",
+                            }),
+                          ),
+                          onAction: (actionId: string) => {
+                            const parts = actionId.split(":");
+                            if (parts[0] === "choice" && parts.length === 4) {
+                              const [, missionId, choiceId, optionId] = parts;
+                              submitStoryChoice(missionId, choiceId, optionId)
+                                .then(() => refresh())
+                                .catch(() => {});
+                            }
+                          },
+                        });
+                      }
+                    }}
+                  >
+                    <strong>{opt.label}</strong>
+                    {opt.description && (
+                      <span style={{ opacity: 0.7 }}> — {opt.description}</span>
+                    )}
+                  </button>
+                ),
+              )}
+            </div>
+          )}
+
           {/* Actions */}
           <div className="story-actions">
             {current.mission.claimStatus === "pending_claim" && (
@@ -425,7 +518,8 @@ export default function StoryMissionsTab({
                 {busy ? "..." : "CLAIM REWARD"}
               </button>
             )}
-            {current.mission.status === "active" && (
+            {(current.mission.status === "active" ||
+              current.mission.status === "awaiting_choice") && (
               <>
                 {showAbandonConfirm ? (
                   <div className="story-abandon-confirm">

@@ -1189,7 +1189,7 @@ export function useGameEffects({
             title: data.isPermanent ? "TURNING POINT" : "DECISION",
             subtitle: data.title,
             body: data.body,
-            colorScheme: data.isPermanent ? "magenta" : "cyan",
+            colorScheme: "cyan",
             narrationUrl: choiceNarrationUrl,
             duration: 0,
             priority: "blocking",

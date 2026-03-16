@@ -66,19 +66,24 @@ router.post("/fire", requireAuth, async (req, res) => {
       });
     }
 
-    // Check sector type allows combat
+    // Fetch sector for protected-zone check (deferred until we know the target)
     const sector = await db("sectors")
       .where({ id: player.current_sector_id })
       .first();
-    if (sector?.type === "protected" || sector?.type === "harmony_enforced") {
-      return res
-        .status(400)
-        .json({ error: "Combat not allowed in this sector" });
-    }
 
     const target = await db("players").where({ id: targetPlayerId }).first();
     if (!target || target.current_sector_id !== player.current_sector_id) {
       return res.status(400).json({ error: "Target not in your sector" });
+    }
+
+    // Allow combat against mission-spawned NPCs even in protected sectors
+    if (
+      (sector?.type === "protected" || sector?.type === "harmony_enforced") &&
+      !target.spawned_by_mission_id
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Combat not allowed in this sector" });
     }
 
     const attackerShip = await db("ships")

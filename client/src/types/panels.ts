@@ -73,19 +73,19 @@ export const PANEL_GROUPS: PanelGroupDef[] = [
     accentColor: "var(--cyan)",
     tabs: [
       { id: "nav", label: "Navigation" },
+      { id: "combat", label: "Combat" },
       { id: "aria", label: "ARIA" },
     ],
   },
   {
     id: "ship",
     label: "SHIP",
-    description: "Cargo, combat & scanning",
+    description: "Cargo & scanning",
     spriteKey: "icon_gear",
     hotkey: "S",
     accentColor: "var(--green)",
     tabs: [
       { id: "inventory", label: "Cargo" },
-      { id: "combat", label: "Combat" },
       { id: "explore", label: "Scanner" },
     ],
   },

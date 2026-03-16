@@ -113,12 +113,14 @@ export async function getStoryProgress(
       "mission_templates.source": "story",
     })
     .where(function () {
-      this.where("player_missions.status", "active").orWhere(function () {
-        this.where("player_missions.status", "completed").where(
-          "player_missions.claim_status",
-          "pending_claim",
-        );
-      });
+      this.where("player_missions.status", "active")
+        .orWhere("player_missions.status", "awaiting_choice")
+        .orWhere(function () {
+          this.where("player_missions.status", "completed").where(
+            "player_missions.claim_status",
+            "pending_claim",
+          );
+        });
     })
     .select(
       "player_missions.id as missionId",
@@ -238,8 +240,8 @@ export async function hasActiveStoryMission(
     .where({
       "player_missions.player_id": playerId,
       "mission_templates.source": "story",
-      "player_missions.status": "active",
     })
+    .whereIn("player_missions.status", ["active", "awaiting_choice"])
     .first();
 
   return !!active;

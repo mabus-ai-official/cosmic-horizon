@@ -458,6 +458,43 @@ async function handlePhasedMission(
         }
       }
 
+      // If next phase is a 'choose' phase, immediately trigger the choice
+      // overlay instead of waiting for a player action that will never come
+      if (nextPhase.objective_type === "choose") {
+        const phaseChoice = await db("mission_choices")
+          .where({ phase_id: nextPhase.id })
+          .first();
+
+        if (phaseChoice) {
+          await db("player_missions")
+            .where({ id: mission.missionId })
+            .update({
+              current_phase: nextPhase.phase_order,
+              status: "awaiting_choice",
+              phase_progress: JSON.stringify(nextPhaseProgress),
+              objectives_detail: JSON.stringify(detail),
+            });
+
+          if (io) {
+            const choiceOptions =
+              typeof phaseChoice.options === "string"
+                ? JSON.parse(phaseChoice.options)
+                : phaseChoice.options;
+            notifyPlayer(io, playerId, "mission:choice_required", {
+              missionId: mission.missionId,
+              choiceId: phaseChoice.id,
+              choiceKey: phaseChoice.choice_key,
+              title: phaseChoice.prompt_title,
+              body: phaseChoice.prompt_body,
+              options: choiceOptions,
+              isPermanent: !!phaseChoice.is_permanent,
+              narrationKey: phaseChoice.narration_key,
+            });
+          }
+          return;
+        }
+      }
+
       await db("player_missions")
         .where({ id: mission.missionId })
         .update({

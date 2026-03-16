@@ -281,6 +281,47 @@ router.get("/current", requireAuth, async (req, res) => {
           }
         }
 
+        // If mission is awaiting_choice or current phase is 'choose', include choice data
+        let pendingChoice: any = null;
+        if (
+          mission.status === "awaiting_choice" ||
+          (phaseInfo && phaseInfo.currentPhaseType === "choose")
+        ) {
+          const currentPhaseId = mission.hasPhases
+            ? (
+                await db("mission_phases")
+                  .where({
+                    template_id: mission.templateId,
+                    phase_order: mission.currentPhase || 1,
+                  })
+                  .first()
+              )?.id
+            : null;
+
+          const choiceRow = currentPhaseId
+            ? await db("mission_choices")
+                .where({ phase_id: currentPhaseId })
+                .first()
+            : await db("mission_choices")
+                .where({ template_id: mission.templateId, phase_id: null })
+                .first();
+
+          if (choiceRow) {
+            pendingChoice = {
+              choiceId: choiceRow.id,
+              choiceKey: choiceRow.choice_key,
+              title: choiceRow.prompt_title,
+              body: choiceRow.prompt_body,
+              options:
+                typeof choiceRow.options === "string"
+                  ? JSON.parse(choiceRow.options)
+                  : choiceRow.options,
+              isPermanent: !!choiceRow.is_permanent,
+              narrationKey: choiceRow.narration_key,
+            };
+          }
+        }
+
         return res.json({
           active: true,
           mission: {
@@ -307,6 +348,7 @@ router.get("/current", requireAuth, async (req, res) => {
             showHints,
             npcLocations,
             phaseInfo,
+            pendingChoice,
           },
         });
       }

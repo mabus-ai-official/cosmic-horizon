@@ -97,7 +97,7 @@ export const EVENT_DEFAULTS: Record<
   player_choice: {
     priority: "blocking",
     duration: 0,
-    colorScheme: "magenta",
+    colorScheme: "cyan",
     dismissable: false,
   },
   resource_discovery: {
@@ -139,7 +139,7 @@ export const EVENT_DEFAULTS: Record<
   mission_choice: {
     priority: "blocking",
     duration: 0,
-    colorScheme: "magenta",
+    colorScheme: "cyan",
     dismissable: false,
   },
   phase_intro: {

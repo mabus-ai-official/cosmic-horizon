@@ -5,6 +5,7 @@ import {
   STARMALL_TRACKS,
   type AudioTrack,
 } from "../config/audio-tracks";
+import { getUserHasInteracted, setInteractionCallback } from "./audio-unlock";
 
 const FADE_DURATION = 1000; // ms
 const FADE_STEPS = 20;
@@ -13,24 +14,14 @@ const STORAGE_KEY_VOLUME = "cosmic-horizon-volume";
 
 // External mood-based track filter — when set, gameplay next-track picks from this subset
 let moodTrackFilter: AudioTrack[] | null = null;
-// External volume multiplier (e.g., silence/bliss state)
-let externalVolumeMultiplier = 1.0;
+// Mood volume multiplier (e.g., silence/bliss state)
+let moodVolumeMultiplier = 1.0;
+// Narration duck multiplier (lowered during narration playback)
+let narrationDuckMultiplier = 1.0;
 
-// Track whether user has interacted with the page (for autoplay policy)
-let userHasInteracted = false;
-let interactionCallback: (() => void) | null = null;
-
-function onFirstInteraction() {
-  userHasInteracted = true;
-  if (interactionCallback) {
-    interactionCallback();
-    interactionCallback = null;
-  }
-  document.removeEventListener("click", onFirstInteraction);
-  document.removeEventListener("keydown", onFirstInteraction);
+function getEffectiveMultiplier() {
+  return moodVolumeMultiplier * narrationDuckMultiplier;
 }
-document.addEventListener("click", onFirstInteraction);
-document.addEventListener("keydown", onFirstInteraction);
 
 function getStoredMuted(): boolean {
   try {
@@ -114,8 +105,16 @@ export function useAudio() {
   const pendingPlayRef = useRef<boolean>(false);
   const fadeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const onEndedRef = useRef<(() => void) | null>(null);
-  const [muted, setMuted] = useState(getStoredMuted);
-  const [volume, setVolumeState] = useState(getStoredVolume);
+  const [muted, setMuted] = useState(() => {
+    const v = getStoredMuted();
+    console.warn(`[audio] useAudio init: storedMuted=${v}`);
+    return v;
+  });
+  const [volume, setVolumeState] = useState(() => {
+    const v = getStoredVolume();
+    console.warn(`[audio] useAudio init: storedVolume=${v}`);
+    return v;
+  });
   const [currentTrackId, setCurrentTrackId] = useState<string | null>(null);
   const [currentContext, setCurrentContext] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
@@ -228,7 +227,7 @@ export function useAudio() {
       setCurrentTrackId(track.id);
       setPaused(false);
 
-      const targetVolume = track.volume * volumeVal * externalVolumeMultiplier;
+      const targetVolume = track.volume * volumeVal * getEffectiveMultiplier();
 
       // For playlist tracks, listen for 'ended' to crossfade to next
       // Read current muted/volume from refs to avoid stale closure values
@@ -250,7 +249,7 @@ export function useAudio() {
 
       try {
         console.warn(
-          `[audio] startTrack("${track.id}") calling audio.play(), src=${track.src}, muted=${mutedVal}`,
+          `[audio] startTrack("${track.id}") calling audio.play(), src=${track.src}, muted=${mutedVal}, vol=${volumeVal}, extMult=${getEffectiveMultiplier()}, trackVol=${track.volume}, target=${targetVolume}`,
         );
         await audio.play();
         pendingPlayRef.current = false;
@@ -268,6 +267,8 @@ export function useAudio() {
     [fadeIn],
   );
 
+  const loadingRef = useRef(false);
+
   const playInternal = useCallback(
     async (contextId: string) => {
       // Already playing this context and audio is active
@@ -282,41 +283,55 @@ export function useAudio() {
         return;
       }
 
+      // Prevent concurrent playInternal calls (race condition on rapid play() calls)
+      if (loadingRef.current) {
+        console.warn(
+          `[audio] playInternal("${contextId}") — already loading, skipping`,
+        );
+        return;
+      }
+      loadingRef.current = true;
+
       const resolved = resolveTrack(contextId);
       if (!resolved) {
         console.warn(`[audio] playInternal("${contextId}") — track not found!`);
+        loadingRef.current = false;
         return;
       }
       console.warn(
         `[audio] playInternal("${contextId}") — resolved track: ${resolved.track.id}, src: ${resolved.track.src}`,
       );
 
-      // Fade out current track
-      await fadeOut();
+      try {
+        // Fade out current track
+        await fadeOut();
 
-      currentContextRef.current = contextId;
-      setCurrentContext(contextId);
-      pendingPlayRef.current = false;
-      // Read current muted/volume from refs to avoid stale closure values
-      await startTrack(
-        resolved.track,
-        resolved.isPlaylist,
-        mutedRef.current,
-        volumeRef.current,
-        resolved.isPlaylist ? resolved.playlist : undefined,
-      );
+        currentContextRef.current = contextId;
+        setCurrentContext(contextId);
+        pendingPlayRef.current = false;
+        // Read current muted/volume from refs to avoid stale closure values
+        await startTrack(
+          resolved.track,
+          resolved.isPlaylist,
+          mutedRef.current,
+          volumeRef.current,
+          resolved.isPlaylist ? resolved.playlist : undefined,
+        );
+      } finally {
+        loadingRef.current = false;
+      }
     },
     [fadeOut, startTrack],
   );
 
   const play = useCallback(
     async (contextId: string) => {
-      if (!userHasInteracted) {
+      if (!getUserHasInteracted()) {
         // Defer until first user interaction
         console.warn(
           `[audio] play("${contextId}") deferred — no user interaction yet`,
         );
-        interactionCallback = () => playInternal(contextId);
+        setInteractionCallback(() => playInternal(contextId));
         return;
       }
       console.warn(
@@ -381,7 +396,7 @@ export function useAudio() {
         STARMALL_TRACKS.find((t) => t.id === currentTrackIdRef.current);
       if (track) {
         audioRef.current.volume =
-          track.volume * clamped * externalVolumeMultiplier;
+          track.volume * clamped * getEffectiveMultiplier();
       }
     }
   }, []);
@@ -397,6 +412,17 @@ export function useAudio() {
       }
       return next;
     });
+  }, []);
+
+  const unmute = useCallback(() => {
+    setMuted(false);
+    mutedRef.current = false;
+    try {
+      localStorage.setItem(STORAGE_KEY_MUTED, "false");
+    } catch {}
+    if (audioRef.current) {
+      audioRef.current.muted = false;
+    }
   }, []);
 
   const skip = useCallback(async () => {
@@ -457,9 +483,7 @@ export function useAudio() {
     moodTrackFilter = tracks;
   }, []);
 
-  const setVolumeMultiplier = useCallback((multiplier: number) => {
-    externalVolumeMultiplier = Math.max(0, Math.min(1, multiplier));
-    // Apply immediately to current audio
+  const applyVolume = useCallback(() => {
     if (audioRef.current && currentTrackIdRef.current) {
       const track =
         AUDIO_TRACKS.find((t) => t.id === currentTrackIdRef.current) ||
@@ -467,10 +491,28 @@ export function useAudio() {
         STARMALL_TRACKS.find((t) => t.id === currentTrackIdRef.current);
       if (track) {
         audioRef.current.volume =
-          track.volume * volumeRef.current * externalVolumeMultiplier;
+          track.volume * volumeRef.current * getEffectiveMultiplier();
       }
     }
   }, []);
+
+  // Mood system volume (silence/bliss states)
+  const setVolumeMultiplier = useCallback(
+    (multiplier: number) => {
+      moodVolumeMultiplier = Math.max(0, Math.min(1, multiplier));
+      applyVolume();
+    },
+    [applyVolume],
+  );
+
+  // Narration duck (lowered during narration playback)
+  const setNarrationDuck = useCallback(
+    (multiplier: number) => {
+      narrationDuckMultiplier = Math.max(0, Math.min(1, multiplier));
+      applyVolume();
+    },
+    [applyVolume],
+  );
 
   const activePlaylist = getPlaylistForContext(currentContext || "");
   const canSkip = !!activePlaylist && activePlaylist.length > 1;
@@ -491,7 +533,9 @@ export function useAudio() {
     toggleMute,
     volume,
     currentTrackId,
+    unmute,
     setMoodTracks,
     setVolumeMultiplier,
+    setNarrationDuck,
   };
 }

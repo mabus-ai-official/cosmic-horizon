@@ -1,3 +1,4 @@
+import "./hooks/audio-unlock"; // Register audio interaction listeners ASAP (before login)
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { WagmiProvider } from "wagmi";

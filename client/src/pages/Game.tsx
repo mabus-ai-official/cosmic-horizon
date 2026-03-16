@@ -71,7 +71,7 @@ export default function Game({ onLogout }: GameProps) {
     getConflicts,
   } = useKeybindings();
   const eventOverlay = useEventOverlay(showToast as any);
-  const narration = useNarration(audio.setVolumeMultiplier);
+  const narration = useNarration(audio.setNarrationDuck);
 
   // All side effects: socket listeners, audio sync, story progression, etc.
   const effects = useGameEffects({
@@ -123,7 +123,7 @@ export default function Game({ onLogout }: GameProps) {
         narrationUrls={INTRO_NARRATION}
         narrationEnabled={narration.narrationEnabled}
         narrationVolume={narration.narrationVolume}
-        setVolumeMultiplier={audio.setVolumeMultiplier}
+        setVolumeMultiplier={audio.setNarrationDuck}
       />
     );
   }
@@ -156,7 +156,7 @@ export default function Game({ onLogout }: GameProps) {
         narrationUrls={POST_TUTORIAL_NARRATION}
         narrationEnabled={narration.narrationEnabled}
         narrationVolume={narration.narrationVolume}
-        setVolumeMultiplier={audio.setVolumeMultiplier}
+        setVolumeMultiplier={audio.setNarrationDuck}
       />
     );
   }

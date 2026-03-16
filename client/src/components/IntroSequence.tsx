@@ -28,7 +28,7 @@ interface IntroSequenceProps {
 }
 
 const CHAR_DELAY = 30;
-const DUCK_VOLUME = 0.5;
+const DUCK_VOLUME = 0.75;
 
 export const INTRO_BEATS: LoreBeat[] = [
   {

@@ -571,11 +571,13 @@ export function useGameEffects({
   useEffect(() => {
     if (!game.player) return;
     if (!game.player.hasSeenIntro) {
+      audio.unmute();
       audio.play("intro");
     } else if (
       game.player.tutorialCompleted &&
       !game.player.hasSeenPostTutorial
     ) {
+      audio.unmute();
       audio.play("post-tutorial");
     } else if (game.sector?.outposts?.length) {
       const hasStarMall = game.sector.outposts.length > 0;

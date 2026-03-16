@@ -153,6 +153,7 @@
   align-items: center;
   justify-content: center;
   font-weight: 700;
+  z-index: 15;
   animation: badge-pulse 2s ease-in-out infinite;
 }
 
@@ -188,6 +189,7 @@
   border-radius: 0 0 6px 6px;
   animation: inline-tabs-expand 0.15s ease-out;
   pointer-events: auto;
+  overflow: visible;
 }
 
 @keyframes inline-tabs-expand {
@@ -257,7 +259,11 @@
   height: 14px;
   border-radius: 7px;
   font-weight: 700;
-  margin-left: 4px;
+  margin-left: auto;
+  padding: 0 4px;
+  position: relative;
+  z-index: 15;
+  box-shadow: 0 0 6px var(--cyan);
   animation: badge-pulse 2s ease-in-out infinite;
 }
 

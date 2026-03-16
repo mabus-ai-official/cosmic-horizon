@@ -1102,6 +1102,17 @@ export function useGameEffects({
         },
       ),
       on(
+        "mission:phase_progress",
+        (_data: {
+          missionId: string;
+          phaseOrder: number;
+          objectivesDetail: any[];
+        }) => {
+          // Refresh mission panel to show updated checkboxes
+          setRefreshKey((k) => k + 1);
+        },
+      ),
+      on(
         "mission:npc_encounter",
         (data: {
           missionId: string;
@@ -1149,7 +1160,7 @@ export function useGameEffects({
             body: "Hostile ship has dropped out of warp in your sector. Prepare for combat!\n\nIf you flee, the hostile will remain until you return and destroy it.",
             colorScheme: "red",
             duration: 5000,
-            priority: "high",
+            priority: "interstitial",
           });
           game.addLine(
             `Ambush! ${data.npcName} has appeared in Sector ${data.sectorId}!`,

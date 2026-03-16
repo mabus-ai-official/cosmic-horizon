@@ -78,17 +78,91 @@ const EVENT_NARRATION: Record<string, string> = {
   galactic_crisis: "/audio/narration/event_galactic_crisis.mp3",
 };
 
+/** Known phase narration files that actually exist on disk */
+const PHASE_NARRATION_FILES = new Set<string>([
+  // Chapter 1
+  "m05_phase2",
+  "m06_phase2",
+  "m07_phase2",
+  // Chapter 2
+  "m10_phase2",
+  "m12_phase2",
+  "m13_phase2",
+  // Chapter 3
+  "m18_phase2",
+  "m19_phase2",
+  "m20_phase2",
+  "m21_phase2",
+  "m23_phase2",
+  "m23_phase3",
+  "m24_phase2",
+  // Chapter 4
+  "m25_phase2",
+  "m26_phase2",
+  "m27_phase2",
+  "m28_phase2",
+  "m28_phase3",
+  "m29_phase2",
+  "m29_phase3",
+  "m30_phase2",
+  "m30_phase3",
+  "m30_phase4",
+  "m31_phase2",
+  // Chapter 5
+  "m32_phase2",
+  "m33_phase2",
+  "m34_phase2",
+  "m34_phase3",
+  "m36_phase2",
+  "m37_phase2",
+  "m38_phase2",
+  "m39_phase2",
+  // Chapter 6
+  "m40_phase2",
+  "m41_phase2",
+  "m42_phase2",
+  "m43_phase2",
+  "m44_phase2",
+  "m45_phase2",
+  "m46_phase2",
+  "m46_phase3",
+  // Chapter 7
+  "m47_phase2",
+  "m48_phase2",
+  "m49_phase2",
+  "m50_phase2",
+  "m50_phase3",
+  "m51_phase2",
+  "m52_phase2",
+  // Chapter 8
+  "m54_phase2",
+  "m55_phase2",
+  "m56_phase2",
+  "m56_phase3",
+  "m57_phase2",
+  "m58_phase2",
+  "m59_phase2",
+  "m59_phase3",
+]);
+
 /** Phase transition narration — keyed by "storyOrder:phaseOrder" */
 function getPhaseNarrationUrl(
   storyOrder: number,
   phaseOrder: number,
 ): string | null {
-  // Only multi-phase missions have phase narration
-  return `/audio/narration/m${String(storyOrder).padStart(2, "0")}_phase${phaseOrder}.mp3`;
+  const key = `m${String(storyOrder).padStart(2, "0")}_phase${phaseOrder}`;
+  if (!PHASE_NARRATION_FILES.has(key)) return null;
+  return `/audio/narration/${key}.mp3`;
 }
+
+/** Known choice narration files that actually exist on disk */
+const CHOICE_NARRATION_FILES = new Set<string>([
+  // Add entries as choice narration MP3s are generated
+]);
 
 /** Choice narration — keyed by choice_key */
 function getChoiceNarrationUrl(choiceKey: string): string | null {
+  if (!CHOICE_NARRATION_FILES.has(choiceKey)) return null;
   return `/audio/narration/choice_${choiceKey}.mp3`;
 }
 

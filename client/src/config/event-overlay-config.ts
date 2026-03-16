@@ -15,7 +15,8 @@ export type EventCategory =
   | "tutorial_welcome"
   | "npc_dialogue"
   | "mission_choice"
-  | "phase_intro";
+  | "phase_intro"
+  | "hostile_contact";
 
 export interface EventAction {
   id: string;
@@ -145,6 +146,12 @@ export const EVENT_DEFAULTS: Record<
     priority: "interstitial",
     duration: 5000,
     colorScheme: "green",
+    dismissable: true,
+  },
+  hostile_contact: {
+    priority: "interstitial",
+    duration: 3000,
+    colorScheme: "red",
     dismissable: true,
   },
 };

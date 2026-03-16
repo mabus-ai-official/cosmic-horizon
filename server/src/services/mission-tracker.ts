@@ -511,15 +511,22 @@ async function handlePhasedMission(
         }
       } else {
         // Complete the mission
-        await completeMission(playerId, mission, result.progress, io);
+        await completeMission(
+          playerId,
+          mission,
+          result.progress,
+          io,
+          updatedPhaseDetail,
+        );
       }
     }
   } else {
-    // Phase in progress — save progress
+    // Phase in progress — save progress + updated objectives detail
     await db("player_missions")
       .where({ id: mission.missionId })
       .update({
         phase_progress: JSON.stringify(result.progress),
+        objectives_detail: JSON.stringify(updatedPhaseDetail),
       });
 
     if (io) {

@@ -285,8 +285,9 @@ async function loadScripts() {
   const codex = await import("./narration-scripts-codex.js");
   const factions = await import("./narration-scripts-factions.js");
   const events = await import("./narration-scripts-events.js");
+  const phases = await import("./narration-scripts-phases.js");
 
-  return { ch14, ch58, codex, factions, events };
+  return { ch14, ch58, codex, factions, events, phases };
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -367,6 +368,31 @@ async function main() {
       const n = String(i).padStart(2, "0");
       const outFile = path.join(OUTPUT_DIR, `m${n}_claim.mp3`);
       await generateSingleVoice(text, outFile, `claim M${n}`);
+    }
+  }
+
+  // ── Phase Transition Narration (story + faction) ──
+  if (!CATEGORY_FILTER || CATEGORY_FILTER === "phase") {
+    console.log("\n══ Phase Transition Narration ══");
+
+    // Story phase narrations
+    const storyPhases = scripts.phases.STORY_PHASE_TEXTS as Record<
+      string,
+      string
+    >;
+    for (const [key, text] of Object.entries(storyPhases)) {
+      const outFile = path.join(OUTPUT_DIR, `${key}.mp3`);
+      await generateMultiVoice(text, outFile, `phase: ${key}`);
+    }
+
+    // Faction phase narrations
+    const factionPhases = scripts.phases.FACTION_PHASE_TEXTS as Record<
+      string,
+      string
+    >;
+    for (const [key, text] of Object.entries(factionPhases)) {
+      const outFile = path.join(OUTPUT_DIR, `${key}.mp3`);
+      await generateMultiVoice(text, outFile, `phase: ${key}`);
     }
   }
 

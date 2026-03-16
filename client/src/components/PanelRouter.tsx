@@ -269,6 +269,14 @@ export default function PanelRouter({
                 priority: "interstitial",
                 dismissable: true,
               });
+            } else if (data.type === "lore_reveal") {
+              eventOverlay.enqueueEvent({
+                category: "lore_reveal",
+                title: data.title,
+                subtitle: data.subtitle,
+                body: data.body,
+                narrationUrl: data.narrationUrl,
+              });
             } else {
               eventOverlay.enqueueEvent({
                 category: "story_accept",

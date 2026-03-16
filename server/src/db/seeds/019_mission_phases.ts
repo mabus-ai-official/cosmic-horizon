@@ -236,7 +236,10 @@ export async function seed(knex: Knex): Promise<void> {
       description:
         "Survive the gravitational shear forces during wormhole transit.",
       objective_type: "survive_ambush",
-      objectives: JSON.stringify({ ambushesToSurvive: 1 }),
+      objectives: JSON.stringify({
+        ambushesToSurvive: 1,
+        npcNames: ["Energy Construct"],
+      }),
       lore_text:
         "The wormhole tears at your hull. Energy constructs materialize from the distortion, drawn by your ship's electromagnetic signature. Hold steady.",
       narration_key: "ch2_m10_p2",
@@ -254,11 +257,12 @@ export async function seed(knex: Knex): Promise<void> {
       template_id: storyMissionId(12),
       phase_order: 1,
       title: "Study the Artifacts",
-      description: "Investigate 3 Vedic artifacts at Valandor's request.",
-      objective_type: "investigate",
-      objectives: JSON.stringify({ eventsToInvestigate: 3 }),
+      description:
+        "Scan 3 sectors containing Vedic artifact resonance to decode their purpose.",
+      objective_type: "scan_sectors",
+      objectives: JSON.stringify({ scansRequired: 3 }),
       lore_text:
-        "Valandor spreads three ancient artifacts before you, each humming with residual energy. 'Tell me what you see,' he says. 'Not with your instruments — with your understanding.'",
+        "Valandor sends you to 3 sectors containing Vedic artifact resonance. 'These artifacts predate even Vedic memory. Understanding them may reveal whether they were built to create — or to destroy.'",
       narration_key: "ch2_m12_p1",
     },
     {
@@ -406,12 +410,13 @@ export async function seed(knex: Knex): Promise<void> {
       id: phaseId(20, 1),
       template_id: storyMissionId(20),
       phase_order: 1,
-      title: "Investigate the Signal",
-      description: "Investigate the distress signal coming from unknown space.",
-      objective_type: "investigate",
-      objectives: JSON.stringify({ eventsToInvestigate: 1 }),
+      title: "Triangulate the Signal",
+      description:
+        "Scan 2 sectors to triangulate the military-frequency distress signal.",
+      objective_type: "scan_sectors",
+      objectives: JSON.stringify({ scansRequired: 2 }),
       lore_text:
-        "A distress signal bleeds through on an unfamiliar frequency. The pattern is military — precise, repeating, urgent.",
+        "A military-frequency distress signal is bleeding through on an unfamiliar frequency. Someone is in trouble — and the pattern suggests they don't want just anyone to find them.",
       narration_key: "ch3_m20_p1",
     },
     {
@@ -433,13 +438,17 @@ export async function seed(knex: Knex): Promise<void> {
       id: phaseId(21, 1),
       template_id: storyMissionId(21),
       phase_order: 1,
-      title: "Escort the Warship",
+      title: "Guide the Warship",
       description:
-        "Escort the crippled Kalin vessel through 4 hostile sectors to safety.",
-      objective_type: "escort",
-      objectives: JSON.stringify({ caravansToEscort: 1 }),
+        "Travel through 4 waypoint sectors to guide the crippled Kalin vessel to a repair dock.",
+      objective_type: "visit_sector",
+      objectives: JSON.stringify({ sectorsToVisit: 4 }),
+      target_resolution: JSON.stringify({
+        type: "waypoints",
+        params: { count: 4 },
+      }),
       lore_text:
-        "The Kalin warship lists badly, its port engines trailing sparks. Commander Raxus's voice is proud but strained: 'We require... assistance.'",
+        "Commander Raxus's warship is crippled. Guide it through 4 hostile sectors to reach a repair dock. The Kalin are too proud to ask for help — the fact that Raxus accepted yours means this is truly desperate.",
       narration_key: "ch3_m21_p1",
     },
     {
@@ -460,33 +469,46 @@ export async function seed(knex: Knex): Promise<void> {
     },
   ]);
 
-  // Mission 23: The Ancient Vault (2 phases)
+  // Mission 23: The Ancient Vault (3 phases — upgraded for depth)
   await knex("mission_phases").insert([
     {
       id: phaseId(23, 1),
       template_id: storyMissionId(23),
       phase_order: 1,
-      title: "Archaeological Survey",
+      title: "Secure the Perimeter",
       description:
-        "Scan 5 sectors surrounding Lyra Starwind's archaeological site.",
-      objective_type: "scan_sectors",
-      objectives: JSON.stringify({ scansRequired: 5 }),
+        "Visit 3 sectors around the vault site to deploy Lyra's sensor beacons and confirm the area is safe.",
+      objective_type: "visit_sector",
+      objectives: JSON.stringify({ sectorsToVisit: 3 }),
       lore_text:
-        "Lyra Starwind has found something extraordinary — energy readings that predate every known civilization. She needs your help mapping the area.",
+        "Lyra Starwind has detected energy readings that predate every known civilization. This could be a Precursor vault — the first intact one ever found. She won't risk entering until the surrounding sectors are confirmed safe.",
       narration_key: "ch3_m23_p1",
     },
     {
       id: phaseId(23, 2),
       template_id: storyMissionId(23),
       phase_order: 2,
-      title: "Artifact Analysis",
+      title: "Decode the Vault",
       description:
-        "Investigate 3 artifact readings within the Precursor vault.",
-      objective_type: "investigate",
-      objectives: JSON.stringify({ eventsToInvestigate: 3 }),
+        "Scan 3 sectors to decode the Precursor encryption locking the vault entrance.",
+      objective_type: "scan_sectors",
+      objectives: JSON.stringify({ scansRequired: 3 }),
       lore_text:
-        "The vault's interior pulses with dormant energy. Three distinct signatures call out from the darkness.",
+        "The vault entrance is hidden behind layers of Precursor encryption. Each scan decodes a fragment of the locking mechanism.",
       narration_key: "ch3_m23_p2",
+    },
+    {
+      id: phaseId(23, 3),
+      template_id: storyMissionId(23),
+      phase_order: 3,
+      title: "Power the Extraction",
+      description:
+        "Deliver 5 cyrillium to activate the vault's extraction chamber.",
+      objective_type: "deliver_cargo",
+      objectives: JSON.stringify({ commodity: "cyrillium", quantity: 5 }),
+      lore_text:
+        "The vault's internal systems need cyrillium to power up. Without it, the artifact inside remains sealed in stasis.",
+      narration_key: "ch3_m23_p3",
     },
   ]);
 
@@ -629,9 +651,13 @@ export async function seed(knex: Knex): Promise<void> {
       phase_order: 2,
       title: "Stop the Smugglers",
       description:
-        "Intercept 2 caravans smuggling artifact fragments on the black market.",
-      objective_type: "intercept",
-      objectives: JSON.stringify({ caravansToIntercept: 2 }),
+        "Destroy 2 Smuggler Runner ships carrying stolen artifact fragments before they reach Syndicate space.",
+      objective_type: "destroy_ship",
+      objectives: JSON.stringify({
+        shipsToDestroy: 2,
+        npcNames: ["Smuggler Runner"],
+        npcShipType: "scout",
+      }),
       narration_key: "ch4_m26_p2",
     },
   ]);
@@ -657,41 +683,60 @@ export async function seed(knex: Knex): Promise<void> {
       title: "The Surprise Round",
       description: "Survive a simulated ambush by Kalin elite fighters.",
       objective_type: "survive_ambush",
-      objectives: JSON.stringify({ ambushesToSurvive: 1 }),
+      objectives: JSON.stringify({
+        ambushesToSurvive: 1,
+        npcNames: ["Kalin Elite"],
+      }),
       lore_text:
         "The drones are gone, but the exercise is not over. Raxus's elite squadron drops from concealment. 'Survive this.'",
       narration_key: "ch4_m27_p2",
     },
   ]);
 
-  // Mission 28: Whispers in the Dark (2 phases)
+  // Mission 28: Whispers in the Dark (3 phases — upgraded + probe tutorial)
   await knex("mission_phases").insert([
     {
       id: phaseId(28, 1),
       template_id: storyMissionId(28),
       phase_order: 1,
-      title: "Strange Interference",
+      title: "Triangulate the Interference",
       description:
-        "Investigate 3 reports of mysterious interference in deep space.",
-      objective_type: "investigate",
-      objectives: JSON.stringify({ eventsToInvestigate: 3 }),
+        "Scan 3 sectors along the jamming pattern to triangulate the interference source.",
+      objective_type: "scan_sectors",
+      objectives: JSON.stringify({ scansRequired: 3 }),
       lore_text:
-        "Something is jamming communications across multiple sectors. The pattern is deliberate — someone, or something, does not want to be found.",
+        "Something is deliberately jamming communications across multiple sectors. The pattern is too precise to be natural — someone doesn't want you to hear what's out there.",
       narration_key: "ch4_m28_p1",
     },
     {
       id: phaseId(28, 2),
       template_id: storyMissionId(28),
       phase_order: 2,
-      title: "Trace the Source",
-      description: "Scan 4 sectors showing anomalous energy readings.",
-      objective_type: "scan_sectors",
-      objectives: JSON.stringify({ scansRequired: 4 }),
+      title: "Navigate to the Source",
+      description:
+        "Travel through 2 interference-heavy sectors to reach the jamming station.",
+      objective_type: "visit_sector",
+      objectives: JSON.stringify({ sectorsToVisit: 2 }),
       narration_key: "ch4_m28_p2",
+    },
+    {
+      id: phaseId(28, 3),
+      template_id: storyMissionId(28),
+      phase_order: 3,
+      title: "Destroy the Guardian",
+      description:
+        "Destroy the automated jamming relay's guardian drone to shut down the station.",
+      objective_type: "destroy_ship",
+      objectives: JSON.stringify({
+        shipsToDestroy: 1,
+        npcNames: ["Jamming Guardian"],
+        npcShipType: "scout",
+      }),
+      narration_key: "ch4_m28_p3",
     },
   ]);
 
-  // Mission 29: Espionage (2 phases + choice)
+  // Mission 29: Espionage (3 phases + choice — Stealth Simulation)
   await knex("mission_templates")
     .where({ id: storyMissionId(29) })
     .update({ has_choices: true });
@@ -701,34 +746,46 @@ export async function seed(knex: Knex): Promise<void> {
       id: phaseId(29, 1),
       template_id: storyMissionId(29),
       phase_order: 1,
-      title: "Sabotage the Post",
+      title: "Infiltrate the Sector",
       description:
-        "Sabotage the Syndicate listening post intercepting coalition communications.",
-      objective_type: "sabotage",
+        "Enter the listening post sector and destroy the Syndicate Sentry guarding it.",
+      objective_type: "destroy_ship",
       objectives: JSON.stringify({
-        targetId: "syndicate_listening_post",
-        targetType: "outpost",
+        shipsToDestroy: 1,
+        npcNames: ["Syndicate Sentry"],
+        npcShipType: "scout",
       }),
       lore_text:
-        "The Shadow Syndicate has been eavesdropping on coalition communications through a hidden listening post. Viper Nox provided the coordinates — for a fee.",
+        "The Shadow Syndicate has been eavesdropping on coalition communications through a hidden listening post. Viper Nox sold you the coordinates — for a fee. The post has one guard ship. Destroy it and the listening post shuts down.",
       narration_key: "ch4_m29_p1",
     },
     {
       id: phaseId(29, 2),
       template_id: storyMissionId(29),
       phase_order: 2,
+      title: "Secure the Area",
+      description:
+        "Scan 3 surrounding sectors to confirm the blackout is effective.",
+      objective_type: "scan_sectors",
+      objectives: JSON.stringify({ scansRequired: 3 }),
+      narration_key: "ch4_m29_p2",
+    },
+    {
+      id: phaseId(29, 3),
+      template_id: storyMissionId(29),
+      phase_order: 3,
       title: "The Data Question",
       description: "Decide what to do with the intercepted data.",
       objective_type: "choose",
       objectives: JSON.stringify({ choiceId: choiceId("espionage_data") }),
-      narration_key: "ch4_m29_p2",
+      narration_key: "ch4_m29_p3",
     },
   ]);
 
   await knex("mission_choices").insert({
     id: choiceId("espionage_data"),
     template_id: storyMissionId(29),
-    phase_id: phaseId(29, 2),
+    phase_id: phaseId(29, 3),
     choice_key: "espionage_data",
     prompt_title: "The Intercepted Data",
     prompt_body:
@@ -759,31 +816,60 @@ export async function seed(knex: Knex): Promise<void> {
     narration_key: "ch4_m29_choice",
   });
 
-  // Mission 30: The Arms Race (2 phases)
+  // Mission 30: The Arms Race (4 phases — Ship Management Simulation)
   await knex("mission_phases").insert([
     {
       id: phaseId(30, 1),
       template_id: storyMissionId(30),
       phase_order: 1,
-      title: "Component Trade",
+      title: "Visit the Ship Dealer",
       description:
-        "Trade 30 units of tech components for Caelum's weapon prototypes.",
-      objective_type: "trade_units",
-      objectives: JSON.stringify({ unitsToTrade: 30 }),
+        "Visit a starmall and buy a Muscarian Corvette or better ship for the coming war.",
+      objective_type: "buy_ship",
+      objectives: JSON.stringify({}),
+      target_resolution: JSON.stringify({ type: "nearest_starmall" }),
       lore_text:
-        "Caelum needs raw materials for his latest designs. His engineering bay is a whirlwind of sparks and muttered equations.",
+        "War is coming, and your scout ship won't survive what's ahead. Caelum has arranged access to the starmall's full fleet. The corvette carries mines, has better armor, and can match Kalin firepower.",
       narration_key: "ch4_m30_p1",
     },
     {
       id: phaseId(30, 2),
       template_id: storyMissionId(30),
       phase_order: 2,
-      title: "Secure Delivery",
-      description:
-        "Deliver the weapon prototypes to a secure testing facility.",
-      objective_type: "deliver_cargo",
-      objectives: JSON.stringify({ commodity: "tech", quantity: 15 }),
+      title: "Store Your Old Ship",
+      description: "Visit the starmall garage to store your old ship safely.",
+      objective_type: "visit_sector",
+      objectives: JSON.stringify({ sectorsToVisit: 1 }),
+      target_resolution: JSON.stringify({ type: "nearest_starmall" }),
+      lore_text:
+        "Don't scrap your scout yet — you may need a fast ship later. The garage keeps it safe.",
       narration_key: "ch4_m30_p2",
+    },
+    {
+      id: phaseId(30, 3),
+      template_id: storyMissionId(30),
+      phase_order: 3,
+      title: "Check the Salvage Yard",
+      description:
+        "Visit the salvage yard to sell any ships you'll never use again.",
+      objective_type: "visit_sector",
+      objectives: JSON.stringify({ sectorsToVisit: 1 }),
+      lore_text:
+        "If you have ships you'll never use again, the salvage yard pays 50% of base price. Credits in your pocket for the war effort.",
+      narration_key: "ch4_m30_p3",
+    },
+    {
+      id: phaseId(30, 4),
+      template_id: storyMissionId(30),
+      phase_order: 4,
+      title: "Install Weapon Upgrade",
+      description:
+        "Install a weapon upgrade on your new ship at the starmall garage.",
+      objective_type: "visit_sector",
+      objectives: JSON.stringify({ sectorsToVisit: 1 }),
+      lore_text:
+        "Raw firepower isn't enough — upgrades multiply your combat effectiveness. Caelum's latest weapon mod is available at the garage.",
+      narration_key: "ch4_m30_p4",
     },
   ]);
 
@@ -793,12 +879,13 @@ export async function seed(knex: Knex): Promise<void> {
       id: phaseId(31, 1),
       template_id: storyMissionId(31),
       phase_order: 1,
-      title: "Escort the Convoy",
-      description: "Escort the diplomatic convoy through contested space.",
-      objective_type: "escort",
-      objectives: JSON.stringify({ caravansToEscort: 1 }),
+      title: "Supply the Summit",
+      description:
+        "Deliver 10 tech as diplomatic supplies to the summit sector.",
+      objective_type: "deliver_cargo",
+      objectives: JSON.stringify({ commodity: "tech", quantity: 10 }),
       lore_text:
-        "The diplomatic convoy carries representatives from every faction to the summit. Without escort, they will never make it through contested space.",
+        "The diplomatic convoy carries representatives from every faction to the first galactic summit. They need communication equipment — and a reliable escort.",
       narration_key: "ch4_m31_p1",
     },
     {

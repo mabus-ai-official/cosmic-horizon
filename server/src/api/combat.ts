@@ -426,7 +426,12 @@ router.post("/fire", requireAuth, async (req, res) => {
           });
         }
       }
-      checkAndUpdateMissions(player.id, "combat_destroy", {}, io);
+      checkAndUpdateMissions(
+        player.id,
+        "combat_destroy",
+        { targetId: target.id },
+        io,
+      );
       checkRandomEvents(player.id, "combat_destroy", {}, io);
       updateDailyMissionProgress(player.id, "win_combat").catch(() => {});
 

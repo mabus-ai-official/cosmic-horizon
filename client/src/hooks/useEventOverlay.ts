@@ -20,6 +20,9 @@ export function useEventOverlay(
   const [currentEvent, setCurrentEvent] = useState<GameEvent | null>(null);
   const queueRef = useRef<GameEvent[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tracks whether an event is currently displayed — prevents double-processNext
+  // when multiple events are enqueued in the same synchronous batch
+  const showingRef = useRef(false);
 
   const processNext = useCallback(() => {
     if (timerRef.current) {
@@ -28,17 +31,20 @@ export function useEventOverlay(
     }
 
     if (queueRef.current.length === 0) {
+      showingRef.current = false;
       setCurrentEvent(null);
       return;
     }
 
     const next = queueRef.current.shift()!;
+    showingRef.current = true;
     setCurrentEvent(next);
 
     // Suppress auto-dismiss when narration is attached — user must dismiss manually
     if (next.duration > 0 && !next.narrationUrl) {
       timerRef.current = setTimeout(() => {
         next.onDismiss?.();
+        showingRef.current = false;
         processNext();
       }, next.duration);
     }
@@ -90,13 +96,9 @@ export function useEventOverlay(
       }
 
       // If nothing is currently showing, start processing
-      setCurrentEvent((current) => {
-        if (!current) {
-          // Use setTimeout to avoid state update during render
-          setTimeout(() => processNext(), 0);
-        }
-        return current;
-      });
+      if (!showingRef.current) {
+        setTimeout(() => processNext(), 0);
+      }
     },
     [processNext, showToast],
   );
@@ -110,6 +112,7 @@ export function useEventOverlay(
       current?.onDismiss?.();
       return null;
     });
+    showingRef.current = false;
     // Process next after a brief moment for animation
     setTimeout(() => processNext(), 50);
   }, [processNext]);
@@ -127,6 +130,7 @@ export function useEventOverlay(
       }
       // Fire onAction outside of setCurrentEvent to avoid nested setState issues
       action?.(actionId);
+      showingRef.current = false;
       setTimeout(() => processNext(), 50);
     },
     [processNext],
@@ -144,6 +148,7 @@ export function useEventOverlay(
           current?.onDismiss?.();
           return null;
         });
+        showingRef.current = false;
         setTimeout(() => processNext(), 50);
       }, duration);
     },

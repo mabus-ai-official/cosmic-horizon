@@ -29,6 +29,8 @@ import {
 } from "../config/story-interstitials";
 import {
   getNarrationUrl,
+  getPhaseNarrationUrl,
+  getChoiceNarrationUrl,
   TUTORIAL_WELCOME_NARRATION,
 } from "../config/narration-manifest";
 import {
@@ -1044,17 +1046,99 @@ export function useGameEffects({
       ),
       on(
         "mission:phase_advanced",
-        (data: { phase: number; phaseTitle: string }) => {
+        (data: {
+          phaseOrder: number;
+          phaseTitle: string;
+          phaseDescription?: string;
+          totalPhases?: number;
+          loreText?: string;
+          title?: string;
+          storyOrder?: number;
+          narrationKey?: string;
+        }) => {
+          const phaseLabel = data.totalPhases
+            ? `Phase ${data.phaseOrder}/${data.totalPhases}`
+            : `Phase ${data.phaseOrder}`;
+          const narrationUrl = data.storyOrder
+            ? (getPhaseNarrationUrl(data.storyOrder, data.phaseOrder) ??
+              undefined)
+            : undefined;
           eventOverlay.enqueueEvent({
             category: "phase_intro",
-            title: "NEXT PHASE",
-            subtitle: data.phaseTitle,
-            body: `Phase ${data.phase} has begun.`,
-            colorScheme: "green",
-            duration: 5000,
-            dismissable: true,
-            priority: "interstitial",
+            title: data.title || "NEXT PHASE",
+            subtitle: `${phaseLabel} — ${data.phaseTitle}`,
+            body: [data.loreText, data.phaseDescription]
+              .filter(Boolean)
+              .join("\n\n"),
+            colorScheme: "cyan",
+            duration: 0,
+            priority: "blocking",
+            narrationUrl,
+            actions: [
+              {
+                id: "continue",
+                label: "CONTINUE",
+                variant: "primary" as const,
+              },
+            ],
           });
+          setRefreshKey((k) => k + 1);
+        },
+      ),
+      on(
+        "mission:npc_encounter",
+        (data: {
+          missionId: string;
+          npcName: string;
+          npcTitle?: string;
+          npcRace?: string;
+          dialogue?: string;
+          sectorId: number;
+        }) => {
+          eventOverlay.enqueueEvent({
+            category: "npc_dialogue",
+            title: data.npcName,
+            subtitle: data.npcTitle || "NPC Encounter",
+            body:
+              data.dialogue ||
+              `You have arrived at ${data.npcName}'s location.`,
+            colorScheme: "cyan",
+            duration: 0,
+            priority: "blocking",
+            portrait: data.npcRace
+              ? {
+                  npcName: data.npcName,
+                  npcTitle: data.npcTitle || "",
+                  npcRace: data.npcRace,
+                }
+              : undefined,
+            actions: [
+              {
+                id: "acknowledge",
+                label: "CONTINUE",
+                variant: "primary" as const,
+              },
+            ],
+          });
+          setRefreshKey((k) => k + 1);
+        },
+      ),
+      on(
+        "mission:ambush",
+        (data: { missionId: string; npcName: string; sectorId: number }) => {
+          eventOverlay.enqueueEvent({
+            category: "story_accept",
+            title: "AMBUSH!",
+            subtitle: `${data.npcName} detected`,
+            body: "Hostile ship has dropped out of warp in your sector. Prepare for combat!\n\nIf you flee, the hostile will remain until you return and destroy it.",
+            colorScheme: "red",
+            duration: 5000,
+            priority: "high",
+          });
+          game.addLine(
+            `Ambush! ${data.npcName} has appeared in Sector ${data.sectorId}!`,
+            "combat",
+          );
           setRefreshKey((k) => k + 1);
         },
       ),
@@ -1063,17 +1147,23 @@ export function useGameEffects({
         (data: {
           missionId: string;
           choiceId: string;
-          promptTitle: string;
-          promptBody: string;
+          choiceKey?: string;
+          title: string;
+          body: string;
           options: { id: string; label: string; description: string }[];
           isPermanent: boolean;
+          narrationKey?: string;
         }) => {
+          const choiceNarrationUrl = data.choiceKey
+            ? (getChoiceNarrationUrl(data.choiceKey) ?? undefined)
+            : undefined;
           eventOverlay.enqueueEvent({
             category: data.isPermanent ? "player_choice" : "mission_choice",
             title: data.isPermanent ? "TURNING POINT" : "DECISION",
-            subtitle: data.promptTitle,
-            body: data.promptBody,
+            subtitle: data.title,
+            body: data.body,
             colorScheme: data.isPermanent ? "magenta" : "cyan",
+            narrationUrl: choiceNarrationUrl,
             duration: 0,
             priority: "blocking",
             actions: data.options.map((opt) => ({

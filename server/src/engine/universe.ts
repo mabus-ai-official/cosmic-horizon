@@ -1,8 +1,8 @@
-import { GAME_CONFIG } from '../config/game';
+import { GAME_CONFIG } from "../config/game";
 
 export interface SectorData {
   id: number;
-  type: 'standard' | 'one_way' | 'protected' | 'harmony_enforced';
+  type: "standard" | "one_way" | "protected" | "harmony_enforced" | "core";
   hasStarMall: boolean;
   hasSeedPlanet: boolean;
   regionId: number;
@@ -43,18 +43,18 @@ function addEdge(
   edges: Map<number, SectorEdge[]>,
   from: number,
   to: number,
-  oneWay: boolean
+  oneWay: boolean,
 ): void {
   const fromEdges = edges.get(from) || [];
   const toEdges = edges.get(to) || [];
 
-  if (fromEdges.some(e => e.to === to)) return;
+  if (fromEdges.some((e) => e.to === to)) return;
 
   fromEdges.push({ from, to, oneWay });
   edges.set(from, fromEdges);
 
   if (!oneWay) {
-    if (!toEdges.some(e => e.to === from)) {
+    if (!toEdges.some((e) => e.to === from)) {
       toEdges.push({ from: to, to: from, oneWay: false });
       edges.set(to, toEdges);
     }
@@ -66,12 +66,14 @@ export function findShortestPath(
   edges: Map<number, SectorEdge[]>,
   start: number,
   end: number,
-  maxDepth: number = 50
+  maxDepth: number = 50,
 ): number[] | null {
   if (start === end) return [start];
 
   const visited = new Set<number>();
-  const queue: Array<{ node: number; path: number[] }> = [{ node: start, path: [start] }];
+  const queue: Array<{ node: number; path: number[] }> = [
+    { node: start, path: [start] },
+  ];
   visited.add(start);
 
   while (queue.length > 0) {
@@ -91,7 +93,7 @@ export function findShortestPath(
 
 export function generateUniverse(
   totalSectors: number = GAME_CONFIG.TOTAL_SECTORS,
-  seed: number = Date.now()
+  seed: number = Date.now(),
 ): UniverseGraph {
   const rng = createRng(seed);
   const sectors = new Map<number, SectorData>();
@@ -101,7 +103,7 @@ export function generateUniverse(
   for (let i = 1; i <= totalSectors; i++) {
     sectors.set(i, {
       id: i,
-      type: 'standard',
+      type: "standard",
       hasStarMall: false,
       hasSeedPlanet: false,
       regionId: 0,
@@ -110,14 +112,25 @@ export function generateUniverse(
   }
 
   // Generate regions (clusters)
-  const avgRegionSize = Math.max(5, Math.floor(totalSectors / Math.ceil(totalSectors / GAME_CONFIG.SECTORS_PER_REGION)));
-  const sectorIds = shuffleArray([...Array(totalSectors)].map((_, i) => i + 1), rng);
+  const avgRegionSize = Math.max(
+    5,
+    Math.floor(
+      totalSectors / Math.ceil(totalSectors / GAME_CONFIG.SECTORS_PER_REGION),
+    ),
+  );
+  const sectorIds = shuffleArray(
+    [...Array(totalSectors)].map((_, i) => i + 1),
+    rng,
+  );
   let regionId = 0;
   let idx = 0;
 
   const regions: number[][] = [];
   while (idx < sectorIds.length) {
-    const regionSize = Math.max(3, Math.floor(avgRegionSize * (0.6 + rng() * 0.8)));
+    const regionSize = Math.max(
+      3,
+      Math.floor(avgRegionSize * (0.6 + rng() * 0.8)),
+    );
     const region = sectorIds.slice(idx, idx + regionSize);
     regions.push(region);
     for (const sid of region) {
@@ -139,7 +152,10 @@ export function generateUniverse(
     for (let i = 0; i < extraEdges; i++) {
       const a = region[Math.floor(rng() * region.length)];
       const b = region[Math.floor(rng() * region.length)];
-      if (a !== b && (edges.get(a)?.length || 0) < GAME_CONFIG.MAX_ADJACENT_SECTORS) {
+      if (
+        a !== b &&
+        (edges.get(a)?.length || 0) < GAME_CONFIG.MAX_ADJACENT_SECTORS
+      ) {
         addEdge(edges, a, b, false);
       }
     }
@@ -169,23 +185,35 @@ export function generateUniverse(
   const allSectorIds = [...sectors.keys()];
   const shuffledIds = shuffleArray(allSectorIds, rng);
 
-  const numStarMalls = Math.max(1, Math.min(GAME_CONFIG.NUM_STAR_MALLS, Math.floor(totalSectors / 100)));
-  const numSeedPlanets = Math.max(1, Math.min(GAME_CONFIG.NUM_SEED_PLANETS, Math.floor(totalSectors / 300)));
-  const numOneWay = Math.floor(totalSectors * GAME_CONFIG.SECTOR_TYPE_DISTRIBUTION.one_way);
+  const numStarMalls = Math.max(
+    1,
+    Math.min(GAME_CONFIG.NUM_STAR_MALLS, Math.floor(totalSectors / 100)),
+  );
+  const numSeedPlanets = Math.max(
+    1,
+    Math.min(GAME_CONFIG.NUM_SEED_PLANETS, Math.floor(totalSectors / 300)),
+  );
+  const numOneWay = Math.floor(
+    totalSectors * GAME_CONFIG.SECTOR_TYPE_DISTRIBUTION.one_way,
+  );
 
   let assignIdx = 0;
 
   // Assign star malls (protected sectors)
-  for (let i = 0; i < numStarMalls && assignIdx < shuffledIds.length; i++, assignIdx++) {
+  for (
+    let i = 0;
+    i < numStarMalls && assignIdx < shuffledIds.length;
+    i++, assignIdx++
+  ) {
     const sid = shuffledIds[assignIdx];
     const sector = sectors.get(sid)!;
-    sector.type = 'protected';
+    sector.type = "protected";
     sector.hasStarMall = true;
     // Mark adjacent sectors as protected too
     for (const edge of edges.get(sid) || []) {
       const adj = sectors.get(edge.to)!;
-      if (adj.type === 'standard') {
-        adj.type = 'protected';
+      if (adj.type === "standard") {
+        adj.type = "protected";
       }
     }
   }
@@ -194,7 +222,11 @@ export function generateUniverse(
   let seedsPlaced = 0;
   for (const [, sector] of sectors) {
     if (seedsPlaced >= numSeedPlanets) break;
-    if (sector.type === 'protected' && !sector.hasStarMall && !sector.hasSeedPlanet) {
+    if (
+      sector.type === "protected" &&
+      !sector.hasStarMall &&
+      !sector.hasSeedPlanet
+    ) {
       sector.hasSeedPlanet = true;
       seedsPlaced++;
     }
@@ -203,8 +235,8 @@ export function generateUniverse(
   while (seedsPlaced < numSeedPlanets && assignIdx < shuffledIds.length) {
     const sid = shuffledIds[assignIdx++];
     const sector = sectors.get(sid)!;
-    if (sector.type === 'standard') {
-      sector.type = 'protected';
+    if (sector.type === "standard") {
+      sector.type = "protected";
       sector.hasSeedPlanet = true;
       seedsPlaced++;
     }
@@ -214,10 +246,14 @@ export function generateUniverse(
   // Only convert an edge to one-way if the source sector has at least 2 incoming edges
   // (so removing the reverse doesn't isolate it) and the target has other incoming edges
   let oneWayCount = 0;
-  for (; assignIdx < shuffledIds.length && oneWayCount < numOneWay; assignIdx++) {
+  for (
+    ;
+    assignIdx < shuffledIds.length && oneWayCount < numOneWay;
+    assignIdx++
+  ) {
     const sid = shuffledIds[assignIdx];
     const sector = sectors.get(sid)!;
-    if (sector.type === 'standard') {
+    if (sector.type === "standard") {
       const sectorEdges = edges.get(sid) || [];
       if (sectorEdges.length < 2) continue; // need at least 2 edges to safely make one one-way
 
@@ -232,14 +268,14 @@ export function generateUniverse(
           edge.oneWay = true;
           // Remove the reverse edge
           const reverseEdges = edges.get(edge.to) || [];
-          const revIdx = reverseEdges.findIndex(e => e.to === sid);
+          const revIdx = reverseEdges.findIndex((e) => e.to === sid);
           if (revIdx >= 0) reverseEdges.splice(revIdx, 1);
           converted = true;
           break;
         }
       }
       if (converted) {
-        sector.type = 'one_way';
+        sector.type = "one_way";
         oneWayCount++;
       }
     }
@@ -255,7 +291,9 @@ export function generateUniverse(
     const finishOrder: number[] = [];
 
     const dfsForward = (start: number) => {
-      const stack: Array<{ node: number; edgeIdx: number }> = [{ node: start, edgeIdx: 0 }];
+      const stack: Array<{ node: number; edgeIdx: number }> = [
+        { node: start, edgeIdx: 0 },
+      ];
       visited.add(start);
 
       while (stack.length > 0) {
@@ -368,7 +406,8 @@ export function generateUniverse(
         let bestDist = Infinity;
         for (const rid of prevScc) {
           const rRegion = sectors.get(rid)!.regionId;
-          const dist = Math.abs(rRegion - fromRegion) * 1000 + Math.abs(rid - bestFrom!);
+          const dist =
+            Math.abs(rRegion - fromRegion) * 1000 + Math.abs(rid - bestFrom!);
           if (dist < bestDist) {
             bestDist = dist;
             bestTo = rid;
@@ -390,8 +429,10 @@ export function generateUniverse(
   ensureStrongConnectivity();
 
   // Mark harmony-enforced routes between star malls and seed planets
-  const starMallSectors = [...sectors.values()].filter(s => s.hasStarMall);
-  const seedPlanetSectors = [...sectors.values()].filter(s => s.hasSeedPlanet);
+  const starMallSectors = [...sectors.values()].filter((s) => s.hasStarMall);
+  const seedPlanetSectors = [...sectors.values()].filter(
+    (s) => s.hasSeedPlanet,
+  );
 
   for (const mall of starMallSectors) {
     for (const seed of seedPlanetSectors) {
@@ -399,12 +440,31 @@ export function generateUniverse(
       if (path) {
         for (const sid of path) {
           const sector = sectors.get(sid)!;
-          if (sector.type === 'standard') {
-            sector.type = 'harmony_enforced';
+          if (sector.type === "standard") {
+            sector.type = "harmony_enforced";
           }
         }
       }
     }
+  }
+
+  // Designate the most-connected sector as the galaxy core.
+  // Used by story missions (M40, M45) for "journey to the center" objectives.
+  // Pick the standard/harmony_enforced sector with the highest edge count.
+  let coreSectorId = -1;
+  let maxEdges = 0;
+  for (const [sid, sectorEdges] of edges) {
+    const sector = sectors.get(sid)!;
+    // Don't reassign star malls, seed planets, or protected sectors
+    if (sector.type === "standard" || sector.type === "harmony_enforced") {
+      if (sectorEdges.length > maxEdges) {
+        maxEdges = sectorEdges.length;
+        coreSectorId = sid;
+      }
+    }
+  }
+  if (coreSectorId > 0) {
+    sectors.get(coreSectorId)!.type = "core";
   }
 
   return { sectors, edges };

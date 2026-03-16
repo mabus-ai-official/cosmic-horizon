@@ -17,6 +17,7 @@ import { isSettlementEnabled } from "../chain/config";
 import type { Address } from "viem";
 import { pickFlavor, outpostNpcRace } from "../config/flavor-text";
 import type { RaceId } from "../config/races";
+import { checkAndUpdateMissions } from "../services/mission-tracker";
 
 const router = Router();
 
@@ -213,6 +214,14 @@ router.post("/buy/:itemId", requireAuth, async (req, res) => {
         "sync:status",
         req.headers["x-socket-id"] as string | undefined,
       );
+
+    // Mission tracking: buy_item
+    checkAndUpdateMissions(
+      player.id,
+      "buy_item",
+      { itemId: item.id, category: item.category },
+      io,
+    );
 
     res.json({
       item: item.id,

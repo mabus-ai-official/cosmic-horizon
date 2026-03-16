@@ -25,6 +25,35 @@ import { syncPlayer } from "../ws/sync";
 
 const router = Router();
 
+/**
+ * Pick a sector with an outpost as a meeting point for a meet_npc objective.
+ * Prefers sectors the player hasn't visited yet (exploration incentive).
+ */
+async function pickMeetNpcSector(
+  playerId: string,
+  currentSectorId: number,
+): Promise<{ sectorId: number; outpostName: string | null }> {
+  const player = await db("players").where({ id: playerId }).first();
+  const explored: number[] = JSON.parse(player?.explored_sectors || "[]");
+
+  // Get outpost sectors, excluding current
+  const outpostSectors = await db("outposts")
+    .where("sector_id", "!=", currentSectorId)
+    .select("sector_id as sectorId", "name as outpostName");
+
+  if (outpostSectors.length === 0) {
+    return { sectorId: currentSectorId + 3, outpostName: null };
+  }
+
+  // Prefer unexplored sectors (gives player reason to explore)
+  const unexplored = outpostSectors.filter(
+    (s: any) => !explored.includes(s.sectorId),
+  );
+  const pool = unexplored.length > 0 ? unexplored : outpostSectors;
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  return { sectorId: pick.sectorId, outpostName: pick.outpostName };
+}
+
 // Get full story progress
 router.get("/progress", requireAuth, async (req, res) => {
   try {
@@ -104,6 +133,7 @@ router.get("/current", requireAuth, async (req, res) => {
               "title",
               "description",
               "objective_type",
+              "objectives",
               "is_optional",
               "lore_text",
             );
@@ -128,6 +158,127 @@ router.get("/current", requireAuth, async (req, res) => {
               optional: !!p.is_optional,
             })),
           };
+
+          // Backfill: rebuild objectives_detail from the current phase.
+          // Handles stale detail from before phase advancement wrote it,
+          // and adds location hints for meet_npc / deliver_cargo phases.
+          if (currentPhaseData) {
+            const phaseObj =
+              typeof currentPhaseData.objectives === "string"
+                ? JSON.parse(currentPhaseData.objectives)
+                : currentPhaseData.objectives || {};
+            const pp =
+              typeof mission.phaseProgress === "string"
+                ? JSON.parse(mission.phaseProgress || "{}")
+                : mission.phaseProgress || {};
+
+            const freshDetail = buildObjectivesDetail(
+              currentPhaseData.objective_type,
+              phaseObj,
+            );
+            let needsUpdate = false;
+
+            // meet_npc: assign target sector if missing
+            if (
+              currentPhaseData.objective_type === "meet_npc" &&
+              !pp.targetSectorId
+            ) {
+              const player = await db("players")
+                .where({ id: playerId })
+                .first();
+              const meetTarget = await pickMeetNpcSector(
+                playerId,
+                player?.current_sector_id || 1,
+              );
+              pp.targetSectorId = meetTarget.sectorId;
+              const npcName = phaseObj.npcName || "NPC";
+              const hint = meetTarget.outpostName
+                ? `${npcName} awaits at ${meetTarget.outpostName} in Sector ${meetTarget.sectorId}`
+                : `${npcName} awaits in Sector ${meetTarget.sectorId}`;
+              freshDetail[0].description += ` — ${hint}`;
+              needsUpdate = true;
+            } else if (
+              currentPhaseData.objective_type === "meet_npc" &&
+              pp.targetSectorId
+            ) {
+              // Already have a target — add the hint to the fresh detail
+              const npcName = phaseObj.npcName || "NPC";
+              const outpost = await db("outposts")
+                .where({ sector_id: pp.targetSectorId })
+                .first();
+              const hint = outpost?.name
+                ? `${npcName} awaits at ${outpost.name} in Sector ${pp.targetSectorId}`
+                : `${npcName} awaits in Sector ${pp.targetSectorId}`;
+              freshDetail[0].description += ` — ${hint}`;
+            }
+
+            // deliver_cargo: add outpost hint
+            if (
+              currentPhaseData.objective_type === "deliver_cargo" &&
+              phaseObj.commodity
+            ) {
+              const modeCol = `${phaseObj.commodity}_mode`;
+              const player = await db("players")
+                .where({ id: playerId })
+                .first();
+              const explored: number[] = JSON.parse(
+                player?.explored_sectors || "[]",
+              );
+              const buyingOutposts = await db("outposts")
+                .where(modeCol, "buy")
+                .select("name", "sector_id");
+              if (buyingOutposts.length > 0) {
+                const visited = buyingOutposts.filter((o: any) =>
+                  explored.includes(o.sector_id),
+                );
+                const pick =
+                  visited.length > 0 ? visited[0] : buyingOutposts[0];
+                freshDetail[0].description += ` (Sell at ${pick.name}, Sector ${pick.sector_id})`;
+              }
+            }
+
+            // survive_ambush: add location hint if an ambush NPC is alive
+            if (currentPhaseData.objective_type === "survive_ambush") {
+              const aliveNpc = await db("players")
+                .where({ spawned_by_mission_id: mission.missionId })
+                .join("ships", "ships.owner_id", "players.id")
+                .where("ships.is_destroyed", false)
+                .select("players.username", "players.current_sector_id")
+                .first();
+              if (aliveNpc) {
+                const hint = `${aliveNpc.username} is waiting in Sector ${aliveNpc.current_sector_id}`;
+                freshDetail[0].description += ` — ${hint}`;
+              }
+            }
+
+            // Update progress from current state
+            const currentProgress =
+              typeof mission.phaseProgress === "string"
+                ? JSON.parse(mission.phaseProgress || "{}")
+                : mission.phaseProgress || {};
+
+            // Check if detail has drifted from current phase
+            const existingDetail =
+              typeof mission.objectivesDetail === "string"
+                ? JSON.parse(mission.objectivesDetail)
+                : mission.objectivesDetail || [];
+            const existingDesc = existingDetail[0]?.description || "";
+            const freshDesc = freshDetail[0]?.description || "";
+            // If the existing detail doesn't match the current phase's objective, update
+            if (
+              needsUpdate ||
+              !existingDesc.startsWith(freshDesc.split(" —")[0].split(" (")[0])
+            ) {
+              await db("player_missions")
+                .where({ id: mission.missionId })
+                .update({
+                  phase_progress: JSON.stringify(pp),
+                  objectives_detail: JSON.stringify(freshDetail),
+                });
+              mission.phaseProgress = JSON.stringify(pp);
+              mission.objectivesDetail = JSON.stringify(freshDetail);
+            }
+          }
         }
 
         return res.json({
@@ -377,6 +528,40 @@ router.post("/accept", requireAuth, async (req, res) => {
       phase_progress: JSON.stringify({}),
     });
 
+    // For meet_npc missions, assign a target sector where the NPC will appear
+    if (effectiveType === "meet_npc" && effectiveObjectives.npcId) {
+      const player = await db("players").where({ id: playerId }).first();
+      const meetTarget = await pickMeetNpcSector(
+        playerId,
+        player?.current_sector_id || 1,
+      );
+      const npcName = effectiveObjectives.npcName || "NPC";
+      const locationHint = meetTarget.outpostName
+        ? `${npcName} awaits at ${meetTarget.outpostName} in Sector ${meetTarget.sectorId}`
+        : `${npcName} awaits in Sector ${meetTarget.sectorId}`;
+      const updatedDetail = objectivesDetail.map((d: any) => ({
+        ...d,
+        description: `${d.description} — ${locationHint}`,
+      }));
+      const progressData = template.has_phases
+        ? {
+            phase_progress: JSON.stringify({
+              targetSectorId: meetTarget.sectorId,
+            }),
+          }
+        : {
+            progress: JSON.stringify({
+              targetSectorId: meetTarget.sectorId,
+            }),
+          };
+      await db("player_missions")
+        .where({ id: missionId })
+        .update({
+          objectives_detail: JSON.stringify(updatedDetail),
+          ...progressData,
+        });
+    }
+
     // For destroy_ship missions, spawn NPC enemies in explored sectors
     let npcLocations: { name: string; sectorId: number }[] = [];
     if (template.type === "destroy_ship" && objectives.shipsToDestroy) {
@@ -385,6 +570,12 @@ router.post("/accept", requireAuth, async (req, res) => {
         missionId,
         objectives.shipsToDestroy,
         template.act || 1,
+        objectives.npcNames || objectives.npcShipType
+          ? {
+              nameOverride: objectives.npcNames,
+              shipTypeOverride: objectives.npcShipType,
+            }
+          : undefined,
       );
       npcLocations = await getStoryNPCLocations(missionId);
 

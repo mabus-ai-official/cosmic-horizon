@@ -337,6 +337,8 @@ export default function IntroSequence({
         !isFinished
           ? () => {
               onAudioResume?.();
+              // Retry music on click — handles autoplay policy blocking initial useEffect play
+              if (trackId && onTrackRequest) onTrackRequest(trackId);
               advance();
             }
           : undefined

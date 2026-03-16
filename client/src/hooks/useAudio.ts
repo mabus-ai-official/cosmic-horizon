@@ -249,10 +249,17 @@ export function useAudio() {
       }
 
       try {
+        console.warn(
+          `[audio] startTrack("${track.id}") calling audio.play(), src=${track.src}, muted=${mutedVal}`,
+        );
         await audio.play();
         pendingPlayRef.current = false;
-      } catch {
+        console.warn(
+          `[audio] startTrack("${track.id}") play() succeeded, fading in to ${targetVolume}`,
+        );
+      } catch (err) {
         pendingPlayRef.current = true;
+        console.warn(`[audio] startTrack("${track.id}") play() FAILED:`, err);
         return;
       }
 
@@ -268,11 +275,21 @@ export function useAudio() {
         currentContextRef.current === contextId &&
         audioRef.current &&
         !audioRef.current.paused
-      )
+      ) {
+        console.warn(
+          `[audio] playInternal("${contextId}") — already playing, skipping`,
+        );
         return;
+      }
 
       const resolved = resolveTrack(contextId);
-      if (!resolved) return;
+      if (!resolved) {
+        console.warn(`[audio] playInternal("${contextId}") — track not found!`);
+        return;
+      }
+      console.warn(
+        `[audio] playInternal("${contextId}") — resolved track: ${resolved.track.id}, src: ${resolved.track.src}`,
+      );
 
       // Fade out current track
       await fadeOut();
@@ -296,9 +313,15 @@ export function useAudio() {
     async (contextId: string) => {
       if (!userHasInteracted) {
         // Defer until first user interaction
+        console.warn(
+          `[audio] play("${contextId}") deferred — no user interaction yet`,
+        );
         interactionCallback = () => playInternal(contextId);
         return;
       }
+      console.warn(
+        `[audio] play("${contextId}") — userHasInteracted=true, calling playInternal`,
+      );
       await playInternal(contextId);
     },
     [playInternal],
@@ -306,6 +329,9 @@ export function useAudio() {
 
   // Call resume() from a user interaction (click) to unblock autoplay
   const resume = useCallback(async () => {
+    console.warn(
+      `[audio] resume() called, pendingPlay=${pendingPlayRef.current}, hasAudio=${!!audioRef.current}, trackId=${currentTrackIdRef.current}`,
+    );
     if (!pendingPlayRef.current) return;
 
     const audio = audioRef.current;

@@ -1026,6 +1026,15 @@ router.post("/:id/upgrade", requireAuth, async (req, res) => {
       await settleDebitPlayer(player.id, req_.credits, "store");
     }
 
+    // Mission tracking: upgrade_planet
+    const io = req.app.get("io");
+    checkAndUpdateMissions(
+      player.id,
+      "upgrade_planet",
+      { planetId: planet.id, level: nextLevel },
+      io,
+    );
+
     res.json({
       planetId: planet.id,
       newLevel: nextLevel,

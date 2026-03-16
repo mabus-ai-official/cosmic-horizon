@@ -105,11 +105,10 @@ export async function seed(knex: Knex): Promise<void> {
       id: factionMissionId("mycorrhizal", 3),
       title: "The Living Archive",
       description:
-        "Investigate three ancient data nodes and deliver your findings to Archivist Thal.",
-      type: "investigate",
+        "Scan three ancient data node sectors and deliver your findings to Archivist Thal.",
+      type: "scan_sectors",
       objectives: JSON.stringify({
-        eventsToInvestigate: 3,
-        eventType: "data_node",
+        scansRequired: 3,
       }),
       reward_credits: 3500,
       reward_xp: 400,
@@ -171,11 +170,10 @@ export async function seed(knex: Knex): Promise<void> {
       id: factionMissionId("mycorrhizal", 6),
       title: "The Deep Root",
       description:
-        "Investigate 4 deep-space mycelial anchors that hold the network together across the void.",
-      type: "investigate",
+        "Scan 4 deep-space mycelial anchor sectors that hold the network together across the void.",
+      type: "scan_sectors",
       objectives: JSON.stringify({
-        eventsToInvestigate: 4,
-        eventType: "mycelial_anchor",
+        scansRequired: 4,
       }),
       reward_credits: 5000,
       reward_xp: 550,
@@ -259,11 +257,10 @@ export async function seed(knex: Knex): Promise<void> {
       id: factionMissionId("mycorrhizal", 10),
       title: "Primordium Ecology",
       description:
-        "Investigate 5 bio-sites and scan 4 sectors to understand the Primordium's ecological impact.",
-      type: "investigate",
+        "Scan 5 bio-site sectors and 4 additional sectors to understand the Primordium's ecological impact.",
+      type: "scan_sectors",
       objectives: JSON.stringify({
-        eventsToInvestigate: 5,
-        eventType: "bio_site",
+        scansRequired: 5,
       }),
       reward_credits: 6500,
       reward_xp: 700,
@@ -282,9 +279,12 @@ export async function seed(knex: Knex): Promise<void> {
       id: factionMissionId("mycorrhizal", 11),
       title: "The Network Awakens",
       description:
-        "Escort the activation caravan and defend the primary node from hostile interference.",
-      type: "escort",
-      objectives: JSON.stringify({ caravansToEscort: 3 }),
+        "Deliver activation supplies to the primary node and defend it from hostile interference.",
+      type: "deliver_cargo",
+      objectives: JSON.stringify({
+        commodity: "activation_supplies",
+        quantity: 3,
+      }),
       reward_credits: 7000,
       reward_xp: 750,
       difficulty: 7,
@@ -460,9 +460,12 @@ export async function seed(knex: Knex): Promise<void> {
       id: factionMissionId("iron_dominion", 7),
       title: "Supply Lines",
       description:
-        "Escort the supply convoy and defend the forward base from hostile incursion.",
-      type: "escort",
-      objectives: JSON.stringify({ caravansToEscort: 3 }),
+        "Deliver supplies to the forward base and defend it from hostile incursion.",
+      type: "deliver_cargo",
+      objectives: JSON.stringify({
+        commodity: "military_supplies",
+        quantity: 3,
+      }),
       reward_credits: 6000,
       reward_xp: 650,
       difficulty: 5,
@@ -665,9 +668,9 @@ export async function seed(knex: Knex): Promise<void> {
       id: factionMissionId("traders_guild", 4),
       title: "The Smuggler Problem",
       description:
-        "Intercept 2 smuggling caravans and investigate their supply chain.",
-      type: "intercept",
-      objectives: JSON.stringify({ caravansToIntercept: 2 }),
+        "Destroy 2 smuggling vessels and investigate their supply chain.",
+      type: "destroy_ship",
+      objectives: JSON.stringify({ shipsToDestroy: 2 }),
       reward_credits: 6500,
       reward_xp: 650,
       difficulty: 5,
@@ -798,12 +801,9 @@ export async function seed(knex: Knex): Promise<void> {
       id: factionMissionId("shadow_syndicate", 4),
       title: "Blackout",
       description:
-        "Sabotage a Ranger sensor array and scan 3 sectors under the cover of darkness.",
-      type: "sabotage",
-      objectives: JSON.stringify({
-        targetId: "ranger_array",
-        targetType: "sensor_array",
-      }),
+        "Infiltrate the Ranger sensor array sector and scan 3 sectors under the cover of darkness.",
+      type: "visit_sector",
+      objectives: JSON.stringify({ sectorsToVisit: 4 }),
       reward_credits: 6000,
       reward_xp: 600,
       difficulty: 5,
@@ -894,9 +894,9 @@ export async function seed(knex: Knex): Promise<void> {
       id: factionMissionId("independent", 2),
       title: "Doc's Rounds",
       description:
-        "Escort Doc Helix's medical ship to 3 outposts in need of aid.",
-      type: "escort",
-      objectives: JSON.stringify({ caravansToEscort: 3 }),
+        "Visit 3 outposts with Doc Helix's medical ship to deliver aid.",
+      type: "visit_sector",
+      objectives: JSON.stringify({ sectorsToVisit: 3 }),
       reward_credits: 4000,
       reward_xp: 400,
       difficulty: 4,
@@ -914,11 +914,10 @@ export async function seed(knex: Knex): Promise<void> {
       id: factionMissionId("independent", 3),
       title: "Tik-Tok's Dream",
       description:
-        "Investigate 3 derelict ships and deliver personality modules to the eccentric mechanic.",
-      type: "investigate",
+        "Scan 3 derelict ship sectors and deliver personality modules to the eccentric mechanic.",
+      type: "scan_sectors",
       objectives: JSON.stringify({
-        eventsToInvestigate: 3,
-        eventType: "derelict",
+        scansRequired: 3,
       }),
       reward_credits: 4500,
       reward_xp: 450,
@@ -971,7 +970,13 @@ export async function seed(knex: Knex): Promise<void> {
       .where({ id: m.id })
       .first();
     if (!existing) {
-      await knex("mission_templates").insert(m);
+      // Strip fields that aren't columns on mission_templates
+      // npc_id is stored in objectives JSON; reward_items handled separately
+      const { npc_id, reward_items, ...insertData } = m as Record<
+        string,
+        unknown
+      >;
+      await knex("mission_templates").insert(insertData);
     }
   }
 
@@ -985,13 +990,12 @@ export async function seed(knex: Knex): Promise<void> {
       id: fqPhaseId("mycorrhizal", 3, 1),
       template_id: factionMissionId("mycorrhizal", 3),
       phase_order: 1,
-      title: "Investigate Data Nodes",
+      title: "Scan Data Node Sectors",
       description:
-        "Scan and investigate 3 ancient data nodes scattered across mycelial sectors.",
-      objective_type: "investigate",
+        "Scan 3 ancient data node sectors scattered across mycelial space.",
+      objective_type: "scan_sectors",
       objectives: JSON.stringify({
-        eventsToInvestigate: 3,
-        eventType: "data_node",
+        scansRequired: 3,
       }),
       narration_key: "fq_mycorrhizal_m03_p1",
     },
@@ -1067,9 +1071,9 @@ export async function seed(knex: Knex): Promise<void> {
       phase_order: 2,
       title: "Stop the Thieves",
       description:
-        "Intercept 2 Syndicate data thieves before they escape with stolen research.",
-      objective_type: "intercept",
-      objectives: JSON.stringify({ caravansToIntercept: 2 }),
+        "Destroy 2 Syndicate data thief ships before they escape with stolen research.",
+      objective_type: "destroy_ship",
+      objectives: JSON.stringify({ shipsToDestroy: 2 }),
       narration_key: "fq_mycorrhizal_m07_p2",
     },
     // M10: Primordium Ecology (investigate → scan)
@@ -1078,11 +1082,10 @@ export async function seed(knex: Knex): Promise<void> {
       template_id: factionMissionId("mycorrhizal", 10),
       phase_order: 1,
       title: "Survey Bio-Sites",
-      description: "Investigate 5 bio-sites left by the Primordium.",
-      objective_type: "investigate",
+      description: "Scan 5 bio-site sectors left by the Primordium.",
+      objective_type: "scan_sectors",
       objectives: JSON.stringify({
-        eventsToInvestigate: 5,
-        eventType: "bio_site",
+        scansRequired: 5,
       }),
       narration_key: "fq_mycorrhizal_m10_p1",
     },
@@ -1102,10 +1105,13 @@ export async function seed(knex: Knex): Promise<void> {
       id: fqPhaseId("mycorrhizal", 11, 1),
       template_id: factionMissionId("mycorrhizal", 11),
       phase_order: 1,
-      title: "Escort Activation Caravan",
-      description: "Escort 3 activation caravans to the primary node.",
-      objective_type: "escort",
-      objectives: JSON.stringify({ caravansToEscort: 3 }),
+      title: "Deliver Activation Components",
+      description: "Deliver 3 activation components to the primary node.",
+      objective_type: "deliver_cargo",
+      objectives: JSON.stringify({
+        commodity: "activation_components",
+        quantity: 3,
+      }),
       narration_key: "fq_mycorrhizal_m11_p1",
     },
     {
@@ -1114,9 +1120,9 @@ export async function seed(knex: Knex): Promise<void> {
       phase_order: 2,
       title: "Defend the Primary Node",
       description:
-        "Defend the primary node from hostile forces attempting to stop activation.",
-      objective_type: "defend_planet",
-      objectives: JSON.stringify({ bombardsToRepel: 3 }),
+        "Destroy 3 hostile ships attempting to stop the node activation.",
+      objective_type: "destroy_ship",
+      objectives: JSON.stringify({ shipsToDestroy: 3 }),
       narration_key: "fq_mycorrhizal_m11_p2",
     },
 
@@ -1179,10 +1185,10 @@ export async function seed(knex: Knex): Promise<void> {
       id: fqPhaseId("iron_dominion", 4, 2),
       template_id: factionMissionId("iron_dominion", 4),
       phase_order: 2,
-      title: "Escort Intel Convoy",
-      description: "Escort the intelligence convoy safely back to command.",
-      objective_type: "escort",
-      objectives: JSON.stringify({ caravansToEscort: 2 }),
+      title: "Deliver Intel Package",
+      description: "Deliver the intelligence package safely back to command.",
+      objective_type: "deliver_cargo",
+      objectives: JSON.stringify({ commodity: "intelligence", quantity: 2 }),
       narration_key: "fq_iron_m04_p2",
     },
     // M5: Dominion Tactics (destroy → choose)
@@ -1223,12 +1229,12 @@ export async function seed(knex: Knex): Promise<void> {
       id: fqPhaseId("iron_dominion", 6, 2),
       template_id: factionMissionId("iron_dominion", 6),
       phase_order: 2,
-      title: "Distress Investigation",
-      description: "Investigate 3 distress signals encountered during patrol.",
-      objective_type: "investigate",
+      title: "Distress Signal Sweep",
+      description:
+        "Scan 3 sectors with distress signals encountered during patrol.",
+      objective_type: "scan_sectors",
       objectives: JSON.stringify({
-        eventsToInvestigate: 3,
-        eventType: "distress",
+        scansRequired: 3,
       }),
       narration_key: "fq_iron_m06_p2",
     },
@@ -1237,10 +1243,14 @@ export async function seed(knex: Knex): Promise<void> {
       id: fqPhaseId("iron_dominion", 7, 1),
       template_id: factionMissionId("iron_dominion", 7),
       phase_order: 1,
-      title: "Escort Convoy",
-      description: "Escort the supply convoy through the contested corridor.",
-      objective_type: "escort",
-      objectives: JSON.stringify({ caravansToEscort: 3 }),
+      title: "Run the Supply Line",
+      description:
+        "Deliver supplies through the contested corridor to the forward base.",
+      objective_type: "deliver_cargo",
+      objectives: JSON.stringify({
+        commodity: "military_supplies",
+        quantity: 3,
+      }),
       narration_key: "fq_iron_m07_p1",
     },
     {
@@ -1248,9 +1258,9 @@ export async function seed(knex: Knex): Promise<void> {
       template_id: factionMissionId("iron_dominion", 7),
       phase_order: 2,
       title: "Defend Forward Base",
-      description: "Defend the forward base from the incoming attack.",
-      objective_type: "defend_planet",
-      objectives: JSON.stringify({ bombardsToRepel: 2 }),
+      description: "Destroy 2 hostile ships attacking the forward base.",
+      objective_type: "destroy_ship",
+      objectives: JSON.stringify({ shipsToDestroy: 2 }),
       narration_key: "fq_iron_m07_p2",
     },
     // M10: War Council (meet_npc → trade)
@@ -1293,9 +1303,9 @@ export async function seed(knex: Knex): Promise<void> {
       template_id: factionMissionId("iron_dominion", 11),
       phase_order: 2,
       title: "Hold the Line",
-      description: "Defend the forward planet from the counterattack.",
-      objective_type: "defend_planet",
-      objectives: JSON.stringify({ bombardsToRepel: 3 }),
+      description: "Destroy 3 enemy ships in the counterattack.",
+      objective_type: "destroy_ship",
+      objectives: JSON.stringify({ shipsToDestroy: 3 }),
       narration_key: "fq_iron_m11_p2",
     },
     {
@@ -1362,10 +1372,11 @@ export async function seed(knex: Knex): Promise<void> {
       id: fqPhaseId("traders_guild", 3, 1),
       template_id: factionMissionId("traders_guild", 3),
       phase_order: 1,
-      title: "Escort the Caravan",
-      description: "Escort a trade caravan through dangerous space.",
-      objective_type: "escort",
-      objectives: JSON.stringify({ caravansToEscort: 2 }),
+      title: "Navigate Dangerous Space",
+      description:
+        "Visit 2 sectors along the trade route through dangerous space.",
+      objective_type: "visit_sector",
+      objectives: JSON.stringify({ sectorsToVisit: 2 }),
       narration_key: "fq_traders_m03_p1",
     },
     {
@@ -1384,9 +1395,9 @@ export async function seed(knex: Knex): Promise<void> {
       template_id: factionMissionId("traders_guild", 4),
       phase_order: 1,
       title: "Intercept Smugglers",
-      description: "Intercept 2 smuggling caravans.",
-      objective_type: "intercept",
-      objectives: JSON.stringify({ caravansToIntercept: 2 }),
+      description: "Destroy 2 smuggler vessels.",
+      objective_type: "destroy_ship",
+      objectives: JSON.stringify({ shipsToDestroy: 2 }),
       narration_key: "fq_traders_m04_p1",
     },
     {
@@ -1394,11 +1405,10 @@ export async function seed(knex: Knex): Promise<void> {
       template_id: factionMissionId("traders_guild", 4),
       phase_order: 2,
       title: "Expose the Network",
-      description: "Investigate the smuggling supply chain.",
-      objective_type: "investigate",
+      description: "Scan 2 sectors to trace the smuggling supply chain.",
+      objective_type: "scan_sectors",
       objectives: JSON.stringify({
-        eventsToInvestigate: 2,
-        eventType: "smuggling",
+        scansRequired: 2,
       }),
       narration_key: "fq_traders_m04_p2",
     },
@@ -1467,9 +1477,10 @@ export async function seed(knex: Knex): Promise<void> {
       template_id: factionMissionId("shadow_syndicate", 3),
       phase_order: 2,
       title: "Intercept the Rival",
-      description: "Intercept a rival's shipment before it reaches market.",
-      objective_type: "intercept",
-      objectives: JSON.stringify({ caravansToIntercept: 1 }),
+      description:
+        "Destroy a rival's shipping vessel before it reaches market.",
+      objective_type: "destroy_ship",
+      objectives: JSON.stringify({ shipsToDestroy: 1 }),
       narration_key: "fq_shadow_m03_p2",
     },
     // M4: Blackout (sabotage → scan)
@@ -1477,12 +1488,11 @@ export async function seed(knex: Knex): Promise<void> {
       id: fqPhaseId("shadow_syndicate", 4, 1),
       template_id: factionMissionId("shadow_syndicate", 4),
       phase_order: 1,
-      title: "Sabotage the Array",
-      description: "Disable the Ranger sensor array.",
-      objective_type: "sabotage",
+      title: "Infiltrate the Array Sector",
+      description: "Visit the Ranger sensor array sector to disable it.",
+      objective_type: "visit_sector",
       objectives: JSON.stringify({
-        targetId: "ranger_array",
-        targetType: "sensor_array",
+        sectorsToVisit: 1,
       }),
       narration_key: "fq_shadow_m04_p1",
     },
@@ -1526,11 +1536,10 @@ export async function seed(knex: Knex): Promise<void> {
       template_id: factionMissionId("independent", 3),
       phase_order: 1,
       title: "Salvage Hunt",
-      description: "Investigate 3 derelict ships for personality modules.",
-      objective_type: "investigate",
+      description: "Scan 3 derelict ship sectors for personality modules.",
+      objective_type: "scan_sectors",
       objectives: JSON.stringify({
-        eventsToInvestigate: 3,
-        eventType: "derelict",
+        scansRequired: 3,
       }),
       narration_key: "fq_indep_m03_p1",
     },

@@ -16,7 +16,15 @@ export type MissionType =
   | "timed_delivery"
   | "choose"
   | "defend_planet"
-  | "sabotage";
+  | "sabotage"
+  // Tutorial/action objective types (Phase 6+)
+  | "buy_item"
+  | "buy_ship"
+  | "deploy_item"
+  | "create_trade_route"
+  | "upgrade_planet"
+  | "join_syndicate"
+  | "send_trade_offer";
 
 export interface MissionObjectives {
   // deliver_cargo: deliver X units of commodity to a sector with an outpost
@@ -55,6 +63,18 @@ export interface MissionObjectives {
   // sabotage: complete sabotage at target
   targetId?: string;
   targetType?: string;
+  // buy_item: buy a specific item (or any item in a category)
+  itemId?: string;
+  category?: string;
+  // buy_ship: buy a specific ship type (or any ship)
+  shipTypeId?: string;
+  // deploy_item: deploy a specific item type
+  itemType?: string;
+  // upgrade_planet: upgrade to at least this level
+  minLevel?: number;
+  // Per-mission NPC name overrides for ambush/destroy phases
+  npcNames?: string[];
+  npcShipType?: string;
 }
 
 export interface MissionProgress {
@@ -67,15 +87,25 @@ export interface MissionProgress {
   scannedSectorIds?: number[];
   cargoDelivered?: number;
   // New objective type progress
+  targetSectorId?: number; // meet_npc: sector where NPC is waiting
   npcMet?: boolean;
   caravansEscorted?: number;
   caravansIntercepted?: number;
   eventsInvestigated?: number;
   ambushesSurvived?: number;
+  ambushNpcIds?: string[]; // IDs of spawned ambush NPCs for this phase
   timedDelivered?: number;
   choiceMade?: boolean;
   bombardsRepelled?: number;
   sabotageCompleted?: boolean;
+  // Tutorial/action objective progress
+  itemBought?: boolean;
+  shipBought?: boolean;
+  itemDeployed?: boolean;
+  tradeRouteCreated?: boolean;
+  planetUpgraded?: boolean;
+  syndicateJoined?: boolean;
+  tradeOfferSent?: boolean;
 }
 
 export interface ObjectiveDetail {
@@ -167,6 +197,18 @@ export function checkMissionProgress(
         p.npcMet = true;
         updated = true;
       }
+      // Auto-encounter: arriving at or already in the NPC's assigned meeting sector.
+      // Checks both sectorId (from move/warp) and currentSectorId (from any action)
+      // so it works regardless of how the player got there.
+      if (
+        p.targetSectorId &&
+        !p.npcMet &&
+        (data.sectorId === p.targetSectorId ||
+          data.currentSectorId === p.targetSectorId)
+      ) {
+        p.npcMet = true;
+        updated = true;
+      }
       break;
 
     case "escort":
@@ -195,6 +237,18 @@ export function checkMissionProgress(
     case "survive_ambush":
       if (action === "combat_survive") {
         p.ambushesSurvived = (p.ambushesSurvived || 0) + 1;
+        updated = true;
+      }
+      // Killing an ambush NPC spawned for this mission counts as surviving
+      if (
+        action === "combat_destroy" &&
+        data.targetId &&
+        p.ambushNpcIds?.includes(data.targetId)
+      ) {
+        p.ambushesSurvived = (p.ambushesSurvived || 0) + 1;
+        p.ambushNpcIds = p.ambushNpcIds.filter(
+          (id: string) => id !== data.targetId,
+        );
         updated = true;
       }
       break;
@@ -230,6 +284,86 @@ export function checkMissionProgress(
         data.targetId === objectives.targetId
       ) {
         p.sabotageCompleted = true;
+        updated = true;
+      }
+      break;
+
+    case "buy_item":
+      if (action === "buy_item") {
+        // Match specific item or category
+        if (objectives.itemId && data.itemId === objectives.itemId) {
+          p.itemBought = true;
+          updated = true;
+        } else if (
+          objectives.category &&
+          data.category === objectives.category
+        ) {
+          p.itemBought = true;
+          updated = true;
+        } else if (!objectives.itemId && !objectives.category) {
+          // Any item purchase counts
+          p.itemBought = true;
+          updated = true;
+        }
+      }
+      break;
+
+    case "buy_ship":
+      if (action === "buy_ship") {
+        if (
+          objectives.shipTypeId &&
+          data.shipTypeId === objectives.shipTypeId
+        ) {
+          p.shipBought = true;
+          updated = true;
+        } else if (!objectives.shipTypeId) {
+          p.shipBought = true;
+          updated = true;
+        }
+      }
+      break;
+
+    case "deploy_item":
+      if (action === "deploy_item") {
+        if (objectives.itemType && data.itemType === objectives.itemType) {
+          p.itemDeployed = true;
+          updated = true;
+        } else if (!objectives.itemType) {
+          p.itemDeployed = true;
+          updated = true;
+        }
+      }
+      break;
+
+    case "create_trade_route":
+      if (action === "create_trade_route") {
+        p.tradeRouteCreated = true;
+        updated = true;
+      }
+      break;
+
+    case "upgrade_planet":
+      if (action === "upgrade_planet") {
+        if (objectives.minLevel && data.level >= objectives.minLevel) {
+          p.planetUpgraded = true;
+          updated = true;
+        } else if (!objectives.minLevel) {
+          p.planetUpgraded = true;
+          updated = true;
+        }
+      }
+      break;
+
+    case "join_syndicate":
+      if (action === "join_syndicate") {
+        p.syndicateJoined = true;
+        updated = true;
+      }
+      break;
+
+    case "send_trade_offer":
+      if (action === "send_trade_offer") {
+        p.tradeOfferSent = true;
         updated = true;
       }
       break;
@@ -293,6 +427,20 @@ function isMissionComplete(
       );
     case "sabotage":
       return !!progress.sabotageCompleted;
+    case "buy_item":
+      return !!progress.itemBought;
+    case "buy_ship":
+      return !!progress.shipBought;
+    case "deploy_item":
+      return !!progress.itemDeployed;
+    case "create_trade_route":
+      return !!progress.tradeRouteCreated;
+    case "upgrade_planet":
+      return !!progress.planetUpgraded;
+    case "join_syndicate":
+      return !!progress.syndicateJoined;
+    case "send_trade_offer":
+      return !!progress.tradeOfferSent;
     default:
       return false;
   }
@@ -466,6 +614,79 @@ export function buildObjectivesDetail(
         hint,
       });
       break;
+    case "buy_item":
+      details.push({
+        description: objectives.itemId
+          ? `Buy the required item`
+          : objectives.category
+            ? `Buy a ${objectives.category} item`
+            : "Buy an item from the store",
+        target: 1,
+        current: 0,
+        complete: false,
+        hint,
+      });
+      break;
+    case "buy_ship":
+      details.push({
+        description: objectives.shipTypeId
+          ? "Buy the specified ship"
+          : "Buy a new ship",
+        target: 1,
+        current: 0,
+        complete: false,
+        hint,
+      });
+      break;
+    case "deploy_item":
+      details.push({
+        description: objectives.itemType
+          ? `Deploy a ${objectives.itemType}`
+          : "Deploy an item",
+        target: 1,
+        current: 0,
+        complete: false,
+        hint,
+      });
+      break;
+    case "create_trade_route":
+      details.push({
+        description: "Create a trade route",
+        target: 1,
+        current: 0,
+        complete: false,
+        hint,
+      });
+      break;
+    case "upgrade_planet":
+      details.push({
+        description: objectives.minLevel
+          ? `Upgrade a planet to Level ${objectives.minLevel}`
+          : "Upgrade a planet",
+        target: 1,
+        current: 0,
+        complete: false,
+        hint,
+      });
+      break;
+    case "join_syndicate":
+      details.push({
+        description: "Create or join a Syndicate",
+        target: 1,
+        current: 0,
+        complete: false,
+        hint,
+      });
+      break;
+    case "send_trade_offer":
+      details.push({
+        description: "Send a trade offer to another player",
+        target: 1,
+        current: 0,
+        complete: false,
+        hint,
+      });
+      break;
   }
   return details;
 }
@@ -528,6 +749,27 @@ export function updateObjectivesDetail(
       break;
     case "sabotage":
       updated[0].current = progress.sabotageCompleted ? 1 : 0;
+      break;
+    case "buy_item":
+      updated[0].current = progress.itemBought ? 1 : 0;
+      break;
+    case "buy_ship":
+      updated[0].current = progress.shipBought ? 1 : 0;
+      break;
+    case "deploy_item":
+      updated[0].current = progress.itemDeployed ? 1 : 0;
+      break;
+    case "create_trade_route":
+      updated[0].current = progress.tradeRouteCreated ? 1 : 0;
+      break;
+    case "upgrade_planet":
+      updated[0].current = progress.planetUpgraded ? 1 : 0;
+      break;
+    case "join_syndicate":
+      updated[0].current = progress.syndicateJoined ? 1 : 0;
+      break;
+    case "send_trade_offer":
+      updated[0].current = progress.tradeOfferSent ? 1 : 0;
       break;
   }
 

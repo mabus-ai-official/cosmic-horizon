@@ -16,6 +16,7 @@ import {
   settleDebitPlayer,
 } from "../chain/tx-queue";
 import type { Address } from "viem";
+import { checkAndUpdateMissions } from "../services/mission-tracker";
 
 const router = Router();
 
@@ -371,6 +372,10 @@ router.post("/syndicate/create", requireAuth, async (req, res) => {
         console.warn("Syndicate chain deployment enqueue failed:", chainErr);
       }
     }
+
+    // Mission tracking: join_syndicate (creating counts as joining)
+    const io = req.app.get("io");
+    checkAndUpdateMissions(player.id, "join_syndicate", { syndicateId }, io);
 
     res.status(201).json({ syndicateId, name });
   } catch (err: any) {
@@ -1387,6 +1392,8 @@ router.post("/syndicate/:id/join", requireAuth, async (req, res) => {
         );
       }
       chainAddSyndicateMember(player.id, syndicateId);
+      // Mission tracking: join_syndicate
+      checkAndUpdateMissions(player.id, "join_syndicate", { syndicateId }, io);
       return res.json({ action: "joined", syndicateId });
     }
 
@@ -1466,6 +1473,13 @@ router.post("/syndicate/join-code", requireAuth, async (req, res) => {
     }
 
     chainAddSyndicateMember(player.id, invite.syndicate_id);
+    // Mission tracking: join_syndicate (via invite code)
+    checkAndUpdateMissions(
+      player.id,
+      "join_syndicate",
+      { syndicateId: invite.syndicate_id },
+      io,
+    );
     res.json({ action: "joined", syndicateId: invite.syndicate_id });
   } catch (err) {
     console.error("Join by code error:", err);

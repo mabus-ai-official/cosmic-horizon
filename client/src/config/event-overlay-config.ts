@@ -78,7 +78,7 @@ export const EVENT_DEFAULTS: Record<
   lore_reveal: {
     priority: "interstitial",
     duration: 8000,
-    colorScheme: "purple",
+    colorScheme: "magenta",
     dismissable: true,
   },
   faction_rankup: {

@@ -104,6 +104,12 @@ function getNpcConfig(act: number): NpcShipConfig {
   }
 }
 
+/** Optional overrides for per-mission NPC customization */
+export interface NpcOverrides {
+  nameOverride?: string | string[];
+  shipTypeOverride?: string;
+}
+
 /**
  * Spawn temporary NPC enemies for a story destroy_ship mission.
  * Returns the IDs of the spawned NPC players.
@@ -113,10 +119,19 @@ export async function spawnStoryNPCs(
   playerMissionId: string,
   count: number,
   act: number,
+  overrides?: NpcOverrides,
 ): Promise<string[]> {
   const config = getNpcConfig(act);
-  const shipType = SHIP_TYPES.find((s) => s.id === config.shipType);
-  if (!shipType) throw new Error(`Unknown ship type: ${config.shipType}`);
+  const shipTypeId = overrides?.shipTypeOverride || config.shipType;
+  const resolvedShipType =
+    SHIP_TYPES.find((s) => s.id === shipTypeId) ||
+    SHIP_TYPES.find((s) => s.id === config.shipType)!;
+  if (!resolvedShipType) throw new Error(`Unknown ship type: ${shipTypeId}`);
+  const namePool = overrides?.nameOverride
+    ? Array.isArray(overrides.nameOverride)
+      ? overrides.nameOverride
+      : [overrides.nameOverride]
+    : config.names;
 
   // Get player's explored sectors, excluding protected ones
   const player = await db("players").where({ id: playerId }).first();
@@ -144,11 +159,11 @@ export async function spawnStoryNPCs(
     // Pick a sector — spread NPCs across sectors
     const sectorId = candidateSectors[i % candidateSectors.length];
 
-    // Pick a unique name
+    // Pick a unique name from the pool (override or act-default)
     let name: string;
     do {
-      name = config.names[Math.floor(Math.random() * config.names.length)];
-    } while (usedNames.has(name) && usedNames.size < config.names.length);
+      name = namePool[Math.floor(Math.random() * namePool.length)];
+    } while (usedNames.has(name) && usedNames.size < namePool.length);
     usedNames.add(name);
 
     const npcPlayerId = crypto.randomUUID();
@@ -156,11 +171,11 @@ export async function spawnStoryNPCs(
 
     const hullHp = Math.max(
       10,
-      Math.round(shipType.maxHullHp * config.hullHpFraction),
+      Math.round(resolvedShipType.maxHullHp * config.hullHpFraction),
     );
     const weaponEnergy = Math.max(
       5,
-      Math.round(shipType.maxWeaponEnergy * config.weaponFraction),
+      Math.round(resolvedShipType.maxWeaponEnergy * config.weaponFraction),
     );
 
     // Create NPC player row
@@ -181,17 +196,17 @@ export async function spawnStoryNPCs(
     // Create NPC ship row
     await db("ships").insert({
       id: npcShipId,
-      ship_type_id: config.shipType,
+      ship_type_id: resolvedShipType.id,
       owner_id: npcPlayerId,
       sector_id: sectorId,
       weapon_energy: weaponEnergy,
-      max_weapon_energy: shipType.maxWeaponEnergy,
+      max_weapon_energy: resolvedShipType.maxWeaponEnergy,
       engine_energy: 0,
-      max_engine_energy: shipType.maxEngineEnergy,
+      max_engine_energy: resolvedShipType.maxEngineEnergy,
       cargo_holds: 0,
       max_cargo_holds: 0,
       hull_hp: hullHp,
-      max_hull_hp: shipType.maxHullHp,
+      max_hull_hp: resolvedShipType.maxHullHp,
       is_destroyed: false,
       is_registered: true,
     });
@@ -200,6 +215,78 @@ export async function spawnStoryNPCs(
   }
 
   return npcIds;
+}
+
+/**
+ * Spawn a single ambush NPC in a specific sector for a survive_ambush mission phase.
+ * Unlike spawnStoryNPCs (which scatters NPCs across explored sectors), this places
+ * one hostile NPC right in the player's current sector to simulate an ambush.
+ */
+export async function spawnAmbushNPC(
+  playerId: string,
+  playerMissionId: string,
+  sectorId: number,
+  act: number,
+  overrides?: NpcOverrides,
+): Promise<string> {
+  const config = getNpcConfig(act);
+  const shipTypeId = overrides?.shipTypeOverride || config.shipType;
+  const resolvedShipType =
+    SHIP_TYPES.find((s) => s.id === shipTypeId) ||
+    SHIP_TYPES.find((s) => s.id === config.shipType)!;
+  if (!resolvedShipType) throw new Error(`Unknown ship type: ${shipTypeId}`);
+
+  const namePool = overrides?.nameOverride
+    ? Array.isArray(overrides.nameOverride)
+      ? overrides.nameOverride
+      : [overrides.nameOverride]
+    : config.names;
+
+  const name = namePool[Math.floor(Math.random() * namePool.length)];
+  const npcPlayerId = crypto.randomUUID();
+  const npcShipId = crypto.randomUUID();
+
+  const hullHp = Math.max(
+    10,
+    Math.round(resolvedShipType.maxHullHp * config.hullHpFraction),
+  );
+  const weaponEnergy = Math.max(
+    5,
+    Math.round(resolvedShipType.maxWeaponEnergy * config.weaponFraction),
+  );
+
+  await db("players").insert({
+    id: npcPlayerId,
+    username: name,
+    email: `npc-${npcPlayerId}@story.local`,
+    password_hash: "NPC_NO_LOGIN",
+    race: "muscarian",
+    current_sector_id: sectorId,
+    current_ship_id: npcShipId,
+    energy: 0,
+    credits: 0,
+    explored_sectors: JSON.stringify([sectorId]),
+    spawned_by_mission_id: playerMissionId,
+  });
+
+  await db("ships").insert({
+    id: npcShipId,
+    ship_type_id: resolvedShipType.id,
+    owner_id: npcPlayerId,
+    sector_id: sectorId,
+    weapon_energy: weaponEnergy,
+    max_weapon_energy: resolvedShipType.maxWeaponEnergy,
+    engine_energy: 0,
+    max_engine_energy: resolvedShipType.maxEngineEnergy,
+    cargo_holds: 0,
+    max_cargo_holds: 0,
+    hull_hp: hullHp,
+    max_hull_hp: resolvedShipType.maxHullHp,
+    is_destroyed: false,
+    is_registered: true,
+  });
+
+  return npcPlayerId;
 }
 
 /**

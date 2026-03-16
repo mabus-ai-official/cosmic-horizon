@@ -20,7 +20,11 @@ import {
 import { PLANET_TYPES } from "../config/planet-types";
 import { SHIP_TYPES } from "../config/ship-types";
 import { findShortestPath, type SectorEdge } from "../engine/universe";
-import { checkPrerequisite } from "../engine/missions";
+import {
+  checkPrerequisite,
+  buildObjectivesDetail,
+  updateObjectivesDetail,
+} from "../engine/missions";
 import {
   handleTutorialStatus,
   handleTutorialSector,
@@ -43,8 +47,126 @@ import { handleSectorChange, notifyPlayer } from "../ws/handlers";
 import { pickFlavor, outpostNpcRace } from "../config/flavor-text";
 import type { RaceId } from "../config/races";
 import { updateDailyMissionProgress } from "./daily-missions";
+import { spawnAmbushNPC } from "../engine/story-npcs";
+import type { Server as SocketIOServer } from "socket.io";
 
 const router = Router();
+
+/**
+ * Check if the player has an active survive_ambush mission phase and spawn
+ * a hostile NPC in their sector when they arrive. Called after move/warp.
+ */
+async function checkAndSpawnAmbush(
+  playerId: string,
+  sectorId: number,
+  io?: SocketIOServer,
+): Promise<void> {
+  try {
+    const activeMissions = await db("player_missions")
+      .join(
+        "mission_templates",
+        "player_missions.template_id",
+        "mission_templates.id",
+      )
+      .where({
+        "player_missions.player_id": playerId,
+        "player_missions.status": "active",
+        "mission_templates.has_phases": true,
+      })
+      .select(
+        "player_missions.id as missionId",
+        "player_missions.template_id",
+        "player_missions.current_phase",
+        "player_missions.phase_progress",
+        "mission_templates.chapter",
+      );
+
+    for (const mission of activeMissions) {
+      const phase = await db("mission_phases")
+        .where({
+          template_id: mission.template_id,
+          phase_order: mission.current_phase || 1,
+        })
+        .first();
+
+      if (!phase || phase.objective_type !== "survive_ambush") continue;
+
+      const objectives =
+        typeof phase.objectives === "string"
+          ? JSON.parse(phase.objectives)
+          : phase.objectives;
+      const progress =
+        typeof mission.phase_progress === "string" && mission.phase_progress
+          ? JSON.parse(mission.phase_progress)
+          : mission.phase_progress || {};
+
+      const survived = progress.ambushesSurvived || 0;
+      const needed = objectives.ambushesToSurvive || 1;
+      if (survived >= needed) continue;
+
+      // Don't spawn another if there's already a live ambush NPC for this mission
+      const aliveNpcs = await db("players")
+        .where({ spawned_by_mission_id: mission.missionId })
+        .join("ships", "ships.owner_id", "players.id")
+        .where("ships.is_destroyed", false)
+        .select("players.id");
+
+      if (aliveNpcs.length > 0) continue;
+
+      // Spawn ambush NPC in the player's new sector
+      const act = mission.chapter || 1;
+      const npcId = await spawnAmbushNPC(
+        playerId,
+        mission.missionId,
+        sectorId,
+        act,
+        objectives.npcNames || objectives.npcShipType
+          ? {
+              nameOverride: objectives.npcNames,
+              shipTypeOverride: objectives.npcShipType,
+            }
+          : undefined,
+      );
+
+      // Track spawned NPC in phase_progress
+      const npcIds = progress.ambushNpcIds || [];
+      npcIds.push(npcId);
+      progress.ambushNpcIds = npcIds;
+
+      // Get the NPC name for the overlay and objectives hint
+      const npc = await db("players").where({ id: npcId }).first();
+      const npcName = npc?.username || "Unknown Hostile";
+
+      // Rebuild objectives_detail with location hint so mission panel shows where to go
+      const hint = `${npcName} is waiting in Sector ${sectorId}`;
+      const detail = buildObjectivesDetail(phase.objective_type, objectives, [
+        hint,
+      ]);
+      const updatedDetail = updateObjectivesDetail(
+        phase.objective_type,
+        progress,
+        detail,
+      );
+
+      await db("player_missions")
+        .where({ id: mission.missionId })
+        .update({
+          phase_progress: JSON.stringify(progress),
+          objectives_detail: JSON.stringify(updatedDetail),
+        });
+
+      if (io) {
+        notifyPlayer(io, playerId, "mission:ambush", {
+          missionId: mission.missionId,
+          npcName,
+          sectorId,
+        });
+      }
+    }
+  } catch (err) {
+    console.error("Ambush spawn error:", err);
+  }
+}
 
 // Player status — the master state endpoint. Called on every page load and after
 // most actions. Aggregates player, ship, upgrades, level bonuses, story progress,
@@ -345,9 +467,17 @@ router.post("/move/:sectorId", requireAuth, async (req, res) => {
 
     // Mission progress: move
     const io = req.app.get("io");
-    checkAndUpdateMissions(player.id, "move", { sectorId: targetSectorId }, io);
+    checkAndUpdateMissions(
+      player.id,
+      "move",
+      { sectorId: targetSectorId, currentSectorId: targetSectorId },
+      io,
+    );
     checkRandomEvents(player.id, "explore", { sectorId: targetSectorId }, io);
     updateDailyMissionProgress(player.id, "visit_sectors").catch(() => {});
+
+    // Spawn ambush NPCs for active survive_ambush mission phases
+    await checkAndSpawnAmbush(player.id, targetSectorId, io);
 
     // Award explore XP for new sector discovery
     let xpResult = null;
@@ -620,7 +750,23 @@ router.post("/warp-to/:sectorId", requireAuth, async (req, res) => {
     // Profile stats: energy spent on warp
     incrementStat(player.id, "energy_spent", totalCost);
 
-    // Warp does NOT count toward mission progress — only manual move does
+    // Warp triggers both "warp" and "move" mission checks so visit_sector
+    // missions progress regardless of travel method (jump drive, warp gate, etc.)
+    checkAndUpdateMissions(
+      player.id,
+      "warp",
+      { sectorId: targetSectorId, currentSectorId: targetSectorId },
+      io,
+    );
+    checkAndUpdateMissions(
+      player.id,
+      "move",
+      { sectorId: targetSectorId, currentSectorId: targetSectorId },
+      io,
+    );
+
+    // Spawn ambush NPCs for active survive_ambush mission phases
+    await checkAndSpawnAmbush(player.id, targetSectorId, io);
 
     // Get destination sector contents
     const sector = await db("sectors").where({ id: targetSectorId }).first();

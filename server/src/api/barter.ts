@@ -11,6 +11,7 @@ import {
   settleTransferPlanet,
   settleTransferBetweenPlayers,
 } from "../chain/tx-queue";
+import { checkAndUpdateMissions } from "../services/mission-tracker";
 
 const router = Router();
 
@@ -412,6 +413,9 @@ router.post("/offer", requireAuth, async (req, res) => {
         message: `${sender?.username || "Someone"} sent you a trade offer!`,
       });
     }
+
+    // Mission tracking: send_trade_offer
+    checkAndUpdateMissions(playerId, "send_trade_offer", { offerId }, io);
 
     res.json({ id: offerId, status: "pending" });
   } catch (err) {

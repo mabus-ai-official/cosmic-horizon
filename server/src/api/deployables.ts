@@ -7,6 +7,7 @@ import { getStoreItem } from "../config/store-items";
 import db from "../db/connection";
 import { syncPlayer } from "../ws/sync";
 import { settleDebitPlayer } from "../chain/tx-queue";
+import { checkAndUpdateMissions } from "../services/mission-tracker";
 
 const router = Router();
 
@@ -142,6 +143,14 @@ router.post("/deploy", requireAuth, async (req, res) => {
         "sync:status",
         req.headers["x-socket-id"] as string | undefined,
       );
+
+    // Mission tracking: deploy_item
+    checkAndUpdateMissions(
+      player.id,
+      "deploy_item",
+      { itemType: item.deployableType, sectorId: player.current_sector_id },
+      io,
+    );
 
     res.json({
       deployableId,

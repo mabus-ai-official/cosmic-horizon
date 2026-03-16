@@ -14,6 +14,7 @@ import {
 import db from "../db/connection";
 import { syncPlayer } from "../ws/sync";
 import { settleDebitPlayer } from "../chain/tx-queue";
+import { checkAndUpdateMissions } from "../services/mission-tracker";
 
 const router = Router();
 
@@ -289,6 +290,9 @@ router.post("/", requireAuth, async (req, res) => {
         "sync:status",
         req.headers["x-socket-id"] as string | undefined,
       );
+
+    // Mission tracking: create_trade_route
+    checkAndUpdateMissions(playerId, "create_trade_route", { routeId }, io);
 
     res.json({
       success: true,

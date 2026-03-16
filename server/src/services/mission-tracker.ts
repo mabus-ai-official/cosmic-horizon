@@ -16,6 +16,11 @@ import {
 } from "../engine/profile-stats";
 import { notifyPlayer } from "../ws/handlers";
 import { calculateTier } from "../engine/npcs";
+import {
+  resolveTargets,
+  enrichDescription,
+  TargetResolution,
+} from "../engine/target-resolution";
 import crypto from "crypto";
 import type { Server as SocketIOServer } from "socket.io";
 
@@ -255,6 +260,26 @@ async function handlePhasedMission(
       ? JSON.parse(mission.phase_progress)
       : mission.phase_progress || {};
 
+  // Check timed_delivery expiry before processing progress
+  if (
+    currentPhase.objective_type === "timed_delivery" &&
+    phaseProgress.expires_at &&
+    new Date(phaseProgress.expires_at) < new Date()
+  ) {
+    // Timer expired — fail the mission
+    await db("player_missions")
+      .where({ id: mission.missionId })
+      .update({ status: "failed" });
+    if (io) {
+      notifyPlayer(io, playerId, "mission:failed", {
+        missionId: mission.missionId,
+        title: mission.title,
+        reason: "Time expired",
+      });
+    }
+    return;
+  }
+
   const result = checkMissionProgress(
     {
       type: currentPhase.objective_type,
@@ -321,11 +346,124 @@ async function handlePhasedMission(
     } else if (currentPhaseIndex + 1 < phases.length) {
       // Advance to next phase
       const nextPhase = phases[currentPhaseIndex + 1];
+      let nextPhaseProgress: Record<string, any> = {};
+
+      const nextObjectives =
+        typeof nextPhase.objectives === "string"
+          ? JSON.parse(nextPhase.objectives)
+          : nextPhase.objectives;
+      const detail = buildObjectivesDetail(
+        nextPhase.objective_type,
+        nextObjectives,
+      );
+      let phaseDescriptionWithHint = nextPhase.description;
+
+      // Dynamic target resolution — if the phase has target_resolution, resolve
+      // sector IDs based on player state and store in phase_progress
+      const targetResolution = nextPhase.target_resolution
+        ? typeof nextPhase.target_resolution === "string"
+          ? JSON.parse(nextPhase.target_resolution)
+          : nextPhase.target_resolution
+        : null;
+
+      if (targetResolution) {
+        try {
+          const resolved = await resolveTargets(
+            playerId,
+            targetResolution as TargetResolution,
+          );
+          if (resolved.targetSectorId) {
+            nextPhaseProgress.targetSectorId = resolved.targetSectorId;
+          }
+          if (resolved.targetSectorIds) {
+            nextPhaseProgress.targetSectorIds = resolved.targetSectorIds;
+          }
+          if (resolved.locationHint) {
+            detail[0].description = enrichDescription(
+              detail[0].description,
+              resolved,
+            );
+            phaseDescriptionWithHint = enrichDescription(
+              phaseDescriptionWithHint,
+              resolved,
+            );
+          }
+        } catch (err) {
+          console.error("Target resolution error:", err);
+        }
+      }
+
+      // If next phase is meet_npc, auto-assign a target sector (fallback if
+      // no target_resolution was specified or resolution failed)
+      if (
+        nextPhase.objective_type === "meet_npc" &&
+        !nextPhaseProgress.targetSectorId
+      ) {
+        const player = await db("players").where({ id: playerId }).first();
+        const currentSectorId = player?.current_sector_id || 1;
+        const outpostSectors = await db("outposts")
+          .where("sector_id", "!=", currentSectorId)
+          .select("sector_id as sectorId", "name as outpostName");
+        if (outpostSectors.length > 0) {
+          const pick =
+            outpostSectors[Math.floor(Math.random() * outpostSectors.length)];
+          nextPhaseProgress.targetSectorId = pick.sectorId;
+          const npcName = nextObjectives.npcName || "NPC";
+          const hint = pick.outpostName
+            ? `${npcName} awaits at ${pick.outpostName} in Sector ${pick.sectorId}`
+            : `${npcName} awaits in Sector ${pick.sectorId}`;
+          detail[0].description += ` — ${hint}`;
+          phaseDescriptionWithHint += ` — ${hint}`;
+        }
+      }
+
+      // If next phase is deliver_cargo, hint where to sell (fallback)
+      if (
+        nextPhase.objective_type === "deliver_cargo" &&
+        nextObjectives.commodity &&
+        !nextPhaseProgress.targetSectorId
+      ) {
+        const modeCol = `${nextObjectives.commodity}_mode`;
+        const player = await db("players").where({ id: playerId }).first();
+        const explored: number[] = JSON.parse(player?.explored_sectors || "[]");
+        const buyingOutposts = await db("outposts")
+          .where(modeCol, "buy")
+          .select("name", "sector_id");
+        if (buyingOutposts.length > 0) {
+          const visited = buyingOutposts.filter((o: any) =>
+            explored.includes(o.sector_id),
+          );
+          const pick = visited.length > 0 ? visited[0] : buyingOutposts[0];
+          const hint = `Sell at ${pick.name}, Sector ${pick.sector_id}`;
+          detail[0].description += ` (${hint})`;
+          phaseDescriptionWithHint += ` (${hint})`;
+        }
+      }
+
+      // If next phase is timed_delivery, set the timer
+      if (
+        nextPhase.objective_type === "timed_delivery" &&
+        nextObjectives.timeMinutes
+      ) {
+        const expiresAt = new Date(
+          Date.now() + nextObjectives.timeMinutes * 60 * 1000,
+        ).toISOString();
+        nextPhaseProgress.expires_at = expiresAt;
+        if (io) {
+          notifyPlayer(io, playerId, "mission:timer_started", {
+            missionId: mission.missionId,
+            expiresAt,
+            timeMinutes: nextObjectives.timeMinutes,
+          });
+        }
+      }
+
       await db("player_missions")
         .where({ id: mission.missionId })
         .update({
           current_phase: nextPhase.phase_order,
-          phase_progress: JSON.stringify({}),
+          phase_progress: JSON.stringify(nextPhaseProgress),
+          objectives_detail: JSON.stringify(detail),
         });
 
       if (io) {
@@ -334,10 +472,11 @@ async function handlePhasedMission(
           title: mission.title,
           phaseOrder: nextPhase.phase_order,
           phaseTitle: nextPhase.title,
-          phaseDescription: nextPhase.description,
+          phaseDescription: phaseDescriptionWithHint,
           totalPhases: phases.length,
           loreText: nextPhase.lore_text,
           narrationKey: nextPhase.narration_key,
+          storyOrder: mission.story_order || 0,
         });
       }
     } else {
@@ -701,6 +840,7 @@ export async function handleMissionChoice(
           totalPhases: phases.length,
           loreText: nextPhase.lore_text,
           narrationKey: nextPhase.narration_key,
+          storyOrder: template.story_order || 0,
         });
       }
       return { success: true };

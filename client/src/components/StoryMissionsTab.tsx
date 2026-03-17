@@ -7,11 +7,7 @@ import {
   abandonStoryMission,
   submitStoryChoice,
 } from "../services/api";
-import {
-  getNarrationUrl,
-  CLAIM_TEXTS,
-  getChoiceNarrationUrl,
-} from "../config/narration-manifest";
+import { getNarrationUrl, CLAIM_TEXTS } from "../config/narration-manifest";
 
 const CHAPTER_TITLES: Record<number, string> = {
   1: "Call of Destiny",
@@ -467,34 +463,36 @@ export default function StoryMissionsTab({
                     disabled={busy}
                     onClick={() => {
                       const pc = current.mission.pendingChoice;
-                      if (onStoryEvent) {
-                        onStoryEvent({
-                          type: "mission_choice",
-                          title: pc.isPermanent ? "TURNING POINT" : "DECISION",
-                          subtitle: pc.title,
-                          body: pc.body,
-                          narrationUrl:
-                            getChoiceNarrationUrl(pc.choiceKey) || undefined,
-                          colorScheme: "cyan",
-                          isPermanent: pc.isPermanent,
-                          actions: pc.options.map(
-                            (o: { id: string; label: string }) => ({
-                              id: `choice:${current.mission.missionId}:${pc.choiceId}:${o.id}`,
-                              label: o.label,
-                              variant: "primary",
-                            }),
-                          ),
-                          onAction: (actionId: string) => {
-                            const parts = actionId.split(":");
-                            if (parts[0] === "choice" && parts.length === 4) {
-                              const [, missionId, choiceId, optionId] = parts;
-                              submitStoryChoice(missionId, choiceId, optionId)
-                                .then(() => refresh())
-                                .catch(() => {});
-                            }
-                          },
-                        });
-                      }
+                      setBusy(true);
+                      submitStoryChoice(
+                        current.mission.missionId,
+                        pc.choiceId,
+                        opt.id,
+                      )
+                        .then(() => {
+                          refresh();
+                          onAction?.();
+                          if (onStoryEvent) {
+                            onStoryEvent({
+                              type: "lore_reveal",
+                              title: pc.isPermanent
+                                ? "YOUR FATE IS SEALED"
+                                : "DECISION MADE",
+                              subtitle: opt.label,
+                              body:
+                                opt.description ||
+                                "Your choice has been recorded. The consequences will unfold...",
+                            });
+                          }
+                        })
+                        .catch((err) => {
+                          console.error(
+                            "[StoryMissionsTab] choice submit failed:",
+                            err.response?.status,
+                            err.response?.data || err.message,
+                          );
+                        })
+                        .finally(() => setBusy(false));
                     }}
                   >
                     <strong>{opt.label}</strong>

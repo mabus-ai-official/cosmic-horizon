@@ -1070,7 +1070,16 @@ export default function PlanetsPanel({
             {tag}
           </span>
         </div>
-        <div className="planet-panel-item__details">
+        <div
+          className="planet-panel-item__details"
+          style={{
+            display: "flex",
+            gap: "8px",
+            fontSize: "0.85em",
+            color: "var(--text-secondary)",
+            flexWrap: "wrap",
+          }}
+        >
           <span>Sector {p.sectorId}</span>
           <span>Level {p.upgradeLevel}</span>
           <span>{p.colonists.toLocaleString()} colonists</span>
@@ -1082,7 +1091,15 @@ export default function PlanetsPanel({
           )}
         </div>
         {p.owned && p.cyrilliumStock != null && (
-          <div className="planet-panel-item__stocks">
+          <div
+            className="planet-panel-item__stocks"
+            style={{
+              display: "flex",
+              gap: "8px",
+              fontSize: "0.85em",
+              color: "var(--text-secondary)",
+            }}
+          >
             <span title="Cyrillium">Cyr: {p.cyrilliumStock}</span>
             <span title="Food">Food: {p.foodStock}</span>
             <span title="Tech">Tech: {p.techStock}</span>

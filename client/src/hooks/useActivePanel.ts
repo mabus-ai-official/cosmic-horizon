@@ -40,12 +40,8 @@ export function useActivePanel(defaultPanel: PanelId = "nav") {
       // Switch to group, default to first tab
       setActiveGroup(groupId);
       setActivePanel(group.tabs[0].id);
-      // Clear badges for all tabs in this group
-      setBadges((prev) => {
-        const next = { ...prev };
-        for (const tab of group.tabs) next[tab.id] = 0;
-        return next;
-      });
+      // Only clear badge for the tab we're switching to (first tab)
+      setBadges((prev) => ({ ...prev, [group.tabs[0].id]: 0 }));
     },
     [activeGroup],
   );

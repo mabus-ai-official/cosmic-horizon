@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
 import { canAffordAction, deductEnergy, getActionCost } from "../engine/energy";
-import { checkAndUpdateMissions } from "../services/mission-tracker";
+import {
+  checkAndUpdateMissions,
+  checkRescueMerchant,
+} from "../services/mission-tracker";
 import { checkRandomEvents } from "../engine/random-events";
 import { applyUpgradesToShip } from "../engine/upgrades";
 import { getFactionItemBonuses } from "../engine/faction-items";
@@ -436,10 +439,6 @@ router.post("/move/:sectorId", requireAuth, async (req, res) => {
 
     // Get sector contents
     const sector = await db("sectors").where({ id: targetSectorId }).first();
-    const playersInSector = await db("players")
-      .where({ current_sector_id: targetSectorId })
-      .whereNot({ id: player.id })
-      .select("id", "username");
     const outpostsInSector = await db("outposts").where({
       sector_id: targetSectorId,
     });
@@ -478,6 +477,15 @@ router.post("/move/:sectorId", requireAuth, async (req, res) => {
 
     // Spawn ambush NPCs for active survive_ambush mission phases
     await checkAndSpawnAmbush(player.id, targetSectorId, io);
+
+    // Check if a rescue merchant should appear for deliver_cargo phases
+    await checkRescueMerchant(player.id, targetSectorId, io);
+
+    // Query players AFTER ambush spawn so spawned NPCs appear in the response
+    const playersInSector = await db("players")
+      .where({ current_sector_id: targetSectorId })
+      .whereNot({ id: player.id })
+      .select("id", "username");
 
     // Award explore XP for new sector discovery
     let xpResult = null;

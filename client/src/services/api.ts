@@ -241,6 +241,10 @@ export const salvageShip = (shipId: string) =>
 export const getCantina = () => api.get("/starmall/cantina");
 export const buyCantineIntel = () => api.post("/starmall/cantina/intel");
 export const talkBartender = () => api.post("/starmall/cantina/talk");
+export const getCantinaDrinks = () => api.get("/starmall/cantina/drinks");
+export const orderCantinaDrink = (drinkId: string) =>
+  api.post(`/starmall/cantina/order/${drinkId}`);
+export const eavesdropCantina = () => api.get("/starmall/cantina/eavesdrop");
 
 // Single Player
 export const transitionToMP = (force?: boolean) =>
@@ -284,6 +288,8 @@ export const submitStoryChoice = (
   choiceId: string,
   optionId: string,
 ) => api.post("/story/choice", { missionId, choiceId, optionId });
+export const rescueMerchantBuy = (missionId: string) =>
+  api.post("/story/rescue-buy", { missionId });
 export const getStoryFlags = () => api.get("/story/flags");
 
 // Sector Events

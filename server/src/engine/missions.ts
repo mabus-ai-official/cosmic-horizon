@@ -522,11 +522,11 @@ export function buildObjectivesDetail(
       const capCommodity =
         commodity.charAt(0).toUpperCase() + commodity.slice(1);
       details.push({
-        description: `Deliver ${objectives.quantity} ${capCommodity}${descriptionSuffix || ""}`,
+        description: `Sell ${objectives.quantity} ${capCommodity} at any outpost${descriptionSuffix || ""}`,
         target: objectives.quantity || 0,
         current: 0,
         complete: false,
-        hint,
+        hint: hint || "Dock at an outpost and open the Trade panel",
       });
       break;
     }

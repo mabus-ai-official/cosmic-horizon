@@ -14,6 +14,7 @@ import { buildObjectivesDetail, checkPrerequisite } from "../engine/missions";
 import {
   awardMissionRewards,
   handleMissionChoice,
+  handleRescuePurchase,
 } from "../services/mission-tracker";
 import {
   spawnStoryNPCs,
@@ -285,7 +286,9 @@ router.get("/current", requireAuth, async (req, res) => {
         let pendingChoice: any = null;
         if (
           mission.status === "awaiting_choice" ||
-          (phaseInfo && phaseInfo.currentPhaseType === "choose")
+          (mission.status === "active" &&
+            phaseInfo &&
+            phaseInfo.currentPhaseType === "choose")
         ) {
           const currentPhaseId = mission.hasPhases
             ? (
@@ -773,9 +776,9 @@ router.post("/abandon/:missionId", requireAuth, async (req, res) => {
       .where({
         "player_missions.id": req.params.missionId,
         "player_missions.player_id": playerId,
-        "player_missions.status": "active",
         "mission_templates.source": "story",
       })
+      .whereIn("player_missions.status", ["active", "awaiting_choice"])
       .select(
         "player_missions.id as missionId",
         "mission_templates.id as templateId",
@@ -793,6 +796,20 @@ router.post("/abandon/:missionId", requireAuth, async (req, res) => {
 
     // Clean up any spawned story NPCs
     await cleanupStoryNPCs(mission.missionId);
+
+    // Clean up any recorded choices for this mission's template
+    const templateChoices = await db("mission_choices")
+      .where({ template_id: mission.templateId })
+      .select("id");
+    if (templateChoices.length > 0) {
+      await db("player_mission_choices")
+        .where({ player_id: playerId })
+        .whereIn(
+          "choice_id",
+          templateChoices.map((c: any) => c.id),
+        )
+        .del();
+    }
 
     const failureCount = await getFailureCount(playerId, mission.templateId);
     const showHints = failureCount >= GAME_CONFIG.STORY_HINT_THRESHOLD;
@@ -893,6 +910,13 @@ router.post("/choice", requireAuth, async (req, res) => {
         .json({ error: "missionId, choiceId, and optionId are required" });
     }
 
+    console.log("[story/choice] received:", {
+      playerId,
+      missionId,
+      choiceId,
+      optionId,
+    });
+
     const io = req.app.get("io");
     const result = await handleMissionChoice(
       playerId,
@@ -902,7 +926,14 @@ router.post("/choice", requireAuth, async (req, res) => {
       io,
     );
 
+    console.log("[story/choice] result:", result);
+
     if (!result.success) {
+      console.error("Story choice failed:", result.error, {
+        missionId,
+        choiceId,
+        optionId,
+      });
       return res.status(400).json({ error: result.error });
     }
 
@@ -912,6 +943,34 @@ router.post("/choice", requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error("Story choice error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Purchase from rescue merchant NPC (appears after 10 moves during deliver_cargo)
+router.post("/rescue-buy", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.session.playerId!;
+    const { missionId } = req.body;
+
+    if (!missionId) {
+      return res.status(400).json({ error: "missionId is required" });
+    }
+
+    const io = req.app.get("io");
+    const result = await handleRescuePurchase(playerId, missionId, io);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    res.json({
+      success: true,
+      quantity: result.quantity,
+      cost: result.cost,
+    });
+  } catch (err) {
+    console.error("Rescue buy error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

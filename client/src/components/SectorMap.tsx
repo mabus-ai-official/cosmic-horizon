@@ -473,6 +473,33 @@ export default function SectorMap({
     return result;
   }, [mapData, currentSectorId]);
 
+  // Compute bounding box of sector positions for pan limits
+  const layoutBounds = useMemo(() => {
+    let minX = Infinity,
+      maxX = -Infinity,
+      minY = Infinity,
+      maxY = -Infinity;
+    for (const [, p] of positions) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+    if (!isFinite(minX)) return { minX: 0, maxX: WIDTH, minY: 0, maxY: HEIGHT };
+    // Add margin
+    const margin = 50;
+    return {
+      minX: minX - margin,
+      maxX: maxX + margin,
+      minY: minY - margin,
+      maxY: maxY + margin,
+    };
+  }, [positions]);
+  const layoutBoundsRef = useRef(layoutBounds);
+  useEffect(() => {
+    layoutBoundsRef.current = layoutBounds;
+  }, [layoutBounds]);
+
   const handleNodeClick = useCallback(
     (sectorId: number) => {
       if (adjacentSectorIds.includes(sectorId)) {
@@ -534,13 +561,29 @@ export default function SectorMap({
     const panAccel = Math.pow(z, 0.4);
     const dx = (((e.clientX - dragStart.current.x) * scaleX) / z) * panAccel;
     const dy = (((e.clientY - dragStart.current.y) * scaleY) / z) * panAccel;
-    // Pan limits: generous to cover unclamped layout positions after spread
+    // Pan limits: use actual layout bounds so all sectors are reachable
     const spreadAtZ = Math.pow(z, 0.7);
-    const maxPanX = WIDTH * spreadAtZ;
-    const maxPanY = HEIGHT * spreadAtZ;
+    const lb = layoutBoundsRef.current;
+    const mcx = WIDTH / 2;
+    const mcy = HEIGHT / 2;
+    // Bounds after spread transform
+    const sMinX = mcx + (lb.minX - mcx) * spreadAtZ;
+    const sMaxX = mcx + (lb.maxX - mcx) * spreadAtZ;
+    const sMinY = mcy + (lb.minY - mcy) * spreadAtZ;
+    const sMaxY = mcy + (lb.maxY - mcy) * spreadAtZ;
+    // Viewbox dimensions at current zoom
+    const vw = WIDTH / z;
+    const vh = HEIGHT / z;
+    const vbx0 = (WIDTH - vw) / 2;
+    const vby0 = (HEIGHT - vh) / 2;
+    // Allow panning so the viewbox can reach any edge of the spread bounds
+    const panMinX = sMinX - vbx0 - vw * 0.1;
+    const panMaxX = sMaxX - vbx0 - vw * 0.9;
+    const panMinY = sMinY - vby0 - vh * 0.1;
+    const panMaxY = sMaxY - vby0 - vh * 0.9;
     setPan({
-      x: Math.max(-maxPanX, Math.min(maxPanX, panStart.current.x - dx)),
-      y: Math.max(-maxPanY, Math.min(maxPanY, panStart.current.y - dy)),
+      x: Math.max(panMinX, Math.min(panMaxX, panStart.current.x - dx)),
+      y: Math.max(panMinY, Math.min(panMaxY, panStart.current.y - dy)),
     });
   }, []);
 
@@ -586,11 +629,21 @@ export default function SectorMap({
         const targetVy = mcy + ((cursorVy - mcy) * spreadNew) / spreadOld;
         const newPanX = targetVx - (WIDTH - newVw) / 2 - newVw * mx;
         const newPanY = targetVy - (HEIGHT - newVh) / 2 - newVh * my;
-        const maxPanX = WIDTH * spreadNew;
-        const maxPanY = HEIGHT * spreadNew;
+        // Pan limits from actual layout bounds
+        const lb = layoutBoundsRef.current;
+        const sMinX2 = mcx + (lb.minX - mcx) * spreadNew;
+        const sMaxX2 = mcx + (lb.maxX - mcx) * spreadNew;
+        const sMinY2 = mcy + (lb.minY - mcy) * spreadNew;
+        const sMaxY2 = mcy + (lb.maxY - mcy) * spreadNew;
+        const vbx02 = (WIDTH - newVw) / 2;
+        const vby02 = (HEIGHT - newVh) / 2;
+        const pMinX = sMinX2 - vbx02 - newVw * 0.1;
+        const pMaxX = sMaxX2 - vbx02 - newVw * 0.9;
+        const pMinY = sMinY2 - vby02 - newVh * 0.1;
+        const pMaxY = sMaxY2 - vby02 - newVh * 0.9;
         setPan({
-          x: Math.max(-maxPanX, Math.min(maxPanX, newPanX)),
-          y: Math.max(-maxPanY, Math.min(maxPanY, newPanY)),
+          x: Math.max(pMinX, Math.min(pMaxX, newPanX)),
+          y: Math.max(pMinY, Math.min(pMaxY, newPanY)),
         });
       }
       return next;

@@ -2,7 +2,7 @@
  * Game — main game component shell.
  * State ownership lives here; effects, handlers, and sub-components are extracted.
  */
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import StatusBar from "../components/StatusBar";
 import IntroSequence, {
   INTRO_BEATS,
@@ -28,7 +28,7 @@ import { useAudio } from "../hooks/useAudio";
 import { useAria } from "../hooks/useAria";
 import { useActivePanel } from "../hooks/useActivePanel";
 import { useMusicMood } from "../config/music-moods";
-import { PANELS } from "../types/panels";
+import { PANELS, type PanelId } from "../types/panels";
 import { useGameEffects } from "../hooks/useGameEffects";
 import { useGameHandlers } from "../hooks/useGameHandlers";
 import { useKeybindings } from "../hooks/useKeybindings";
@@ -54,13 +54,23 @@ export default function Game({ onLogout }: GameProps) {
   const {
     activePanel,
     activeGroup,
-    selectPanel,
+    selectPanel: rawSelectPanel,
     selectGroup,
     selectTab,
     badges,
     incrementBadge,
     groupBadge,
   } = useActivePanel("nav");
+
+  // Wrap selectPanel so it also unminimizes the panel card
+  const selectPanel = useCallback(
+    (id: PanelId) => {
+      rawSelectPanel(id);
+      setPanelMinimized(false);
+    },
+    [rawSelectPanel],
+  );
+
   const { toasts, showToast, dismissToast } = useToast();
   const {
     bindings,
@@ -110,8 +120,35 @@ export default function Game({ onLogout }: GameProps) {
 
   const activeOutpost = game.player?.dockedAtOutpostId ?? null;
 
+  // Must define all hooks before any early returns (React rules of hooks)
+  const handlePostTutorialComplete = useCallback(() => {
+    game.markPostTutorialSeen();
+    setPanelMinimized(true);
+    setViewportMinimized(true);
+  }, [game.markPostTutorialSeen]);
+
+  // Wait for player data to load before rendering anything
+  if (!game.player) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          background: "#000",
+          color: "#0ff",
+          fontFamily: "monospace",
+          fontSize: "14px",
+        }}
+      >
+        Initializing systems...
+      </div>
+    );
+  }
+
   // Show intro lore sequence on first login (before tutorial)
-  if (game.player && !game.player.hasSeenIntro) {
+  if (!game.player.hasSeenIntro) {
     return (
       <IntroSequence
         beats={INTRO_BEATS}
@@ -128,7 +165,6 @@ export default function Game({ onLogout }: GameProps) {
     );
   }
 
-  // Show post-tutorial lore sequence after tutorial completion
   if (
     game.player &&
     game.player.tutorialCompleted &&
@@ -139,8 +175,8 @@ export default function Game({ onLogout }: GameProps) {
         <PixelScene
           scene={POST_TUTORIAL_SCENE}
           renderMode="fullscreen"
-          onComplete={game.markPostTutorialSeen}
-          onSkip={game.markPostTutorialSeen}
+          onComplete={handlePostTutorialComplete}
+          onSkip={handlePostTutorialComplete}
         />
       );
     }
@@ -163,6 +199,9 @@ export default function Game({ onLogout }: GameProps) {
 
   return (
     <div className="game-layout">
+      {/* Screen-edge red vignette flash for combat/ambush */}
+      {effects.combatFlash && <div className="combat-vignette-flash" />}
+
       <ModalLayer
         aria={aria}
         toasts={toasts}

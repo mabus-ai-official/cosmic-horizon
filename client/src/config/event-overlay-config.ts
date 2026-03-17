@@ -16,7 +16,8 @@ export type EventCategory =
   | "npc_dialogue"
   | "mission_choice"
   | "phase_intro"
-  | "hostile_contact";
+  | "hostile_contact"
+  | "npc_merchant";
 
 export interface EventAction {
   id: string;
@@ -153,5 +154,11 @@ export const EVENT_DEFAULTS: Record<
     duration: 3000,
     colorScheme: "red",
     dismissable: true,
+  },
+  npc_merchant: {
+    priority: "blocking",
+    duration: 0,
+    colorScheme: "cyan",
+    dismissable: false,
   },
 };

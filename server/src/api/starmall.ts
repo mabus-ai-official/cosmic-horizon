@@ -703,6 +703,294 @@ router.post("/cantina/intel", requireAuth, async (req, res) => {
   }
 });
 
+// === CANTINA DRINKS ===
+
+const CANTINA_DRINKS = [
+  {
+    id: "nebula_fizz",
+    name: "Nebula Fizz",
+    price: 50,
+    description:
+      "A sparkling concoction of ionized gas and citrus. Tickles the reflexes.",
+    effect: "Boosts scanner sensitivity for your next scan.",
+  },
+  {
+    id: "void_stout",
+    name: "Void Stout",
+    price: 75,
+    description: "Dense, dark, and heavy. Like drinking a collapsed star.",
+    effect: "Toughens your hull — reduces next combat damage taken by 10%.",
+  },
+  {
+    id: "plasma_shot",
+    name: "Plasma Shot",
+    price: 100,
+    description: "Burns on the way down. Everything looks sharper after.",
+    effect:
+      "Sharpens weapon targeting — next combat hit deals 15% more damage.",
+  },
+  {
+    id: "asteroid_ale",
+    name: "Asteroid Ale",
+    price: 40,
+    description:
+      "Brewed from fermented space wheat. A classic belt-miner drink.",
+    effect: "Relaxes the mind — XP gain +10% for your next 3 actions.",
+  },
+  {
+    id: "quantum_cocktail",
+    name: "Quantum Cocktail",
+    price: 150,
+    description:
+      "Is it good? Is it bad? You won't know until you observe the results.",
+    effect: "Unpredictable — could double your next trade profit or halve it.",
+  },
+  {
+    id: "pirate_grog",
+    name: "Pirate Grog",
+    price: 25,
+    description:
+      "The bartender says it's 'an acquired taste'. It tastes like engine coolant.",
+    effect:
+      "Loosens tongues — eavesdropping reveals more detailed conversations.",
+  },
+];
+
+// Get drink menu
+router.get("/cantina/drinks", requireAuth, async (req, res) => {
+  try {
+    const { error, status } = await requireStarMall(req.session.playerId!);
+    if (error) return res.status(status).json({ error });
+    res.json({ drinks: CANTINA_DRINKS });
+  } catch (err) {
+    console.error("Cantina drinks error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Order a drink
+router.post("/cantina/order/:drinkId", requireAuth, async (req, res) => {
+  try {
+    const { player, error, status } = await requireStarMall(
+      req.session.playerId!,
+    );
+    if (error) return res.status(status).json({ error });
+
+    const drink = CANTINA_DRINKS.find((d) => d.id === req.params.drinkId);
+    if (!drink) return res.status(404).json({ error: "Drink not found" });
+
+    if (Number(player!.credits) < drink.price) {
+      return res.status(400).json({ error: "Not enough credits" });
+    }
+
+    await db("players")
+      .where({ id: player!.id })
+      .update({ credits: Number(player!.credits) - drink.price });
+    await settleDebitPlayer(player!.id, drink.price, "store");
+
+    // Track drink purchase for stats
+    const stat = await db("player_stats")
+      .where({ player_id: player!.id, stat_key: "drinks_ordered" })
+      .first();
+    if (stat) {
+      await db("player_stats")
+        .where({ id: stat.id })
+        .update({ stat_value: Number(stat.stat_value) + 1 });
+    } else {
+      await db("player_stats").insert({
+        id: crypto.randomUUID(),
+        player_id: player!.id,
+        stat_key: "drinks_ordered",
+        stat_value: 1,
+      });
+    }
+
+    const barRace = outpostNpcRace(player!.current_sector_id.toString());
+    const serveLines: Record<string, string[]> = {
+      nebula_fizz: [
+        "The bartender slides the glass across with a flourish. Tiny sparks dance on the surface.",
+        "Bubbles rise in impossible spirals. The bartender winks.",
+      ],
+      void_stout: [
+        "The glass lands with a thud. It's somehow heavier than it looks.",
+        "The bartender pours it slow. 'Careful. This one has gravity.'",
+      ],
+      plasma_shot: [
+        "The shot glass glows faintly orange. The bartender steps back.",
+        "'Don't sip it,' the bartender warns. 'Commit.'",
+      ],
+      asteroid_ale: [
+        "The bartender fills a well-worn mug. 'A classic. No frills.'",
+        "Amber liquid, foam that smells like ozone. Simple and honest.",
+      ],
+      quantum_cocktail: [
+        "The drink changes color as you watch. The bartender shrugs. 'Even I don't know what it does.'",
+        "It's simultaneously the best and worst thing you've ever tasted.",
+      ],
+      pirate_grog: [
+        "The bartender pours from an unmarked bottle. 'Don't ask where it's from.'",
+        "It burns. Everything burns. But your ears feel sharper.",
+      ],
+    };
+    const lines = serveLines[drink.id] ?? ["The bartender serves your drink."];
+    const serveLine = lines[Math.floor(Math.random() * lines.length)];
+
+    res.json({
+      ordered: true,
+      drink: drink.name,
+      price: drink.price,
+      effect: drink.effect,
+      serveLine,
+      newCredits: Number(player!.credits) - drink.price,
+    });
+  } catch (err) {
+    console.error("Cantina order error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// === CANTINA EAVESDROP ===
+
+const EAVESDROP_CONVERSATIONS = [
+  {
+    speakers: ["Grizzled Freighter Captain", "Nervous Rookie"],
+    lines: [
+      "...told you, the outer rim routes pay triple right now.",
+      "But the pirate activity out there—",
+      "Pirates? Kid, the real danger is the toll drones. Some syndicate set up a chokepoint near Sector 3000.",
+      "How do you avoid them?",
+      "You don't avoid them. You budget for them. Or you find another way around.",
+    ],
+    hint: "Toll drones near Sector 3000 — syndicate chokepoint.",
+  },
+  {
+    speakers: ["Tar'ri Merchant", "Hooded Figure"],
+    lines: [
+      "...the cyrillium shipment never arrived.",
+      "The Void Runners intercepted it. Third convoy this cycle.",
+      "We can't keep losing cargo like this. What about armed escorts?",
+      "Escorts cost more than the cargo. Better to split shipments across multiple routes.",
+      "Hmm. Diversify the supply chain. Not a bad idea.",
+    ],
+    hint: "Multiple trade routes are safer than one big convoy.",
+  },
+  {
+    speakers: ["Off-Duty Security Guard", "Bartender"],
+    lines: [
+      "Quiet night.",
+      "Too quiet. Last time it was this calm, the Syndicate hit the refinery in sector 1800.",
+      "You think something's coming?",
+      "Something's always coming. Keep your scanner charged.",
+      "Ha. I'll have another drink instead.",
+    ],
+    hint: "Quiet periods can precede Syndicate activity.",
+  },
+  {
+    speakers: ["Prospector", "Mining Foreman"],
+    lines: [
+      "Found a vein of pure cyrillium on that volcanic world. Class V deposit.",
+      "Class V? That's rare. Which sector?",
+      "Nice try. But I'll tell you this — volcanic planets with high tectonic activity always have the best yields.",
+      "What about the colonist safety ratings?",
+      "Safety? In mining? Ha!",
+    ],
+    hint: "Volcanic planets with high tectonic activity yield more cyrillium.",
+  },
+  {
+    speakers: ["Retired Admiral", "Young Officer"],
+    lines: [
+      "...and that's why you never enter a nebula without full shields.",
+      "What happened to the crew?",
+      "Lost them all. The nebula stripped our shields in two jumps. By the third, hull integrity was at 40%.",
+      "So how did you survive?",
+      "I didn't go in the third time. Know when to retreat, Lieutenant.",
+    ],
+    hint: "Nebula sectors drain shields — enter prepared or don't enter at all.",
+  },
+  {
+    speakers: ["Smuggler", "Fence"],
+    lines: [
+      "I've got 50 units of 'unregistered' tech components.",
+      "Unregistered. Right. Where'd they come from?",
+      "A derelict near the core. No ID tags, no serial numbers.",
+      "I'll give you 60% market rate.",
+      "Seventy or I walk. There are other fences in this galaxy.",
+      "...Fine. But next time, bring food. Food moves faster.",
+    ],
+    hint: "Food commodities have faster turnover than tech on the black market.",
+  },
+  {
+    speakers: ["Colony Administrator", "Supply Officer"],
+    lines: [
+      "We need 200 more colonists by next cycle or the council pulls funding.",
+      "Where are we supposed to find 200 volunteers?",
+      "Seed planets. There are always people looking for a fresh start.",
+      "Transport costs are brutal right now.",
+      "Use a colony ship. Slower but the cargo capacity makes up for it.",
+    ],
+    hint: "Colony ships are the most cost-effective way to transport colonists.",
+  },
+  {
+    speakers: ["Bounty Hunter", "Informant"],
+    lines: [
+      "The target was last seen near the starmall in the northern sectors.",
+      "Armed?",
+      "Shadow Runner class. Cloaking capability. You won't see them coming.",
+      "Then I'll use sector probes. Can't cloak from those.",
+      "Smart. The bounty is 5,000 credits. Dead or alive.",
+    ],
+    hint: "Sector probes can detect cloaked ships — useful against stealth targets.",
+  },
+  {
+    speakers: ["Vedic Scholar", "Curious Traveler"],
+    lines: [
+      "The Spore Network once connected every living world in this galaxy.",
+      "Connected how?",
+      "Mycelial filaments — microscopic threads running through subspace. Information traveled faster than light.",
+      "And it's gone now?",
+      "Not gone. Dormant. Some nodes still pulse if you know where to scan.",
+    ],
+    hint: "Ancient Spore Network nodes may still be active in certain sectors.",
+  },
+  {
+    speakers: ["Ship Mechanic", "Pilot"],
+    lines: [
+      "Your weapon energy coupling is shot. I can fix it, but it'll cost.",
+      "How much?",
+      "Less than a new ship. The starmall garage has upgrade slots for a reason.",
+      "Can I stack weapon upgrades?",
+      "Up to three per slot. Diminishing returns after the first, but still worth it.",
+    ],
+    hint: "Ship upgrades can stack up to 3 per slot with diminishing returns.",
+  },
+];
+
+// Eavesdrop on a conversation
+router.get("/cantina/eavesdrop", requireAuth, async (req, res) => {
+  try {
+    const { error, status } = await requireStarMall(req.session.playerId!);
+    if (error) return res.status(status).json({ error });
+
+    // Pick a random conversation
+    const convo =
+      EAVESDROP_CONVERSATIONS[
+        Math.floor(Math.random() * EAVESDROP_CONVERSATIONS.length)
+      ];
+
+    res.json({
+      speakers: convo.speakers,
+      lines: convo.lines.map((line, i) => ({
+        speaker: convo.speakers[i % convo.speakers.length],
+        text: line,
+      })),
+      hint: convo.hint,
+    });
+  } catch (err) {
+    console.error("Cantina eavesdrop error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // === STAR MALL OVERVIEW ===
 
 // Get overview of all star mall services available

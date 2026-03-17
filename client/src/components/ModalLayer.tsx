@@ -100,10 +100,16 @@ export default function ModalLayer({
       setPostNarrationCountdown(0);
     } else if (wasPlayingRef.current && currentEvent?.narrationUrl) {
       // Narration just ended — kick off the dismiss timer + show progress bar
+      // But NOT for blocking events with actions (choices) — player must click
       wasPlayingRef.current = false;
-      const duration = currentEvent.duration > 0 ? currentEvent.duration : 5000;
-      setPostNarrationCountdown(duration);
-      eventOverlay.startDismissTimer(duration);
+      const hasActions =
+        currentEvent.actions && currentEvent.actions.length > 0;
+      if (!hasActions) {
+        const duration =
+          currentEvent.duration > 0 ? currentEvent.duration : 5000;
+        setPostNarrationCountdown(duration);
+        eventOverlay.startDismissTimer(duration);
+      }
     }
   }, [narration.isPlaying, currentEvent, eventOverlay]);
 

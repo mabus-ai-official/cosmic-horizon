@@ -11,6 +11,7 @@ import {
   declineRandomEvent as apiDeclineRandomEvent,
   submitStoryChoice,
   submitFactionChoice,
+  rescueMerchantBuy,
 } from "../services/api";
 import {
   getAlliances,
@@ -235,7 +236,7 @@ export function useGameEffects({
     ) {
       hostileFanfareSectorRef.current = sectorId;
       setCombatFlash(true);
-      setTimeout(() => setCombatFlash(false), 2000);
+      setTimeout(() => setCombatFlash(false), 2500);
       mood.onCombatStart();
       eventOverlay.enqueueEvent({
         category: "hostile_contact",
@@ -739,7 +740,7 @@ export function useGameEffects({
           if (activePanelRef.current !== "combat") incrementBadge("combat");
           setCombatFlash(true);
           setCombatShake(true);
-          setTimeout(() => setCombatFlash(false), 300);
+          setTimeout(() => setCombatFlash(false), 2500);
           setTimeout(() => setCombatShake(false), 400);
           mood.onCombatStart();
           aria.triggerCombat();
@@ -958,7 +959,7 @@ export function useGameEffects({
         (data: { act: number; actTitle: string; actSummary: string }) => {
           eventOverlay.enqueueEvent({
             category: "story_act",
-            title: `ACT ${data.act} COMPLETE`,
+            title: `CHAPTER ${data.act} COMPLETE`,
             subtitle: data.actTitle,
             body: data.actSummary,
             colorScheme: "yellow",
@@ -1166,6 +1167,10 @@ export function useGameEffects({
             `Ambush! ${data.npcName} has appeared in Sector ${data.sectorId}!`,
             "combat",
           );
+          // Refresh sector to pick up the spawned NPC as a combat target
+          game.refreshStatus();
+          // Auto-open combat panel so player can engage immediately
+          selectPanel("combat");
           setRefreshKey((k) => k + 1);
         },
       ),
@@ -1207,13 +1212,76 @@ export function useGameEffects({
                     game.refreshStatus();
                     setRefreshKey((k) => k + 1);
                   })
-                  .catch(() => {
+                  .catch((err) => {
+                    console.warn("Story choice failed, trying faction:", err);
                     submitFactionChoice(missionId, choiceId, optionId)
                       .then(() => {
                         game.refreshStatus();
                         setRefreshKey((k) => k + 1);
                       })
-                      .catch(() => {});
+                      .catch((e) =>
+                        console.error("Choice submission failed:", e),
+                      );
+                  });
+              }
+            },
+          });
+        },
+      ),
+      on(
+        "npc:rescue_merchant",
+        (data: {
+          missionId: string;
+          missionTitle: string;
+          commodity: string;
+          quantity: number;
+          pricePerUnit: number;
+          sectorId: number;
+          npcName: string;
+          npcRace: string;
+        }) => {
+          const totalCost = data.quantity * data.pricePerUnit;
+          const capCommodity =
+            data.commodity.charAt(0).toUpperCase() + data.commodity.slice(1);
+          eventOverlay.enqueueEvent({
+            category: "npc_merchant",
+            title: "A TRADER APPROACHES",
+            subtitle: data.npcName,
+            body: `"I hear you've been searching for ${capCommodity}. Fortunate that our paths crossed. I have ${data.quantity} units available at ${data.pricePerUnit} credits each. Total: ${totalCost} credits. Interested?"`,
+            colorScheme: "cyan",
+            duration: 0,
+            priority: "blocking",
+            portrait: {
+              npcName: data.npcName,
+              npcRace: data.npcRace,
+            },
+            actions: [
+              {
+                id: `rescue-buy:${data.missionId}`,
+                label: `BUY ${data.quantity} ${capCommodity.toUpperCase()} (${totalCost} cr)`,
+                variant: "primary",
+              },
+              { id: "rescue-decline", label: "NOT NOW", variant: "secondary" },
+            ],
+            onAction: (actionId: string) => {
+              if (actionId.startsWith("rescue-buy:")) {
+                const missionId = actionId.split(":")[1];
+                rescueMerchantBuy(missionId)
+                  .then(({ data: result }) => {
+                    showToast(
+                      `Purchased ${result.quantity} ${capCommodity} for ${result.cost} credits`,
+                      "success",
+                      4000,
+                    );
+                    game.refreshStatus();
+                    setRefreshKey((k) => k + 1);
+                  })
+                  .catch((err) => {
+                    showToast(
+                      err.response?.data?.error || "Purchase failed",
+                      "error",
+                      4000,
+                    );
                   });
               }
             },

@@ -59,7 +59,7 @@
   gap: 5px;
 }
 
-/* Combat flash on terminal */
+/* Combat flash on terminal (legacy — kept for backward compat) */
 @keyframes combat-flash {
   0% {
     background: rgba(255, 100, 0, 0.15);
@@ -70,4 +70,34 @@
 }
 .terminal--combat-flash {
   animation: combat-flash 0.3s ease-out;
+}
+
+/* Screen-edge red vignette flash — overlays entire viewport */
+.combat-vignette-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  animation: vignette-pulse 0.6s ease-in-out 4;
+}
+.combat-vignette-flash::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 45%,
+    rgba(255, 30, 30, 0.35) 75%,
+    rgba(200, 0, 0, 0.55) 100%
+  );
+}
+
+@keyframes vignette-pulse {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
 }

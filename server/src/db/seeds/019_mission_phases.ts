@@ -108,7 +108,7 @@ export async function seed(knex: Knex): Promise<void> {
       phase_order: 2,
       title: "Fuel the Departure",
       description:
-        "Deliver 10 cyrillium to power the Star Seeker's departure systems.",
+        "Sell 10 cyrillium at any outpost to fund the Star Seeker's departure. Dock at an outpost (green sector icon), open the Trade panel, and sell cyrillium.",
       objective_type: "deliver_cargo",
       objectives: JSON.stringify({ commodity: "cyrillium", quantity: 10 }),
       lore_text:

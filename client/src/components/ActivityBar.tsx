@@ -35,13 +35,13 @@ export default function ActivityBar({
   onToggleViewport,
 }: ActivityBarProps) {
   const [expandedGroup, setExpandedGroup] = useState<GroupId | null>(
-    activeGroup,
+    panelMinimized ? null : activeGroup,
   );
 
-  // Sync expanded state when group changes externally
+  // Sync expanded state when group changes externally (but not when minimized)
   useEffect(() => {
-    setExpandedGroup(activeGroup);
-  }, [activeGroup]);
+    if (!panelMinimized) setExpandedGroup(activeGroup);
+  }, [activeGroup, panelMinimized]);
 
   // Keyboard shortcuts
   useEffect(() => {

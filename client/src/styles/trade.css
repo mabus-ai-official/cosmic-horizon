@@ -164,6 +164,63 @@
 }
 
 /* === Cantina === */
+/* === Cantina === */
+.cantina {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cantina-header {
+  text-align: center;
+  padding: 4px 0;
+}
+.cantina-header__ambiance {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cantina-neon {
+  font-size: 1rem;
+  font-weight: bold;
+  color: var(--purple);
+  letter-spacing: 3px;
+  text-shadow:
+    0 0 8px var(--purple),
+    0 0 16px rgba(163, 113, 247, 0.3);
+}
+.cantina-subtitle {
+  font-size: 0.769rem;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+.cantina-nav {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+.cantina-nav__tab {
+  background: none;
+  border: 1px solid transparent;
+  border-bottom: none;
+  color: var(--text-secondary);
+  font-size: 0.769rem;
+  padding: 3px 10px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  border-radius: 3px 3px 0 0;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.cantina-nav__tab:hover {
+  color: var(--text-primary);
+}
+.cantina-nav__tab--active {
+  color: var(--purple);
+  border-color: var(--border);
+  background: var(--bg-tertiary);
+}
 .cantina-rumor {
   font-size: 0.846rem;
   color: var(--text-secondary);
@@ -171,7 +228,6 @@
   padding: 6px;
   background: var(--bg-tertiary);
   border-radius: 3px;
-  margin-bottom: 8px;
   border-left: 2px solid var(--yellow);
 }
 .cantina-rumor__label {
@@ -179,33 +235,189 @@
   font-weight: bold;
   font-style: normal;
 }
+.cantina-view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cantina-scene-text {
+  font-size: 0.769rem;
+  color: var(--text-tertiary);
+  font-style: italic;
+  line-height: 1.4;
+}
 .cantina-actions {
   display: flex;
   gap: 8px;
-  margin-bottom: 8px;
 }
-.cantina-action {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+
+/* Bar / Bartender dialogue */
+.cantina-dialogue {
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  padding: 8px;
+  border-left: 2px solid var(--cyan);
+}
+.cantina-dialogue__speaker {
+  font-size: 0.692rem;
+  color: var(--cyan);
+  font-weight: bold;
+  letter-spacing: 1px;
+  margin-bottom: 3px;
+}
+.cantina-dialogue__text {
+  font-size: 0.846rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.cantina-mission {
+  margin-top: 4px;
 }
 .cantina-result {
   font-size: 0.846rem;
   padding: 6px;
   background: var(--bg-tertiary);
   border-radius: 3px;
-  margin-top: 6px;
+  margin-top: 4px;
   border-left: 2px solid var(--cyan);
 }
 .cantina-result__label {
   color: var(--cyan);
   font-weight: bold;
 }
-.cantina-mission {
-  margin-top: 4px;
+
+/* Drink menu */
+.cantina-drink-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
+.cantina-drink-card {
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  padding: 8px;
+  border-left: 2px solid var(--purple);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.cantina-drink-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cantina-drink-card__name {
+  font-size: 0.846rem;
+  font-weight: bold;
+  color: var(--purple);
+}
+.cantina-drink-card__price {
+  font-size: 0.769rem;
+  color: var(--yellow);
+  font-weight: bold;
+}
+.cantina-drink-card__desc {
+  font-size: 0.769rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+.cantina-drink-card__effect {
+  font-size: 0.692rem;
+  color: var(--cyan);
+}
+.cantina-drink-card__btn {
+  align-self: flex-end;
+  margin-top: 2px;
+}
+.cantina-drink-result {
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  padding: 8px;
+  border-left: 2px solid var(--green);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cantina-drink-result__serve {
+  font-size: 0.846rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+.cantina-drink-result__effect {
+  font-size: 0.769rem;
+  color: var(--cyan);
+}
+
+/* Eavesdrop */
+.cantina-eavesdrop {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cantina-eavesdrop__line {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 8px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  animation: eavesdropFadeIn 0.5s ease-out;
+}
+.cantina-eavesdrop__line--left {
+  border-left: 2px solid var(--cyan);
+  margin-right: 20px;
+}
+.cantina-eavesdrop__line--right {
+  border-left: 2px solid var(--purple);
+  margin-left: 20px;
+}
+.cantina-eavesdrop__speaker {
+  font-size: 0.692rem;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+.cantina-eavesdrop__line--left .cantina-eavesdrop__speaker {
+  color: var(--cyan);
+}
+.cantina-eavesdrop__line--right .cantina-eavesdrop__speaker {
+  color: var(--purple);
+}
+.cantina-eavesdrop__text {
+  font-size: 0.769rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.4;
+}
+.cantina-eavesdrop__hint {
+  margin-top: 4px;
+  padding: 6px 8px;
+  background: rgba(var(--yellow-rgb, 255, 215, 0), 0.08);
+  border-left: 2px solid var(--yellow);
+  border-radius: 3px;
+  font-size: 0.769rem;
+  color: var(--text-secondary);
+  animation: eavesdropFadeIn 0.5s ease-out;
+}
+.cantina-eavesdrop__hint-label {
+  color: var(--yellow);
+  font-weight: bold;
+  font-size: 0.692rem;
+  letter-spacing: 0.5px;
+}
+@keyframes eavesdropFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Intel */
 .cantina-intel {
-  margin-top: 6px;
+  margin-top: 4px;
   display: flex;
   flex-direction: column;
   gap: 8px;

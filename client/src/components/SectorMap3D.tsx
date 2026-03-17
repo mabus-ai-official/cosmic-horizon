@@ -157,13 +157,26 @@ function galaxyPosition(sectorId: number): THREE.Vector3 {
   return new THREE.Vector3(x, y, z);
 }
 
-// Lazy-init galaxy positions for all 5000 sectors
+// Tutorial sector positions — small chain near the galaxy center
+const TUTORIAL_SECTOR_POSITIONS: Record<number, [number, number, number]> = {
+  90001: [0, 0, 0],
+  90002: [8, 3, 1],
+  90003: [16, -2, 0.5],
+  90004: [24, 4, -0.5],
+  90005: [32, -1, 1],
+};
+
+// Lazy-init galaxy positions for all 5000 sectors + tutorial sectors
 let _galaxyPositions: Map<number, THREE.Vector3> | null = null;
 function getGalaxyPositions(): Map<number, THREE.Vector3> {
   if (!_galaxyPositions) {
     _galaxyPositions = new Map();
     for (let i = 1; i <= TOTAL_SECTORS; i++) {
       _galaxyPositions.set(i, galaxyPosition(i));
+    }
+    // Add tutorial sandbox sectors so they render on the 3D map
+    for (const [id, pos] of Object.entries(TUTORIAL_SECTOR_POSITIONS)) {
+      _galaxyPositions.set(Number(id), new THREE.Vector3(...pos));
     }
   }
   return _galaxyPositions;

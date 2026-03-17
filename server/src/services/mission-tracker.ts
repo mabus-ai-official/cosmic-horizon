@@ -434,9 +434,8 @@ async function handlePhasedMission(
             explored.includes(o.sector_id),
           );
           const pick = visited.length > 0 ? visited[0] : buyingOutposts[0];
-          const hint = `Sell at ${pick.name}, Sector ${pick.sector_id}`;
-          detail[0].description += ` (${hint})`;
-          phaseDescriptionWithHint += ` (${hint})`;
+          detail[0].description += ` — Nearest: ${pick.name}, Sector ${pick.sector_id}`;
+          phaseDescriptionWithHint += ` — Nearest: ${pick.name}, Sector ${pick.sector_id}`;
         }
       }
 
@@ -813,12 +812,30 @@ export async function handleMissionChoice(
   optionId: string,
   io?: SocketIOServer,
 ): Promise<{ success: boolean; error?: string }> {
+  // Accept both 'awaiting_choice' (normal flow) and 'active' (fallback when
+  // phase type is 'choose' but status wasn't transitioned properly)
   const playerMission = await db("player_missions")
-    .where({ id: missionId, player_id: playerId, status: "awaiting_choice" })
+    .where({ id: missionId, player_id: playerId })
+    .whereIn("status", ["awaiting_choice", "active"])
     .first();
   if (!playerMission) {
+    // Debug: check what status the mission actually has
+    const anyMission = await db("player_missions")
+      .where({ id: missionId, player_id: playerId })
+      .first();
+    console.error(
+      "[handleMissionChoice] mission not found with awaiting_choice/active status. Actual:",
+      anyMission?.status,
+      "id:",
+      missionId,
+    );
     return { success: false, error: "No awaiting choice for this mission" };
   }
+  console.log("[handleMissionChoice] found mission:", {
+    id: playerMission.id,
+    status: playerMission.status,
+    current_phase: playerMission.current_phase,
+  });
 
   const choice = await db("mission_choices").where({ id: choiceId }).first();
   if (!choice) {
@@ -834,7 +851,10 @@ export async function handleMissionChoice(
     return { success: false, error: "Invalid option" };
   }
 
-  // Record the choice
+  // Record the choice (remove any previous record from abandoned attempt)
+  await db("player_mission_choices")
+    .where({ player_id: playerId, choice_id: choiceId })
+    .del();
   await db("player_mission_choices").insert({
     id: crypto.randomUUID(),
     player_id: playerId,
@@ -862,16 +882,34 @@ export async function handleMissionChoice(
       .orderBy("phase_order", "asc");
 
     const currentPhaseIndex = (playerMission.current_phase || 1) - 1;
+    console.log("[handleMissionChoice] phase check:", {
+      has_phases: true,
+      totalPhases: phases.length,
+      currentPhaseIndex,
+      choicePhaseId: choice.phase_id,
+      willAdvance: !!(choice.phase_id && currentPhaseIndex + 1 < phases.length),
+      willComplete: !(choice.phase_id && currentPhaseIndex + 1 < phases.length),
+    });
 
     // If this was a mid-mission choice (phase_id != null), advance to next phase
     if (choice.phase_id && currentPhaseIndex + 1 < phases.length) {
       const nextPhase = phases[currentPhaseIndex + 1];
+      const nextObjectives =
+        typeof nextPhase.objectives === "string"
+          ? JSON.parse(nextPhase.objectives)
+          : nextPhase.objectives;
+      const nextDetail = buildObjectivesDetail(
+        nextPhase.objective_type,
+        nextObjectives,
+      );
+
       await db("player_missions")
         .where({ id: missionId })
         .update({
           status: "active",
           current_phase: nextPhase.phase_order,
           phase_progress: JSON.stringify({}),
+          objectives_detail: JSON.stringify(nextDetail),
         });
 
       if (io) {
@@ -919,7 +957,26 @@ export async function handleMissionChoice(
       typeof missionData.progress === "string"
         ? JSON.parse(missionData.progress)
         : missionData.progress;
-    await completeMission(playerId, missionData, progress, io);
+
+    // Build updated objectives_detail marking the choose objective as complete
+    const chooseDetail: ObjectiveDetail[] = [
+      {
+        description: `Choice made: ${selectedOption.label}`,
+        target: 1,
+        current: 1,
+        complete: true,
+      },
+    ];
+
+    try {
+      await completeMission(playerId, missionData, progress, io, chooseDetail);
+    } catch (err) {
+      console.error("completeMission failed in handleMissionChoice:", err);
+      return { success: false, error: "Failed to complete mission" };
+    }
+  } else {
+    console.error("handleMissionChoice: missionData not found for", missionId);
+    return { success: false, error: "Mission data not found" };
   }
 
   return { success: true };
@@ -1042,4 +1099,213 @@ async function handleSPMissionCompletion(
       break;
     }
   }
+}
+
+/**
+ * Check if a rescue merchant NPC should spawn for deliver_cargo phases.
+ * After 10 sector moves without completing the delivery, a friendly NPC
+ * appears offering to sell the needed commodity.
+ */
+const RESCUE_MERCHANT_MOVE_THRESHOLD = 10;
+
+export async function checkRescueMerchant(
+  playerId: string,
+  sectorId: number,
+  io?: SocketIOServer,
+): Promise<void> {
+  // Find active phased missions where current phase is deliver_cargo
+  const activeMissions = await db("player_missions")
+    .join(
+      "mission_templates",
+      "player_missions.template_id",
+      "mission_templates.id",
+    )
+    .where({
+      "player_missions.player_id": playerId,
+      "player_missions.status": "active",
+      "mission_templates.has_phases": true,
+    })
+    .select(
+      "player_missions.id as missionId",
+      "player_missions.template_id",
+      "player_missions.current_phase",
+      "player_missions.phase_progress",
+      "mission_templates.title",
+    );
+
+  for (const mission of activeMissions) {
+    const phase = await db("mission_phases")
+      .where({
+        template_id: mission.template_id,
+        phase_order: mission.current_phase || 1,
+      })
+      .first();
+
+    if (!phase || phase.objective_type !== "deliver_cargo") continue;
+
+    const objectives =
+      typeof phase.objectives === "string"
+        ? JSON.parse(phase.objectives)
+        : phase.objectives;
+
+    const progress =
+      typeof mission.phase_progress === "string" && mission.phase_progress
+        ? JSON.parse(mission.phase_progress)
+        : mission.phase_progress || {};
+
+    // Already completed delivery
+    if ((progress.cargoDelivered || 0) >= (objectives.quantity || 0)) continue;
+
+    // Increment move counter
+    progress.rescueMoves = (progress.rescueMoves || 0) + 1;
+
+    // If player re-enters a sector where rescue NPC was placed, re-notify
+    if (progress.rescueNpcSectorId === sectorId) {
+      await db("player_missions")
+        .where({ id: mission.missionId })
+        .update({ phase_progress: JSON.stringify(progress) });
+
+      if (io) {
+        notifyPlayer(io, playerId, "npc:rescue_merchant", {
+          missionId: mission.missionId,
+          missionTitle: mission.title,
+          commodity: objectives.commodity,
+          quantity: objectives.quantity - (progress.cargoDelivered || 0),
+          pricePerUnit: GAME_CONFIG.BASE_CYRILLIUM_PRICE,
+          sectorId,
+          npcName: "Vedic Trader",
+          npcRace: "Vedic",
+        });
+      }
+      return;
+    }
+
+    // Spawn rescue NPC after threshold moves
+    if (
+      progress.rescueMoves >= RESCUE_MERCHANT_MOVE_THRESHOLD &&
+      !progress.rescueNpcSectorId
+    ) {
+      progress.rescueNpcSectorId = sectorId;
+
+      await db("player_missions")
+        .where({ id: mission.missionId })
+        .update({ phase_progress: JSON.stringify(progress) });
+
+      if (io) {
+        notifyPlayer(io, playerId, "npc:rescue_merchant", {
+          missionId: mission.missionId,
+          missionTitle: mission.title,
+          commodity: objectives.commodity,
+          quantity: objectives.quantity - (progress.cargoDelivered || 0),
+          pricePerUnit: GAME_CONFIG.BASE_CYRILLIUM_PRICE,
+          sectorId,
+          npcName: "Vedic Trader",
+          npcRace: "Vedic",
+        });
+      }
+      return;
+    }
+
+    // Just save the incremented move counter
+    await db("player_missions")
+      .where({ id: mission.missionId })
+      .update({ phase_progress: JSON.stringify(progress) });
+  }
+}
+
+/**
+ * Handle purchase from a rescue merchant NPC.
+ * Charges credits and adds commodity to player cargo.
+ */
+export async function handleRescuePurchase(
+  playerId: string,
+  missionId: string,
+  io?: SocketIOServer,
+): Promise<{
+  success: boolean;
+  error?: string;
+  quantity?: number;
+  cost?: number;
+}> {
+  const playerMission = await db("player_missions")
+    .where({ id: missionId, player_id: playerId, status: "active" })
+    .first();
+  if (!playerMission) {
+    return { success: false, error: "Mission not found or not active" };
+  }
+
+  const phase = await db("mission_phases")
+    .where({
+      template_id: playerMission.template_id,
+      phase_order: playerMission.current_phase || 1,
+    })
+    .first();
+
+  if (!phase || phase.objective_type !== "deliver_cargo") {
+    return { success: false, error: "Current phase is not deliver_cargo" };
+  }
+
+  const objectives =
+    typeof phase.objectives === "string"
+      ? JSON.parse(phase.objectives)
+      : phase.objectives;
+  const progress =
+    typeof playerMission.phase_progress === "string" &&
+    playerMission.phase_progress
+      ? JSON.parse(playerMission.phase_progress)
+      : playerMission.phase_progress || {};
+
+  if (!progress.rescueNpcSectorId) {
+    return { success: false, error: "No rescue merchant available" };
+  }
+
+  const needed = (objectives.quantity || 0) - (progress.cargoDelivered || 0);
+  if (needed <= 0) {
+    return { success: false, error: "Already have enough cargo" };
+  }
+
+  const pricePerUnit = GAME_CONFIG.BASE_CYRILLIUM_PRICE;
+  const totalCost = needed * pricePerUnit;
+
+  // Check player has enough credits
+  const player = await db("players").where({ id: playerId }).first();
+  if (!player || player.credits < totalCost) {
+    return { success: false, error: `Not enough credits (need ${totalCost})` };
+  }
+
+  // Check cargo space
+  const ship = await db("ships")
+    .where({ player_id: playerId, is_active: true })
+    .first();
+  if (!ship) {
+    return { success: false, error: "No active ship" };
+  }
+
+  const currentCargo =
+    (ship.cyrillium_cargo || 0) +
+    (ship.food_cargo || 0) +
+    (ship.tech_cargo || 0) +
+    (ship.colonists_cargo || 0);
+  if (currentCargo + needed > ship.max_cargo_holds) {
+    return { success: false, error: "Not enough cargo space" };
+  }
+
+  // Deduct credits and add cargo
+  await db("players").where({ id: playerId }).decrement("credits", totalCost);
+  await db("ships").where({ id: ship.id }).increment("cyrillium_cargo", needed);
+
+  // Clear rescue NPC — merchant disappears after purchase
+  delete progress.rescueNpcSectorId;
+  await db("player_missions")
+    .where({ id: missionId })
+    .update({ phase_progress: JSON.stringify(progress) });
+
+  // Sync player
+  if (io) {
+    const socketId = undefined;
+    const { syncPlayer } = await import("../ws/sync");
+    syncPlayer(io, playerId, "sync:status", socketId);
+  }
+
+  return { success: true, quantity: needed, cost: totalCost };
 }

@@ -19,7 +19,7 @@ import InventoryResourcePanel from "./InventoryResourcePanel";
 import CommsGroupPanel from "./CommsGroupPanel";
 import SyndicateGroupPanel from "./SyndicateGroupPanel";
 import WalletPanel from "./WalletPanel";
-import ActionsPanel from "./ActionsPanel";
+import DatabankPanel from "./DatabankPanel";
 import NotesPanel from "./NotesPanel";
 import IntelLogPanel from "./IntelLogPanel";
 import TradeHistoryPanel from "./TradeHistoryPanel";
@@ -390,9 +390,10 @@ export default function PanelRouter({
       return <WalletPanel bare />;
     case "actions":
       return (
-        <ActionsPanel
-          onCommand={handleActionButton}
-          onClearLog={game.clearLines}
+        <DatabankPanel
+          refreshKey={refreshKey}
+          alliedPlayerIds={alliedPlayerIds}
+          onAllianceChange={refreshAlliances}
           bare
         />
       );

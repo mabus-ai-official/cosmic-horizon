@@ -1466,7 +1466,6 @@ function CameraController({
       if (!controls || travelAnim.current) return;
 
       const zoomingIn = e.deltaY < 0;
-      const GALAXY_CENTER = new THREE.Vector3(8, 0, -10);
 
       if (zoomingIn) {
         // Zoom in → shift target toward mouse cursor
@@ -1486,16 +1485,6 @@ function CameraController({
 
         const offset = intersection
           .clone()
-          .sub(controls.target)
-          .multiplyScalar(shift);
-        controls.target.add(offset);
-        camera.position.add(offset);
-      } else {
-        // Zoom out → drift target back toward galaxy center
-        const camDist = camera.position.distanceTo(controls.target);
-        const shift = THREE.MathUtils.clamp(camDist / 800, 0.005, 0.04);
-
-        const offset = GALAXY_CENTER.clone()
           .sub(controls.target)
           .multiplyScalar(shift);
         controls.target.add(offset);
@@ -1624,6 +1613,32 @@ function CameraController({
       if (controls.target.distanceTo(flyingTo.current.target) < 0.05) {
         flyingTo.current = null;
       }
+      return;
+    }
+
+    // Continuous gravity toward galaxy center, proportional to zoom level.
+    // No boundary or threshold — just a smooth force that's near-zero when
+    // zoomed in and increases as you zoom out. Like a gravity well at center.
+    const GALAXY_CENTER = new THREE.Vector3(8, 0, -10);
+    const camDist = camera.position.distanceTo(controls.target);
+    const minZoom = 15;
+    const maxZoom = 220;
+    const zoomRatio = THREE.MathUtils.clamp(
+      (camDist - minZoom) / (maxZoom - minZoom),
+      0,
+      1,
+    );
+    const currentOffset = controls.target.distanceTo(GALAXY_CENTER);
+
+    if (currentOffset > 0.5) {
+      // Pull strength scales with zoom: zero when close, stronger when far
+      // Cubic curve for very gentle ramp that only becomes noticeable mid-zoom
+      const pull = zoomRatio * zoomRatio * zoomRatio * 0.015;
+      const oldTarget = controls.target.clone();
+      controls.target.lerp(GALAXY_CENTER, pull);
+      const delta = controls.target.clone().sub(oldTarget);
+      camera.position.add(delta);
+      controls.update();
     }
   });
 

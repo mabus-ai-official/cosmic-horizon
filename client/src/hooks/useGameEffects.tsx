@@ -112,6 +112,7 @@ export function useGameEffects({
   const [showPostTutorialScene, setShowPostTutorialScene] = useState(false);
   const [combatFlash, setCombatFlash] = useState(false);
   const [combatShake, setCombatShake] = useState(false);
+  const [merchantFlash, setMerchantFlash] = useState(false);
   const [showSPComplete, setShowSPComplete] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showArcade, setShowArcade] = useState(false);
@@ -1243,6 +1244,8 @@ export function useGameEffects({
           const totalCost = data.quantity * data.pricePerUnit;
           const capCommodity =
             data.commodity.charAt(0).toUpperCase() + data.commodity.slice(1);
+          setMerchantFlash(true);
+          setTimeout(() => setMerchantFlash(false), 1300);
           eventOverlay.enqueueEvent({
             category: "npc_merchant",
             title: "A TRADER APPROACHES",
@@ -1446,6 +1449,7 @@ export function useGameEffects({
     refreshKey,
     setRefreshKey,
     combatFlash,
+    merchantFlash,
     combatShake,
     showPostTutorialScene,
     setShowPostTutorialScene,

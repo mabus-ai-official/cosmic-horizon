@@ -201,6 +201,8 @@ export default function Game({ onLogout }: GameProps) {
     <div className="game-layout">
       {/* Screen-edge red vignette flash for combat/ambush */}
       {effects.combatFlash && <div className="combat-vignette-flash" />}
+      {/* Magenta vignette flash for merchant encounter */}
+      {effects.merchantFlash && <div className="merchant-vignette-flash" />}
 
       <ModalLayer
         aria={aria}

@@ -59,6 +59,7 @@ export default function StoryMissionsTab({
   const [localRefresh, setLocalRefresh] = useState(0);
   const [cooldownRemaining, setCooldownRemaining] = useState("");
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
+  const [showLore, setShowLore] = useState(false);
 
   const refresh = useCallback(() => setLocalRefresh((k) => k + 1), []);
 
@@ -276,91 +277,34 @@ export default function StoryMissionsTab({
       {/* Active Mission */}
       {current?.active && current.mission && (
         <div className="story-mission-card">
+          {/* 1. Title */}
           <div className="story-mission-title">
             [{current.mission.storyOrder}] {current.mission.title}
           </div>
-          {current.mission.loreText && (
-            <div className="story-lore-text">{current.mission.loreText}</div>
-          )}
-          <div className="story-mission-desc">
-            {current.mission.description}
-          </div>
 
-          {/* Phase Progress (multi-phase missions) */}
-          {current.mission.phaseInfo && (
-            <div className="story-phase-tracker" style={{ margin: "0.5rem 0" }}>
+          {/* 2. Objectives — front and center */}
+          {current.mission.objectivesDetail?.map((obj: any, i: number) => (
+            <div
+              key={i}
+              style={{
+                background: "rgba(86, 212, 221, 0.06)",
+                border: `1px solid ${obj.complete ? "var(--green)" : "var(--cyan)"}`,
+                borderRadius: 6,
+                padding: "8px 10px",
+                marginBottom: 6,
+              }}
+            >
               <div
                 style={{
-                  fontSize: "0.8em",
-                  color: "var(--cyan)",
-                  marginBottom: "0.25rem",
+                  fontSize: "0.95em",
+                  fontWeight: 700,
+                  color: obj.complete ? "var(--green)" : "var(--yellow)",
+                  marginBottom: 4,
                 }}
               >
-                Phase {current.mission.phaseInfo.currentPhase}/
-                {current.mission.phaseInfo.totalPhases}
-                {current.mission.phaseInfo.currentPhaseTitle && (
-                  <span style={{ color: "var(--text)" }}>
-                    {" "}
-                    — {current.mission.phaseInfo.currentPhaseTitle}
-                  </span>
-                )}
+                {obj.complete ? "\u2713" : "\u25B8"} {obj.description}
               </div>
-              <div
-                className="story-progress-bar"
-                style={{ height: "3px", marginBottom: "0.25rem" }}
-              >
-                <div
-                  className="story-progress-fill"
-                  style={{
-                    width: `${((current.mission.phaseInfo.currentPhase - 1) / current.mission.phaseInfo.totalPhases) * 100}%`,
-                    background: "var(--cyan)",
-                  }}
-                />
-              </div>
-              <div style={{ display: "flex", gap: "4px", fontSize: "0.7em" }}>
-                {current.mission.phaseInfo.phases?.map((p: any) => (
-                  <span
-                    key={p.order}
-                    style={{
-                      padding: "1px 6px",
-                      borderRadius: "2px",
-                      background: p.completed
-                        ? "var(--green)"
-                        : p.current
-                          ? "var(--cyan)"
-                          : "var(--bg-light)",
-                      color:
-                        p.completed || p.current
-                          ? "var(--bg)"
-                          : "var(--text-muted)",
-                      fontWeight: p.current ? "bold" : "normal",
-                    }}
-                  >
-                    {p.order}
-                  </span>
-                ))}
-              </div>
-              {current.mission.phaseInfo.currentPhaseDescription && (
-                <div
-                  style={{
-                    fontSize: "0.75em",
-                    color: "var(--text-muted)",
-                    marginTop: "0.25rem",
-                  }}
-                >
-                  {current.mission.phaseInfo.currentPhaseDescription}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Objectives */}
-          {current.mission.objectivesDetail?.map((obj: any, i: number) => (
-            <div key={i} className="story-objective">
-              <div className="story-objective-label">
-                {obj.complete ? "[x]" : "[ ]"} {obj.description}
-              </div>
-              <div className="story-progress-bar" style={{ height: "4px" }}>
+              <div className="story-progress-bar" style={{ height: 5 }}>
                 <div
                   className="story-progress-fill"
                   style={{
@@ -369,7 +313,13 @@ export default function StoryMissionsTab({
                   }}
                 />
               </div>
-              <div className="text-muted" style={{ fontSize: "0.7em" }}>
+              <div
+                style={{
+                  fontSize: "0.75em",
+                  color: "var(--text-secondary)",
+                  marginTop: 2,
+                }}
+              >
                 {obj.current}/{obj.target}
               </div>
             </div>
@@ -378,11 +328,10 @@ export default function StoryMissionsTab({
           {/* NPC Locations for combat missions */}
           {current.mission.npcLocations?.length > 0 && (
             <div
-              className="story-npc-locations"
               style={{
-                fontSize: "0.75em",
+                fontSize: "0.8em",
                 color: "var(--orange)",
-                marginTop: 4,
+                padding: "4px 0",
               }}
             >
               {(() => {
@@ -399,16 +348,122 @@ export default function StoryMissionsTab({
             </div>
           )}
 
-          {/* Rewards */}
-          <div className="story-rewards">
-            +{current.mission.rewardCredits} cr | +{current.mission.rewardXp} XP
+          {/* 3. Phase tracker (compact) */}
+          {current.mission.phaseInfo && (
+            <div style={{ margin: "4px 0 8px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: "0.8em",
+                  marginBottom: 4,
+                }}
+              >
+                <span style={{ color: "var(--cyan)" }}>
+                  Phase {current.mission.phaseInfo.currentPhase}/
+                  {current.mission.phaseInfo.totalPhases}
+                </span>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "3px",
+                  }}
+                >
+                  {current.mission.phaseInfo.phases?.map((p: any) => (
+                    <span
+                      key={p.order}
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: p.completed
+                          ? "var(--green)"
+                          : p.current
+                            ? "var(--cyan)"
+                            : "var(--bg-light)",
+                      }}
+                    />
+                  ))}
+                </div>
+                {current.mission.phaseInfo.currentPhaseTitle && (
+                  <span
+                    style={{
+                      color: "var(--text-secondary)",
+                      fontSize: "0.9em",
+                    }}
+                  >
+                    {current.mission.phaseInfo.currentPhaseTitle}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 4. Rewards */}
+          <div
+            style={{
+              fontSize: "0.8em",
+              color: "var(--green)",
+              padding: "2px 0 6px",
+            }}
+          >
+            Reward: +{current.mission.rewardCredits} cr | +
+            {current.mission.rewardXp} XP
           </div>
 
-          {/* Hints */}
+          {/* 5. Lore & Description (collapsible) */}
+          {(current.mission.loreText || current.mission.description) && (
+            <div
+              style={{ borderTop: "1px solid var(--border)", paddingTop: 6 }}
+            >
+              <div
+                style={{
+                  fontSize: "0.75em",
+                  color: "var(--cyan)",
+                  cursor: "pointer",
+                  userSelect: "none",
+                  marginBottom: showLore ? 4 : 0,
+                }}
+                onClick={() => setShowLore(!showLore)}
+              >
+                {showLore ? "[-]" : "[+]"} Story Context
+              </div>
+              {showLore && (
+                <>
+                  {current.mission.loreText && (
+                    <div
+                      className="story-lore-text"
+                      style={{ fontSize: "0.75em", marginBottom: 4 }}
+                    >
+                      {current.mission.loreText}
+                    </div>
+                  )}
+                  <div
+                    style={{
+                      fontSize: "0.75em",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    {current.mission.description}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* 6. Hints */}
           {current.mission.showHints && current.mission.hints?.length > 0 && (
-            <div className="story-hints">
+            <div className="story-hints" style={{ marginTop: 4 }}>
               {current.mission.hints.map((h: string, i: number) => (
-                <div key={i} className="story-hint">
+                <div
+                  key={i}
+                  style={{
+                    fontSize: "0.75em",
+                    color: "var(--yellow)",
+                    opacity: 0.8,
+                  }}
+                >
                   Hint: {h}
                 </div>
               ))}

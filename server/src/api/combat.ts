@@ -431,7 +431,7 @@ router.post("/fire", requireAuth, async (req, res) => {
           });
         }
       }
-      checkAndUpdateMissions(
+      await checkAndUpdateMissions(
         player.id,
         "combat_destroy",
         { targetId: target.id },

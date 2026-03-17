@@ -23,6 +23,8 @@ export function useEventOverlay(
   // Tracks whether an event is currently displayed — prevents double-processNext
   // when multiple events are enqueued in the same synchronous batch
   const showingRef = useRef(false);
+  // Store current event's onAction in a ref so it's always accessible
+  const onActionRef = useRef<((id: string) => void) | undefined>(undefined);
 
   const processNext = useCallback(() => {
     if (timerRef.current) {
@@ -32,12 +34,14 @@ export function useEventOverlay(
 
     if (queueRef.current.length === 0) {
       showingRef.current = false;
+      onActionRef.current = undefined;
       setCurrentEvent(null);
       return;
     }
 
     const next = queueRef.current.shift()!;
     showingRef.current = true;
+    onActionRef.current = next.onAction;
     setCurrentEvent(next);
 
     // Suppress auto-dismiss when narration is attached — user must dismiss manually
@@ -108,6 +112,7 @@ export function useEventOverlay(
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+    onActionRef.current = undefined;
     setCurrentEvent((current) => {
       current?.onDismiss?.();
       return null;
@@ -119,16 +124,15 @@ export function useEventOverlay(
 
   const handleAction = useCallback(
     (actionId: string) => {
-      let action: ((id: string) => void) | undefined;
-      setCurrentEvent((current) => {
-        action = current?.onAction;
-        return null;
-      });
+      // Grab onAction from ref before clearing state
+      const action = onActionRef.current;
+      onActionRef.current = undefined;
+      setCurrentEvent(null);
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
       }
-      // Fire onAction outside of setCurrentEvent to avoid nested setState issues
+      // Fire onAction after clearing the overlay
       action?.(actionId);
       showingRef.current = false;
       setTimeout(() => processNext(), 50);

@@ -1274,9 +1274,7 @@ export async function handleRescuePurchase(
   }
 
   // Check cargo space
-  const ship = await db("ships")
-    .where({ player_id: playerId, is_active: true })
-    .first();
+  const ship = await db("ships").where({ id: player.current_ship_id }).first();
   if (!ship) {
     return { success: false, error: "No active ship" };
   }

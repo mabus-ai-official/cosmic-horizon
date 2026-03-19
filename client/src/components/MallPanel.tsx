@@ -6,6 +6,7 @@ import MallGarageTab from "./MallGarageTab";
 import MallSalvageTab from "./MallSalvageTab";
 import MallCantinaTab from "./MallCantinaTab";
 import MallRefuelTab from "./MallRefuelTab";
+import BountiesPanel from "./BountiesPanel";
 import type { ToastType } from "../hooks/useToast";
 
 type MallTab =
@@ -16,6 +17,7 @@ type MallTab =
   | "salvage"
   | "cantina"
   | "refuel"
+  | "bounties"
   | "arcade";
 
 const TABS: { key: MallTab; label: string }[] = [
@@ -26,6 +28,7 @@ const TABS: { key: MallTab; label: string }[] = [
   { key: "salvage", label: "Salvage" },
   { key: "cantina", label: "Cantina" },
   { key: "refuel", label: "Refuel" },
+  { key: "bounties", label: "Bounties" },
   { key: "arcade", label: "Arcade" },
 ];
 
@@ -41,6 +44,8 @@ interface Props {
   onArcade?: () => void;
   showToast?: (msg: string, type?: ToastType, duration?: number) => number;
   bare?: boolean;
+  onDrink?: () => void;
+  onStoryEvent?: (data: any) => void;
 }
 
 export default function MallPanel({
@@ -55,6 +60,8 @@ export default function MallPanel({
   onArcade,
   showToast,
   bare,
+  onDrink,
+  onStoryEvent,
 }: Props) {
   const [tab, setTab] = useState<MallTab>("trade");
 
@@ -123,7 +130,15 @@ export default function MallPanel({
       case "salvage":
         return <MallSalvageTab onAction={onAction} />;
       case "cantina":
-        return <MallCantinaTab credits={credits} onAction={onAction} />;
+        return (
+          <MallCantinaTab
+            credits={credits}
+            onAction={onAction}
+            onDrink={onDrink}
+            showToast={showToast}
+            onStoryEvent={onStoryEvent}
+          />
+        );
       case "refuel":
         return (
           <MallRefuelTab
@@ -131,6 +146,15 @@ export default function MallPanel({
             maxEnergy={maxEnergy}
             credits={credits}
             onAction={onAction}
+          />
+        );
+      case "bounties":
+        return (
+          <BountiesPanel
+            credits={credits}
+            onAction={onAction}
+            showToast={showToast}
+            bare
           />
         );
     }

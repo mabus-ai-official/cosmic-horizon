@@ -302,9 +302,13 @@ export const scanningCommands: Record<string, CommandHandler> = {
         "info",
       );
       const total =
-        c.cyrilliumCargo + c.foodCargo + c.techCargo + c.colonistsCargo;
+        c.cyrilliumCargo +
+        c.foodCargo +
+        c.techCargo +
+        c.colonistsCargo +
+        (c.vedicCargo || 0);
       ctx.addLine(
-        `Cargo: Cyr=${c.cyrilliumCargo} Food=${c.foodCargo} Tech=${c.techCargo} Col=${c.colonistsCargo} [${total}/${c.maxCargoHolds}]`,
+        `Cargo: Cyr=${c.cyrilliumCargo} Food=${c.foodCargo} Tech=${c.techCargo} VCry=${c.vedicCargo || 0} Col=${c.colonistsCargo} [${total}/${c.maxCargoHolds}]`,
         "info",
       );
     }

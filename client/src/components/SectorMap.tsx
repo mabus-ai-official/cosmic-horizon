@@ -24,6 +24,8 @@ export interface MapData {
       sellsFood: boolean;
       buysTech: boolean;
       sellsTech: boolean;
+      buysVedic: boolean;
+      sellsVedic: boolean;
       sellsFuel: boolean;
     } | null;
   }[];
@@ -38,6 +40,8 @@ export type CommodityFilter =
   | "sells_food"
   | "buys_tech"
   | "sells_tech"
+  | "buys_vedic"
+  | "sells_vedic"
   | "sells_fuel";
 
 interface Props {
@@ -54,9 +58,9 @@ const HEIGHT = 380;
 const IDEAL_EDGE_LENGTH = 80;
 const ITERATIONS = 120;
 
-const ZOOM_MIN = 1;
+const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 15;
-const ZOOM_BUTTON_STEP = 1.0;
+const ZOOM_BUTTON_STEP = 0.3;
 const ZOOM_WHEEL_STEP = 0.15;
 
 // Seeded PRNG (Lehmer / Park-Miller)
@@ -390,6 +394,10 @@ function matchesCommodityFilter(
       return s.commodities.buysTech;
     case "sells_tech":
       return s.commodities.sellsTech;
+    case "buys_vedic":
+      return s.commodities.buysVedic;
+    case "sells_vedic":
+      return s.commodities.sellsVedic;
     case "sells_fuel":
       return s.commodities.sellsFuel;
     default:
@@ -857,7 +865,7 @@ export default function SectorMap({
                 ...(isAdjacent ? { cursor: "pointer" } : {}),
                 "--twinkle-dur": `${12 + (s.id % 11) * 4}s`,
                 "--twinkle-delay": `${(s.id * 3.7) % 40}s`,
-                ...(filterDim ? { opacity: 0.15 } : {}),
+                opacity: filterDim ? 0.15 : 1,
               } as React.CSSProperties
             }
             onMouseEnter={(e) => {

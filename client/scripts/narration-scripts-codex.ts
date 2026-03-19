@@ -1,15 +1,31 @@
 /**
- * narration-scripts-codex.ts — Codex entry texts for story missions 11-60.
+ * narration-scripts-codex.ts — Codex entry texts for story missions 9-60.
  *
  * Codex entries are deep lore entries unlocked when a mission is claimed.
  * Written in third-person, encyclopedic style — like galactic encyclopedia
  * entries narrated by ARIA. No NPC dialogue. No voice tags.
  *
  * Each entry is 3 paragraphs, 200-400 words, matching the tone established
- * by missions 1-10 in generate-narration.ts.
+ * by missions 1-8 in generate-narration.ts.
  */
 
 export const CODEX_TEXTS: Record<number, string> = {
+  // =====================================================================
+  // CHAPTER 1 ADDENDUM: Missions 9-10
+  // =====================================================================
+
+  9: `Spatial anomalies are common in deep space — gravitational eddies, electromagnetic distortions, sensor ghosts caused by exotic matter decay. Most are catalogued, classified, and forgotten. The anomaly detected during the fleet's survey was different. It registered on five separate sensor modalities simultaneously: gravitational, electromagnetic, tachyonic, quantum-state, and — most unusually — biological. The Mycelial Network itself seemed to bend toward the disturbance, its filaments curving through the void like roots reaching for water.
+
+Mapping a spatial anomaly of this magnitude requires scanning from multiple vantage points to triangulate its topology in four-dimensional space. Each sector surveyed adds a data point to the emerging picture, and with enough data points, the anomaly's true nature reveals itself. In this case, the topology was unmistakable: a stable wormhole, its throat held open by forces that did not match any known mechanism. Natural wormholes collapse in nanoseconds. Artificial wormholes require energy sources that exceed the output of most stars. This one simply existed, patient and permanent, as if waiting.
+
+The discovery reframed the fleet's entire mission. A stable wormhole is not merely a curiosity — it is a doorway. And doorways, by their nature, connect two places. The question was no longer whether to explore further but whether the fleet was prepared for what waited on the other side. The anomaly's biological signature suggested that whatever had created the wormhole was connected to the Spore Network — and that the Network, in its ancient and inscrutable way, had been leading them here all along.`,
+
+  10: `Wormhole transit is not travel in the conventional sense. The vessel does not move from point A to point B through intervening space. Instead, the intervening space ceases to exist — folded away by gravitational forces so extreme that the ship's hull experiences simultaneous compression and expansion along perpendicular axes. Crew members who have survived transit describe it as being turned inside out very slowly while time runs backward. Medical scans conducted during transit show that biological processes genuinely do reverse for the duration of the crossing, with cells briefly un-dividing and neural signals propagating from synapse to dendrite. The effect is temporary and harmless, but deeply unsettling.
+
+The gravitational shear within the wormhole's throat presents the primary navigational hazard. Tidal forces vary unpredictably along the transit corridor, creating regions where a ship's bow experiences several hundred times normal gravity while its stern floats in near-weightlessness. Without constant thruster correction, a vessel would be stretched into a filament of atoms — a process physicists call spaghettification, which is exactly as unpleasant as it sounds. Navigators must adjust course continuously, reading the gravitational topology in real-time and threading the ship through the calmest regions of an inherently violent passage.
+
+The energy constructs that manifested during the fleet's crossing were unprecedented. Semi-solid formations of coherent energy, exhibiting behavior that suggested awareness if not intelligence, appeared along the transit corridor and moved with apparent purpose. Whether they were defensive mechanisms, automated maintenance systems, or something else entirely remained unclear. What was clear was that the wormhole was not simply infrastructure — it was inhabited, or at least attended, by forces that took an active interest in who passed through.`,
+
   // =====================================================================
   // CHAPTER 2: THE VEDIC ENIGMA (Missions 11-16)
   // =====================================================================
@@ -337,4 +353,26 @@ Those who accept the Keeper's burden do so not because they are stronger than ot
 The Muscarian odyssey — from the dying light of Agaricalis to the reawakened Spore Network, from first contact with the Vedic to the Battle for the Galaxy, from refugee fleet to Keeper of the Stars — is a legacy of connection. Every alliance forged, every trade route established, every colony planted, every conflict resolved through understanding rather than force has added a thread to the web that now holds the galaxy together. The Spore Network is the physical manifestation of this legacy, but it is not the legacy itself. The legacy is the choice — made repeatedly, under pressure, in the face of fear and uncertainty — to reach out rather than withdraw, to connect rather than isolate, to trust rather than suspect.
 
 This is what the stars will remember. Not the battles, though there were battles. Not the sacrifices, though there were many. What the stars will remember is that when a species lost its homeworld and wandered into the unknown, it chose to build bridges rather than walls. It chose to learn rather than conquer. It chose, in every moment of crisis, to be the thread that held — not because holding was easy, but because the alternative was a galaxy of fragments, drifting apart in the dark, each one alone. The legacy of the Muscarian odyssey is the proof that it does not have to be that way. It never did.`,
+};
+
+/**
+ * Act/chapter completion narration scripts.
+ * These are spoken when the player finishes the last mission of a chapter.
+ */
+export const CHAPTER_COMPLETION_TEXTS: Record<number, string> = {
+  1: `Chapter One draws to a close. The Oracle's cryptic warnings echo through the void — Elenion offered peace, but not all accepted. The Tendril Relays, ancient sentinels of the Mycelial Network, are falling silent one by one. Someone — or something — is systematically dismantling the watchers. The fleet presses deeper into unknown space, carrying questions that grow heavier with each passing sector. Who is silencing the watchers? And what are they watching for?`,
+
+  2: `Chapter Two is complete. The Vedic Enigma has revealed its first layers, though many more remain hidden. The fleet has crossed the Calvatian Gateway, established first contact with the Vedic Conclave, and glimpsed a civilization that measures time in millennia and knowledge in crystal lattices. Valandor's parting words carry the weight of prophecy — the scattered keys must be found, the path that Elenion sealed must be opened. Four fragments of an ancient truth lie waiting in the galaxy's depths. The Hermit spoke of mercy refused and patience weaponized. Centuries of preparation culminate in what comes next. The galactic core awaits, and with it, answers that may prove more dangerous than the questions.`,
+
+  3: `Chapter Three concludes. The Convergence has begun — the ancient enemy is no longer hiding, and the galaxy's fragile alliances are being tested. The evidence uncovered in the Precursor ruins points to a threat older than any living civilization, a force that has waited with patience measured in geological epochs. The coalition is formed, but its foundations are uncertain. Three leaders, three philosophies, one galaxy to protect. The question is no longer whether the threat is real — it is whether the galaxy can unite before the storm arrives.`,
+
+  4: `Chapter Four is complete. The Shadow of War has fallen across the galaxy. The drums grow louder as the ancient enemy reveals itself — not as a distant threat, but as a present and gathering darkness. The coalition is formed, its structure shaped by the choices you made at the summit. Three leaders with three philosophies have agreed to stand together, but unity forged under pressure is fragile. The Convergence Key grows warm in your hold, pointing toward the galactic core where the Precursors built their throne. What waits there has waited for a very long time.`,
+
+  5: `Chapter Five draws to a close. The Quest for Harmony has tested every alliance, every friendship, every assumption about what the galaxy's races owe each other. The evidence trail leads deeper into Precursor history — infrastructure older than recorded time awakens across dozens of sectors, responding to signals no living being sent. The fragile pact between ancient rivals holds, but barely. Supply lines stretch thin. Trust is earned in inches and lost in moments. The galactic core looms ahead, and with it, the Primordium — a civilization that predates the stars themselves.`,
+
+  6: `Chapter Six concludes. The Shadows are unveiled. The Primordium stands revealed in all its terrible grandeur — not dead, merely dormant, waiting with the patience of geology for conditions that are now, finally, met. The weapon is chosen, and its nature will echo through history. Was it forged in desperation or in wisdom? The answer depends on who survives to write the account. The battle for the galaxy is no longer approaching. It has arrived.`,
+
+  7: `Chapter Seven is complete. A New Dawn breaks across the galaxy — but dawn light reveals the full extent of the damage. The storm has passed, but what it leaves behind requires more courage than the battle itself. Trade routes must be reconnected. The Council Charter must be signed. Old enemies must become new partners, and old wounds must be allowed to heal. Caelum's legacy lives on in the Precursor technology now repurposed for peace. The rift between factions begins to close. Slowly, painfully, hopefully.`,
+
+  8: `The final chapter ends. Legacy of the Stars. Four races, five factions, countless individual stories — all woven into a tapestry that stretches from the ruins of Agaricalis to the heart of the Calvatian Galaxy. The Spore Network, reborn, carries whispers of life across galaxies now. Valandor's farewell gift was not an object but understanding. The new frontier calls from beyond the edge of every map. Elenion's Final Codex contains one last entry: coordinates pointing beyond the Calvatian Galaxy, toward something vast and unknown. But that is a story for another day. For now, the stars are quiet, the trade routes hum with commerce, and the galaxy remembers. Thank you for playing. Your journey continues.`,
 };

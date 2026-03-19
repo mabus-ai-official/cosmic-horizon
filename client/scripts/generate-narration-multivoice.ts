@@ -68,7 +68,17 @@ const VOICE_MAP: Record<string, string> = {
   doc_helix: "zpnRoleXRhWcv8KmQc0N", // Compassionate medic
   tiktok: "YOq2y2Up4RgXP2HyXjE5", // Mechanical/synthetic
   sella: "lUCNYQh2kqW2wiie85Qk", // Warm merchant
+
+  // Cantina / eavesdrop NPCs
+  bartender: "2ajXGJNYBR0iNHpS4VZb", // Warm, gruff barkeep
+  prospector: "zYcjlYFOd3taleS0gkk3", // Rough, working-class
+  rookie: "TtRFBnwQdH1k01vR0hMz", // Young, nervous
+  gravel_krix: "oR4uRy4fHDUGGISL0Rev", // Gravel-Voice Krix (Tar'ri)
+  drifter: "M5E055lOUxMi0kJpGyE9", // The Drifter (cantina easter egg)
 };
+
+// Per-voice volume multiplier (applied via ffmpeg after TTS generation)
+const VOICE_VOLUME: Record<string, number> = {};
 
 // ── Voice Tag Parser ──────────────────────────────────────────────────────────
 
@@ -221,6 +231,17 @@ async function generateMultiVoice(
       const segFile = path.join(TEMP_DIR, `seg_${Date.now()}_${i}.mp3`);
       const audio = await generateTTS(seg.text, vid);
       fs.writeFileSync(segFile, audio);
+
+      // Boost quiet voices per VOICE_VOLUME map
+      const volMultiplier = VOICE_VOLUME[seg.voice];
+      if (volMultiplier && volMultiplier !== 1) {
+        const boostedFile = segFile.replace(".mp3", "_boosted.mp3");
+        execSync(
+          `ffmpeg -i "${segFile}" -filter:a "volume=${volMultiplier}" -y "${boostedFile}" 2>/dev/null`,
+        );
+        fs.renameSync(boostedFile, segFile);
+      }
+
       segmentFiles.push(segFile);
 
       console.log(
@@ -287,7 +308,9 @@ async function loadScripts() {
   const events = await import("./narration-scripts-events.js");
   const phases = await import("./narration-scripts-phases.js");
 
-  return { ch14, ch58, codex, factions, events, phases };
+  const easterEgg = await import("./narration-scripts-easter-egg.js");
+
+  return { ch14, ch58, codex, factions, events, phases, easterEgg };
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -467,6 +490,20 @@ async function main() {
       } else {
         await generateSingleVoice(text, outFile, `event: ${eventKey}`);
       }
+    }
+  }
+
+  // ── Easter Egg Narration ──
+  if (!CATEGORY_FILTER || CATEGORY_FILTER === "easter_egg") {
+    console.log("\n══ Easter Egg Narration ══");
+
+    const eggTexts = scripts.easterEgg.EASTER_EGG_SCRIPTS as Record<
+      string,
+      string
+    >;
+    for (const [key, text] of Object.entries(eggTexts)) {
+      const outFile = path.join(OUTPUT_DIR, `${key}.mp3`);
+      await generateMultiVoice(text, outFile, `easter egg: ${key}`);
     }
   }
 

@@ -4,7 +4,6 @@
  * settings overlay, arcade modal, and tutorial overlays.
  */
 import { useEffect, useRef, useState } from "react";
-import AriaComment from "./AriaComment";
 import ToastManager from "./ToastManager";
 import EventOverlay from "./EventOverlay";
 import ArcadeModal from "./ArcadeModal";
@@ -50,7 +49,7 @@ interface ModalLayerProps {
 }
 
 export default function ModalLayer({
-  aria,
+  aria: _aria,
   toasts,
   dismissToast,
   eventOverlay,
@@ -138,11 +137,7 @@ export default function ModalLayer({
 
   return (
     <>
-      <AriaComment
-        comment={aria.comment}
-        visible={aria.showComment}
-        onDismiss={aria.dismissComment}
-      />
+      {/* ARIA comments now go through CommScreen in Game.tsx */}
       <ToastManager toasts={toasts} onDismiss={dismissToast} />
       {eventOverlay.currentEvent && (
         <EventOverlay

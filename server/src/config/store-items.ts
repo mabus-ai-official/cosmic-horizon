@@ -141,13 +141,12 @@ export const STORE_ITEMS: StoreItem[] = [
     price: 2500,
     category: "consumable",
   },
-  // Faction Questline Reward Items (not purchasable — awarded from missions)
   {
     id: "mycelial_scanner",
     name: "Mycelial Scanner",
     description:
       "Tuned to the Spore Network frequency. Increases scan range by 1 sector in all directions.",
-    price: 0,
+    price: 15000,
     category: "equipment",
   },
   {
@@ -155,7 +154,7 @@ export const STORE_ITEMS: StoreItem[] = [
     name: "Tactical Override Module",
     description:
       "Iron Dominion combat firmware. Increases weapon damage by 15%.",
-    price: 0,
+    price: 20000,
     category: "equipment",
   },
   {
@@ -163,7 +162,7 @@ export const STORE_ITEMS: StoreItem[] = [
     name: "Merchant's Ledger",
     description:
       "Traders Guild pricing algorithms. Improves buy/sell prices by 10%.",
-    price: 0,
+    price: 12000,
     category: "equipment",
   },
   {
@@ -171,7 +170,7 @@ export const STORE_ITEMS: StoreItem[] = [
     name: "Cloaking Resonator",
     description:
       "Shadow Syndicate stealth tech. Increases flee success chance by 25%.",
-    price: 0,
+    price: 18000,
     category: "equipment",
   },
 ];

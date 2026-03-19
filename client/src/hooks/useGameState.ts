@@ -25,6 +25,7 @@ export interface PlayerState {
   hasSeenPostTutorial: boolean;
   hasNamingAuthority: boolean;
   hasTransporter: boolean;
+  avatarUrl: string | null;
   walletAddress: string | null;
   dockedAtOutpostId: string | null;
   landedAtPlanetId: string | null;
@@ -48,6 +49,7 @@ export interface PlayerState {
     foodCargo: number;
     techCargo: number;
     colonistsCargo: number;
+    vedicCargo: number;
     colonistsByRace?: { race: string; count: number }[];
   } | null;
 }

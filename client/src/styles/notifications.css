@@ -14,6 +14,8 @@
   text-align: center;
   position: relative;
   max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
   padding: 0 24px;
   cursor: default;
 }

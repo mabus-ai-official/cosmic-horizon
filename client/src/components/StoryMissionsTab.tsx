@@ -609,23 +609,43 @@ export default function StoryMissionsTab({
 
       {/* Next Mission (available to accept) */}
       {!current?.active && current?.next && !cooldownRemaining && (
-        <div className="story-mission-card story-mission-next">
-          <div className="story-mission-title">
-            [{current.next.storyOrder}] {current.next.title}
+        <div className="story-next-quest">
+          <div className="story-next-quest__header">
+            <div className="story-next-quest__order">
+              {current.next.storyOrder}
+            </div>
+            <div className="story-next-quest__title-group">
+              <div className="story-next-quest__label">NEXT QUEST</div>
+              <div className="story-next-quest__title">
+                {current.next.title}
+              </div>
+            </div>
           </div>
-          <div className="story-mission-desc">{current.next.description}</div>
-          <div className="story-rewards">
-            +{current.next.rewardCredits} cr | +{current.next.rewardXp} XP
+
+          <div className="story-next-quest__divider" />
+
+          <div className="story-next-quest__desc">
+            {current.next.loreText || current.next.description}
           </div>
-          <div className="story-actions">
-            <button
-              className="btn-sm btn-buy"
-              disabled={busy}
-              onClick={handleAccept}
-            >
-              {busy ? "..." : "ACCEPT QUEST"}
-            </button>
+
+          <div className="story-next-quest__rewards">
+            <span className="story-next-quest__reward">
+              <span className="story-next-quest__reward-icon">$</span>
+              {current.next.rewardCredits?.toLocaleString()} CR
+            </span>
+            <span className="story-next-quest__reward">
+              <span className="story-next-quest__reward-icon">+</span>
+              {current.next.rewardXp?.toLocaleString()} XP
+            </span>
           </div>
+
+          <button
+            className="story-next-quest__accept"
+            disabled={busy}
+            onClick={handleAccept}
+          >
+            {busy ? "INITIATING..." : "ACCEPT QUEST"}
+          </button>
         </div>
       )}
 

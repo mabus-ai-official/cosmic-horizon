@@ -19,6 +19,7 @@ export const contractAddresses = {
   food: "0x70e0bA845a1A0F2DA3359C97E0285013525FFC49" as `0x${string}`,
   tech: "0x4826533B4897376654Bb4d4AD88B7faFD0C98528" as `0x${string}`,
   driftFuel: "0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf" as `0x${string}`,
+  vedicCrystal: "0x798f111c92E38F102931F34D1e0ea7e671BDBE31" as `0x${string}`,
 
   // ERC-721 NFTs
   shipNft: "0x0E801D84Fa97b50751Dbf25036d067dCf18858bF" as `0x${string}`,
@@ -41,4 +42,5 @@ export const resourceToToken: Record<string, `0x${string}`> = {
   food: contractAddresses.food,
   tech: contractAddresses.tech,
   drift_fuel: contractAddresses.driftFuel,
+  vedic: contractAddresses.vedicCrystal,
 };

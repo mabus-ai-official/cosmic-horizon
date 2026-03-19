@@ -1,0 +1,874 @@
+/* === Generic Panel Modal === */
+.panel-modal-backdrop {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 186px;
+  right: 284px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.panel-modal {
+  width: 85%;
+  max-width: none;
+  height: 76%;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 14, 20, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 30%, transparent);
+  border-radius: 12px;
+  box-shadow:
+    0 8px 48px rgba(0, 0, 0, 0.6),
+    0 0 1px
+      color-mix(in srgb, var(--modal-accent, var(--cyan)) 40%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.panel-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 20%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--modal-accent, var(--cyan)) 4%,
+    transparent
+  );
+}
+
+.panel-modal-title {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--modal-accent, var(--cyan));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.panel-modal-title-icon {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+.panel-modal-close {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-secondary);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.panel-modal-close:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.panel-modal-body {
+  flex: 1 1 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 20px;
+  min-height: 0;
+  height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(
+      in srgb,
+      var(--modal-accent, var(--cyan)) 30%,
+      transparent
+    )
+    transparent;
+}
+
+.panel-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.panel-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panel-modal-body::-webkit-scrollbar-thumb {
+  background: color-mix(
+    in srgb,
+    var(--modal-accent, var(--cyan)) 30%,
+    transparent
+  );
+  border-radius: 3px;
+}
+
+.panel-modal-body .panel-content {
+  padding: 0;
+}
+
+/* Force font sizes up inside modals — override inline px styles.
+   Using [class] attribute selectors for higher specificity than inline styles won't work,
+   but repeated class selectors boost specificity enough for !important to win. */
+.panel-modal-body [style],
+.panel-modal-body div,
+.panel-modal-body span,
+.panel-modal-body td,
+.panel-modal-body th,
+.panel-modal-body p,
+.panel-modal-body label,
+.panel-modal-body button,
+.panel-modal-body input,
+.panel-modal-body select,
+.panel-modal-body a,
+.starmall-body [style],
+.starmall-body div,
+.starmall-body span,
+.starmall-body td,
+.starmall-body th,
+.starmall-body p,
+.starmall-body label,
+.starmall-body button,
+.starmall-body input,
+.starmall-body select,
+.starmall-body a {
+  font-size: 14px !important;
+}
+
+.panel-modal-body h3,
+.panel-modal-body h4,
+.starmall-body h3,
+.starmall-body h4 {
+  font-size: 17px !important;
+}
+
+.panel-modal-body .panel-subheader,
+.starmall-body .panel-subheader {
+  font-size: 16px !important;
+}
+
+/* Restyle group-panel-tabs inside modals as proper button tabs */
+.panel-modal-body .group-panel-tabs,
+.starmall-body .group-panel-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 0 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.panel-modal-body .group-panel-tabs > span,
+.starmall-body .group-panel-tabs > span {
+  display: flex;
+  align-items: center;
+}
+
+/* Hide pipe separators */
+.panel-modal-body .group-panel-tabs > span > span[style*="margin"],
+.starmall-body .group-panel-tabs > span > span[style*="margin"] {
+  display: none !important;
+}
+
+/* Style tab text as buttons */
+.panel-modal-body .group-panel-tabs span[style*="cursor"],
+.starmall-body .group-panel-tabs span[style*="cursor"] {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  padding: 6px 14px !important;
+  border-radius: 6px !important;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.5px !important;
+  transition: all 0.15s !important;
+  white-space: nowrap !important;
+}
+
+.panel-modal-body .group-panel-tabs span[style*="cursor"]:hover,
+.starmall-body .group-panel-tabs span[style*="cursor"]:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Active tab — green text means active */
+.panel-modal-body .group-panel-tabs span[style*="color: rgb(0, 255, 0)"],
+.panel-modal-body .group-panel-tabs span[style*="color:#0f0"],
+.panel-modal-body .group-panel-tabs span[style*="color: #0f0"],
+.starmall-body .group-panel-tabs span[style*="color: rgb(0, 255, 0)"],
+.starmall-body .group-panel-tabs span[style*="color:#0f0"],
+.starmall-body .group-panel-tabs span[style*="color: #0f0"] {
+  background: rgba(0, 255, 0, 0.1) !important;
+  border-color: rgba(0, 255, 0, 0.3) !important;
+  font-weight: 700 !important;
+}
+
+@media (max-width: 768px) {
+  .panel-modal {
+    width: 95vw;
+    height: 90vh;
+    max-width: none;
+    max-height: none;
+    border-radius: 8px;
+  }
+}
+
+/* === Starmall Modal === */
+.starmall-backdrop {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 186px;
+  right: 284px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.starmall-modal {
+  width: 85%;
+  max-width: none;
+  height: 76%;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 14, 20, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(210, 153, 34, 0.3);
+  border-radius: 12px;
+  box-shadow:
+    0 8px 48px rgba(0, 0, 0, 0.6),
+    0 0 1px rgba(210, 153, 34, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+/* Header */
+.starmall-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(210, 153, 34, 0.2);
+  background: rgba(210, 153, 34, 0.04);
+}
+
+.starmall-title {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--yellow);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.starmall-title-icon {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+.starmall-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.starmall-arcade-btn {
+  background: transparent;
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.starmall-arcade-btn:hover {
+  background: rgba(0, 255, 255, 0.08);
+}
+
+.starmall-close-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-secondary);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.starmall-close-btn:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/* Tab bar */
+.starmall-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.starmall-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.starmall-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.starmall-tab:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+}
+
+.starmall-tab--active {
+  background: rgba(210, 153, 34, 0.12);
+  border-color: rgba(210, 153, 34, 0.3);
+  color: var(--yellow);
+  font-weight: 700;
+}
+
+.starmall-tab-icon {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+.starmall-tab--active .starmall-tab-icon {
+  opacity: 1;
+}
+
+/* Body */
+.starmall-body {
+  flex: 1 1 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 20px;
+  min-height: 0;
+  font-size: 14px;
+  height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(210, 153, 34, 0.3) transparent;
+}
+
+.starmall-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.starmall-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.starmall-body::-webkit-scrollbar-thumb {
+  background: rgba(210, 153, 34, 0.3);
+  border-radius: 3px;
+}
+
+/* Override nested panel-content padding since modal body already has padding */
+.starmall-body .panel-content {
+  padding: 0;
+}
+
+/* === Starmall item cards — game-quality styling inside modal === */
+
+/* Item list becomes a grid */
+.starmall-body .mall-item-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+/* Each item becomes a card */
+.starmall-body .mall-item {
+  flex-direction: column;
+  align-items: stretch;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(210, 153, 34, 0.12);
+  border-left: 3px solid rgba(210, 153, 34, 0.4);
+  border-bottom: 1px solid rgba(210, 153, 34, 0.12);
+  border-radius: 8px;
+  padding: 14px 16px;
+  transition: all 0.15s;
+  gap: 8px;
+}
+
+.starmall-body .mall-item:hover {
+  background: rgba(210, 153, 34, 0.06);
+  border-color: rgba(210, 153, 34, 0.3);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.starmall-body .mall-item:last-child {
+  border-bottom: 1px solid rgba(210, 153, 34, 0.12);
+}
+
+.starmall-body .mall-item__info {
+  gap: 4px;
+}
+
+.starmall-body .mall-item__name {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--yellow);
+}
+
+.starmall-body .mall-item__action {
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.starmall-body .mall-item__price {
+  color: var(--yellow);
+  font-weight: 700;
+}
+
+/* Buttons inside starmall cards */
+.starmall-body .btn-sm,
+.starmall-body .btn-buy {
+  padding: 6px 18px !important;
+  border-radius: 6px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px !important;
+  transition: all 0.15s !important;
+}
+
+.starmall-body .btn-sm:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Locked items */
+.starmall-body .mall-item--locked {
+  opacity: 0.4;
+  border-left-color: rgba(255, 255, 255, 0.1);
+}
+
+.starmall-body .mall-item--locked:hover {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Trade table inside starmall */
+.starmall-body table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 4px;
+}
+
+.starmall-body table tr {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.starmall-body table tr:hover {
+  background: rgba(210, 153, 34, 0.06);
+}
+
+.starmall-body table td,
+.starmall-body table th {
+  padding: 10px 12px;
+}
+
+.starmall-body table th {
+  color: var(--yellow);
+  font-weight: 700;
+  letter-spacing: 1px;
+  border-bottom: 1px solid rgba(210, 153, 34, 0.2);
+}
+
+/* Cantina cards already look decent — just tweak accent */
+.starmall-body .cantina-drink-card {
+  border-left-color: var(--yellow);
+  background: rgba(210, 153, 34, 0.04);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.starmall-body .cantina-drink-card:hover {
+  background: rgba(210, 153, 34, 0.08);
+}
+
+/* Subheaders inside starmall */
+.starmall-body .panel-subheader {
+  color: var(--yellow) !important;
+  letter-spacing: 1.5px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(210, 153, 34, 0.15);
+  margin-bottom: 12px;
+}
+
+/* Bounties panel inside starmall */
+.starmall-body .panel-row {
+  background: rgba(255, 255, 255, 0.02);
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  transition: background 0.15s;
+}
+
+.starmall-body .panel-row:hover {
+  background: rgba(210, 153, 34, 0.06);
+}
+
+/* Inputs inside starmall */
+.starmall-body input[type="text"],
+.starmall-body input[type="number"],
+.starmall-body select {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(210, 153, 34, 0.2) !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  color: var(--text-primary) !important;
+  transition: border-color 0.15s !important;
+}
+
+.starmall-body input:focus,
+.starmall-body select:focus {
+  border-color: rgba(210, 153, 34, 0.5) !important;
+  outline: none !important;
+}
+
+/* === Trade route cards inside modals === */
+.panel-modal-body .resource-event-item,
+.starmall-body .resource-event-item {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-left: 3px solid
+    color-mix(in srgb, var(--modal-accent, var(--yellow)) 40%, transparent) !important;
+  border-radius: 8px !important;
+  padding: 14px 16px !important;
+  margin-bottom: 10px !important;
+  transition: all 0.15s !important;
+}
+
+.panel-modal-body .resource-event-item:hover,
+.starmall-body .resource-event-item:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.panel-modal-body .resource-event-item__header,
+.starmall-body .resource-event-item__header {
+  margin-bottom: 8px !important;
+}
+
+.panel-modal-body .resource-event-item__type,
+.starmall-body .resource-event-item__type {
+  font-weight: 700 !important;
+}
+
+/* Guardian HP bar in modals */
+.panel-modal-body .guardian-hp-bar,
+.starmall-body .guardian-hp-bar {
+  border-radius: 4px !important;
+  overflow: hidden;
+}
+
+/* Subheaders inside modals */
+.panel-modal-body .panel-subheader {
+  letter-spacing: 1.5px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 12px;
+}
+
+/* Text muted inside modals */
+.panel-modal-body .text-muted {
+  line-height: 1.5;
+}
+
+/* Create form inside modals */
+.panel-modal-body label {
+  letter-spacing: 0.5px;
+}
+
+.panel-modal-body select {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  color: var(--text-primary) !important;
+}
+
+/* === Premium card styling for ALL panel modals === */
+
+/* Top decorative gradient line on modal body */
+.panel-modal-body::before {
+  content: "";
+  display: block;
+  height: 2px;
+  margin-bottom: 16px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--modal-accent, var(--cyan)) 30%,
+    var(--yellow) 70%,
+    transparent 100%
+  );
+  border-radius: 1px;
+}
+
+/* Mall item grid */
+.panel-modal-body .mall-item-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+/* Cards — gradient background like story-next-quest */
+.panel-modal-body .mall-item {
+  flex-direction: column;
+  align-items: stretch;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 6%, transparent) 0%,
+    rgba(0, 0, 0, 0.4) 40%,
+    rgba(255, 255, 255, 0.02) 100%
+  ) !important;
+  border: 1px solid
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 25%, transparent) !important;
+  border-left: 3px solid
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 50%, transparent) !important;
+  border-radius: 8px !important;
+  padding: 14px 16px !important;
+  transition: all 0.2s !important;
+  gap: 8px;
+}
+
+.panel-modal-body .mall-item:hover {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 10%, transparent) 0%,
+    rgba(0, 0, 0, 0.3) 40%,
+    rgba(255, 255, 255, 0.04) 100%
+  ) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--modal-accent, var(--cyan)) 40%,
+    transparent
+  ) !important;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.4),
+    0 0 15px
+      color-mix(in srgb, var(--modal-accent, var(--cyan)) 8%, transparent) !important;
+}
+
+/* Panel rows — gradient cards */
+.panel-modal-body .panel-row {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 4%, transparent) 0%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 12%, transparent);
+  border-left: 3px solid
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 35%, transparent);
+  margin-bottom: 6px;
+  transition: all 0.2s;
+}
+
+.panel-modal-body .panel-row:hover {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 8%, transparent) 0%,
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--modal-accent, var(--cyan)) 25%,
+    transparent
+  );
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Panel sections — match mission card style */
+.panel-modal-body .panel-section {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 5%, transparent) 0%,
+    rgba(0, 0, 0, 0.35) 50%,
+    rgba(255, 255, 255, 0.02) 100%
+  ) !important;
+  border: 1px solid
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 20%, transparent) !important;
+  border-radius: 8px !important;
+  padding: 14px 16px !important;
+}
+
+/* Resource event items (trade routes, etc) */
+.panel-modal-body .resource-event-item {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 6%, transparent) 0%,
+    rgba(0, 0, 0, 0.4) 40%,
+    rgba(255, 255, 255, 0.02) 100%
+  ) !important;
+  border: 1px solid
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 20%, transparent) !important;
+  border-left: 3px solid
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 45%, transparent) !important;
+  border-radius: 8px !important;
+  padding: 14px 16px !important;
+  margin-bottom: 10px !important;
+  transition: all 0.2s !important;
+}
+
+.panel-modal-body .resource-event-item:hover {
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.4),
+    0 0 15px
+      color-mix(in srgb, var(--modal-accent, var(--cyan)) 8%, transparent) !important;
+}
+
+/* Subheaders — accent colored with text glow */
+.panel-modal-body .panel-subheader {
+  color: var(--modal-accent, var(--cyan)) !important;
+  letter-spacing: 2px !important;
+  padding-bottom: 8px;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 15%, transparent);
+  margin-bottom: 14px;
+  text-shadow: 0 0 12px
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 30%, transparent);
+}
+
+/* Gradient buttons — like ACCEPT QUEST */
+.panel-modal-body .btn-sm,
+.panel-modal-body .btn-buy {
+  padding: 8px 20px !important;
+  border-radius: 6px !important;
+  font-weight: 700 !important;
+  letter-spacing: 1px !important;
+  transition: all 0.2s !important;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 15%, transparent) 0%,
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 8%, transparent) 100%
+  ) !important;
+  border: 1px solid
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 40%, transparent) !important;
+}
+
+.panel-modal-body .btn-sm:hover:not(:disabled),
+.panel-modal-body .btn-buy:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    0 0 20px
+      color-mix(in srgb, var(--modal-accent, var(--cyan)) 15%, transparent) !important;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 25%, transparent) 0%,
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 12%, transparent) 100%
+  ) !important;
+}
+
+.panel-modal-body .btn-sell {
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.15) 0%,
+    rgba(239, 68, 68, 0.08) 100%
+  ) !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+}
+
+.panel-modal-body .btn-sell:hover:not(:disabled) {
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(239, 68, 68, 0.15) !important;
+}
+
+/* Inputs — dark with accent focus glow */
+.panel-modal-body input[type="text"],
+.panel-modal-body input[type="number"],
+.panel-modal-body select {
+  background: rgba(0, 0, 0, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  color: var(--text-primary) !important;
+  transition: all 0.2s !important;
+}
+
+.panel-modal-body input:focus,
+.panel-modal-body select:focus {
+  border-color: color-mix(
+    in srgb,
+    var(--modal-accent, var(--cyan)) 50%,
+    transparent
+  ) !important;
+  box-shadow: 0 0 12px
+    color-mix(in srgb, var(--modal-accent, var(--cyan)) 15%, transparent) !important;
+  outline: none !important;
+}
+
+/* Text */
+.panel-modal-body .text-muted {
+  line-height: 1.6;
+}
+
+.panel-modal-body label {
+  letter-spacing: 0.5px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .starmall-modal {
+    width: 95vw;
+    height: 90vh;
+    max-width: none;
+    max-height: none;
+    border-radius: 8px;
+  }
+
+  .starmall-tab {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+  }
+}

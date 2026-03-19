@@ -6,7 +6,11 @@ import {
   getCantinaDrinks,
   orderCantinaDrink,
   eavesdropCantina,
+  checkCantinaEasterEgg,
+  resolveCantinaEasterEgg,
 } from "../services/api";
+import { getEavesdropNarrationUrl } from "../config/narration-manifest";
+import type { ToastType } from "../hooks/useToast";
 
 interface CantinaData {
   rumor?: string;
@@ -44,9 +48,18 @@ type CantinaView = "bar" | "drinks" | "eavesdrop" | "intel";
 interface Props {
   credits: number;
   onAction: () => void;
+  onDrink?: () => void;
+  showToast?: (msg: string, type?: ToastType, duration?: number) => number;
+  onStoryEvent?: (data: any) => void;
 }
 
-export default function MallCantinaTab({ credits, onAction }: Props) {
+export default function MallCantinaTab({
+  credits,
+  onAction,
+  onDrink,
+  showToast,
+  onStoryEvent,
+}: Props) {
   const [data, setData] = useState<CantinaData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -68,12 +81,17 @@ export default function MallCantinaTab({ credits, onAction }: Props) {
     effect: string;
   } | null>(null);
 
+  // Easter egg: track drink order
+  const drinkHistoryRef = useRef<string[]>([]);
+  const [drifterActive, setDrifterActive] = useState(false);
+
   // Eavesdrop state
   const [eavesdropLines, setEavesdropLines] = useState<EavesdropLine[]>([]);
   const [eavesdropHint, setEavesdropHint] = useState<string | null>(null);
   const [revealedLines, setRevealedLines] = useState(0);
   const [eavesdropActive, setEavesdropActive] = useState(false);
   const eavesdropTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const eavesdropAudio = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     getCantina()
@@ -132,7 +150,11 @@ export default function MallCantinaTab({ credits, onAction }: Props) {
     }
   };
 
-  const handleOrderDrink = async (drinkId: string) => {
+  const handleOrderDrink = async (
+    drinkId: string,
+    drinkName: string,
+    drinkPrice: number,
+  ) => {
     setBusy(true);
     setError("");
     setDrinkResult(null);
@@ -144,11 +166,112 @@ export default function MallCantinaTab({ credits, onAction }: Props) {
         effect: result.effect,
       });
       onAction();
+      onDrink?.();
+      showToast?.(`${drinkName} — ${drinkPrice} cr`, "info", 3000);
+
+      // Easter egg: track drink sequence
+      drinkHistoryRef.current = [...drinkHistoryRef.current, drinkId];
+      const newHistory = drinkHistoryRef.current;
+
+      if (newHistory.length >= 3 && !drifterActive) {
+        try {
+          const { data: egg } = await checkCantinaEasterEgg(newHistory);
+          if (egg.triggered) {
+            setDrifterActive(true);
+            triggerDrifterEncounter(egg.changeCost);
+          }
+        } catch (eggErr: any) {
+          console.error(
+            "[Cantina Easter Egg] check failed:",
+            eggErr?.response?.data || eggErr?.message,
+          );
+        }
+      }
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to order drink");
     } finally {
       setBusy(false);
     }
+  };
+
+  const triggerDrifterEncounter = (changeCost: number) => {
+    if (!onStoryEvent) return;
+
+    const speech = [
+      "A disheveled figure slides onto the stool next to you. His flight suit is patched with duct tape and what might be dried food paste. He smells like engine coolant and regret.",
+      "",
+      "\"Hey... hey buddy. You drinking the grog too? Hah. I can tell. You got that look. That's how it starts, you know. The grog. Then the stout. Then you're ordering quantum cocktails at 3 AM wondering if the drink is good or bad and realizing it doesn't matter because YOU'RE the one who's collapsing into a probability cloud.\"",
+      "",
+      "He stares into a glass that appears to be empty.",
+      "",
+      "\"I used to be somebody, you know. Had a Battleship. A BATTLESHIP. The ISS Regrettable Decision. Beautiful ship. Thirty-two gun ports. Full cyrillium plating. You know what happened? I bet it. ALL of it. On a cargo race to Sector 4000. 'It's a sure thing,' they said. 'Nobody runs that route,' they said.\"",
+      "",
+      "He pauses to drink from the empty glass.",
+      "",
+      '"Turns out EVERYBODY runs that route. I came in dead last. Behind a guy in a DODGE POD. A dodge pod! Those things don\'t even have engines, they just sort of... drift aggressively. Lost the ship. Lost the cargo. Lost my crew. My first mate — lovely woman, four arms, could rewire a hyperdrive while making lunch — she left me for the dodge pod guy. THE DODGE POD GUY."',
+      "",
+      "He signals the bartender, who pointedly ignores him.",
+      "",
+      "\"Then I tried mining. Asteroid mining, they said, good honest work. So I'm out there in the belt with a pickaxe — a PICKAXE, because I sold my mining laser for grog money — and I hit this rock and it cracks open and there's this... this THING inside. Glowing. Pulsing. Beautiful. I thought I'd found a Precursor artifact. You know what it was? A fluorescent space mushroom. Worthless. Well, not ENTIRELY worthless. I ate it. Things got... weird for a while. I think I was the captain of a trading syndicate for about six hours. Or I hallucinated it. Hard to tell.\"",
+      "",
+      "He leans uncomfortably close.",
+      "",
+      "\"The point is... the POINT is... what was the point? Oh right. Don't mix the grog with the stout with the quantum cocktail. That's the combination that got me kicked off Station Twelve. And Station Thirteen. And that one station that doesn't have a number, just a skull painted on the airlock. Even THEY kicked me out. Said I was 'lowering the tone.' At a SKULL STATION.\"",
+      "",
+      "His eyes go glassy for a moment.",
+      "",
+      "\"Anyway that's how I ended up homeless. Living in the cargo hold of an abandoned freighter. It's not so bad. The rats and I have an understanding. They get the left side, I get the right side, and we don't talk about what happened in the engine room.\"",
+      "",
+      "He turns to you with watery eyes.",
+      "",
+      `"Hey... you got ${changeCost} credits? Just... just some change? I swear I won't spend it on grog. I mean I WILL spend it on grog, but I appreciate the honesty of admitting that upfront, you know?"`,
+    ].join("\n");
+
+    onStoryEvent({
+      category: "lore_reveal",
+      priority: "blocking",
+      duration: 0,
+      dismissable: false,
+      title: "A FAMILIAR STRANGER",
+      subtitle: "The Drifter",
+      body: speech,
+      narrationUrl: "/audio/narration/easter_egg_drifter.mp3",
+      actions: [
+        {
+          label: `Give him ${changeCost} credits`,
+          id: "give_change",
+        },
+        {
+          label: "Walk away",
+          id: "refuse",
+        },
+      ],
+      onAction: async (actionId: string) => {
+        const gaveChange = actionId === "give_change";
+        try {
+          await resolveCantinaEasterEgg(gaveChange);
+          onAction();
+          if (gaveChange) {
+            showToast?.(
+              "The Drifter grins and stumbles away humming.",
+              "info",
+              5000,
+            );
+          } else {
+            showToast?.(
+              'The Drifter shrugs. "Fair enough. Fair enough."',
+              "info",
+              5000,
+            );
+          }
+        } catch (resolveErr: any) {
+          console.error(
+            "[Cantina Easter Egg] resolve failed:",
+            resolveErr?.response?.data || resolveErr?.message,
+          );
+        }
+      },
+    });
   };
 
   const handleEavesdrop = async () => {
@@ -162,6 +285,16 @@ export default function MallCantinaTab({ credits, onAction }: Props) {
       const { data: result } = await eavesdropCantina();
       setEavesdropLines(result.lines);
       setEavesdropHint(result.hint);
+      // Play eavesdrop narration if available
+      const narrationUrl = getEavesdropNarrationUrl(result.convoIndex);
+      if (narrationUrl) {
+        if (eavesdropAudio.current) {
+          eavesdropAudio.current.pause();
+        }
+        eavesdropAudio.current = new Audio(narrationUrl);
+        eavesdropAudio.current.volume = 0.9;
+        eavesdropAudio.current.play().catch(() => {});
+      }
       // Reveal lines one at a time
       let count = 0;
       if (eavesdropTimer.current) clearInterval(eavesdropTimer.current);
@@ -285,7 +418,9 @@ export default function MallCantinaTab({ credits, onAction }: Props) {
                 <button
                   className="btn-sm btn-buy cantina-drink-card__btn"
                   disabled={busy || credits < drink.price}
-                  onClick={() => handleOrderDrink(drink.id)}
+                  onClick={() =>
+                    handleOrderDrink(drink.id, drink.name, drink.price)
+                  }
                 >
                   ORDER
                 </button>

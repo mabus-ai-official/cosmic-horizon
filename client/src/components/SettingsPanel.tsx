@@ -4,6 +4,7 @@ import {
   changeRace,
   changePassword,
   deleteAccount,
+  uploadAvatar,
 } from "../services/api";
 import ControlsTab from "./ControlsTab";
 import type { KeyBinding } from "../hooks/useKeybindings";
@@ -219,6 +220,48 @@ export default function SettingsPanel({
                 </span>
               </div>
             )}
+          </div>
+
+          {/* Profile Picture */}
+          <div className="settings-section">
+            <h4 className="settings-section__title">Profile Picture</h4>
+            <p className="settings-hint">
+              Upload an image (max 256KB). Displayed in your profile panel.
+            </p>
+            <input
+              type="file"
+              accept="image/*"
+              style={{ fontSize: 11, color: "var(--text)", marginBottom: 6 }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (file.size > 256 * 1024) {
+                  alert("Image too large (max 256KB)");
+                  return;
+                }
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const dataUri = reader.result as string;
+                  uploadAvatar(dataUri)
+                    .then(() => {
+                      window.location.reload();
+                    })
+                    .catch(() => alert("Upload failed"));
+                };
+                reader.readAsDataURL(file);
+              }}
+            />
+            <button
+              className="btn-sm"
+              style={{ fontSize: 11 }}
+              onClick={() => {
+                uploadAvatar(null)
+                  .then(() => window.location.reload())
+                  .catch(() => alert("Failed to remove avatar"));
+              }}
+            >
+              Remove Avatar
+            </button>
           </div>
 
           {/* Change Username */}

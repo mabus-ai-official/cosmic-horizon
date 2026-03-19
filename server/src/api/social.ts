@@ -1016,7 +1016,16 @@ router.post("/bounty", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Not enough credits" });
     }
 
-    const target = await db("players").where({ id: targetPlayerId }).first();
+    // Accept UUID or username
+    const isUUID =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        targetPlayerId,
+      );
+    const target = isUUID
+      ? await db("players").where({ id: targetPlayerId }).first()
+      : await db("players")
+          .whereRaw("LOWER(username) = LOWER(?)", [targetPlayerId])
+          .first();
     if (!target)
       return res.status(404).json({ error: "Target player not found" });
 
@@ -1031,7 +1040,7 @@ router.post("/bounty", requireAuth, async (req, res) => {
     await db("bounties").insert({
       id: crypto.randomUUID(),
       placed_by_id: player.id,
-      target_player_id: targetPlayerId,
+      target_player_id: target.id,
       reward: amount,
     });
 
@@ -1041,7 +1050,7 @@ router.post("/bounty", requireAuth, async (req, res) => {
       player.id,
       "bounty_placed",
       `Placed ${amount} credit bounty on ${target.username}`,
-      { targetId: targetPlayerId, amount },
+      { targetId: target.id, amount },
     );
 
     res.json({

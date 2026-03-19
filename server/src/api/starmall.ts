@@ -16,6 +16,9 @@ import {
   settleDebitPlayer,
 } from "../chain/tx-queue";
 import { isSettlementEnabled } from "../chain/config";
+import { checkAndUpdateMissions } from "../services/mission-tracker";
+import { checkAchievements } from "../engine/achievements";
+import { notifyPlayer } from "../ws/handlers";
 
 const router = Router();
 
@@ -788,23 +791,6 @@ router.post("/cantina/order/:drinkId", requireAuth, async (req, res) => {
       .update({ credits: Number(player!.credits) - drink.price });
     await settleDebitPlayer(player!.id, drink.price, "store");
 
-    // Track drink purchase for stats
-    const stat = await db("player_stats")
-      .where({ player_id: player!.id, stat_key: "drinks_ordered" })
-      .first();
-    if (stat) {
-      await db("player_stats")
-        .where({ id: stat.id })
-        .update({ stat_value: Number(stat.stat_value) + 1 });
-    } else {
-      await db("player_stats").insert({
-        id: crypto.randomUUID(),
-        player_id: player!.id,
-        stat_key: "drinks_ordered",
-        stat_value: 1,
-      });
-    }
-
     const barRace = outpostNpcRace(player!.current_sector_id.toString());
     const serveLines: Record<string, string[]> = {
       nebula_fizz: [
@@ -835,6 +821,10 @@ router.post("/cantina/order/:drinkId", requireAuth, async (req, res) => {
     const lines = serveLines[drink.id] ?? ["The bartender serves your drink."];
     const serveLine = lines[Math.floor(Math.random() * lines.length)];
 
+    // Mission progress: order_drink
+    const io = req.app.get("io");
+    checkAndUpdateMissions(player!.id, "order_drink", {}, io);
+
     res.json({
       ordered: true,
       drink: drink.name,
@@ -845,6 +835,134 @@ router.post("/cantina/order/:drinkId", requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error("Cantina order error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// === CANTINA EASTER EGG: The Drifter ===
+const EASTER_EGG_SEQUENCE = ["pirate_grog", "void_stout", "quantum_cocktail"];
+const EASTER_EGG_FLAG = "cantina_drifter_encountered";
+const DRIFTER_CHANGE_COST = 50;
+
+// Check if the easter egg should trigger
+router.post("/cantina/easter-egg/check", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.session.playerId!;
+    const { drinkHistory } = req.body as { drinkHistory: string[] };
+
+    // Check if already triggered
+    const flag = await db("player_story_flags")
+      .where({ player_id: playerId, flag_key: EASTER_EGG_FLAG })
+      .first();
+
+    if (flag) {
+      return res.json({ triggered: false, reason: "already_done" });
+    }
+
+    // Check sequence match (last 3 drinks)
+    if (!drinkHistory || drinkHistory.length < EASTER_EGG_SEQUENCE.length) {
+      return res.json({ triggered: false });
+    }
+
+    const lastN = drinkHistory.slice(-EASTER_EGG_SEQUENCE.length);
+    const match = EASTER_EGG_SEQUENCE.every((id, i) => lastN[i] === id);
+
+    if (!match) {
+      return res.json({ triggered: false });
+    }
+
+    return res.json({ triggered: true, changeCost: DRIFTER_CHANGE_COST });
+  } catch (err) {
+    console.error("Easter egg check error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Resolve the easter egg choice
+router.post("/cantina/easter-egg/resolve", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.session.playerId!;
+    const { gaveChange } = req.body as { gaveChange: boolean };
+    const io = req.app.get("io");
+
+    // Prevent double-trigger
+    const flag = await db("player_story_flags")
+      .where({ player_id: playerId, flag_key: EASTER_EGG_FLAG })
+      .first();
+
+    if (flag) {
+      return res.status(400).json({ error: "Already resolved" });
+    }
+
+    // Set the flag
+    await db("player_story_flags").insert({
+      player_id: playerId,
+      flag_key: EASTER_EGG_FLAG,
+      flag_value: gaveChange ? "gave_change" : "refused",
+    });
+
+    if (gaveChange) {
+      // Deduct credits
+      const player = await db("players").where({ id: playerId }).first();
+      if (Number(player.credits) < DRIFTER_CHANGE_COST) {
+        return res.status(400).json({ error: "Not enough credits" });
+      }
+      await db("players")
+        .where({ id: playerId })
+        .update({ credits: Number(player.credits) - DRIFTER_CHANGE_COST });
+      await settleDebitPlayer(playerId, DRIFTER_CHANGE_COST, "store");
+    }
+
+    // Award achievement
+    const achievementId = gaveChange ? "cantina_enabler" : "cantina_no_hope";
+
+    // Direct insert (bypasses eval system for one-off easter egg)
+    const existing = await db("player_achievements")
+      .where({ player_id: playerId, achievement_id: achievementId })
+      .first();
+
+    if (!existing) {
+      const achDef = await db("achievement_definitions")
+        .where({ id: achievementId })
+        .first();
+
+      if (achDef) {
+        await db("player_achievements").insert({
+          id: crypto.randomUUID(),
+          player_id: playerId,
+          achievement_id: achievementId,
+          earned_at: new Date().toISOString(),
+        });
+
+        if (achDef.credit_reward > 0) {
+          await db("players")
+            .where({ id: playerId })
+            .increment("credits", achDef.credit_reward);
+          await settleCreditPlayer(
+            playerId,
+            achDef.credit_reward,
+            "progression",
+          );
+        }
+
+        if (io) {
+          notifyPlayer(io, playerId, "achievement:unlocked", {
+            name: achDef.name,
+            description: achDef.description,
+            xpReward: achDef.xp_reward,
+            creditReward: achDef.credit_reward,
+          });
+        }
+      }
+    }
+
+    res.json({
+      resolved: true,
+      gaveChange,
+      achievement: gaveChange ? "Enabler" : "No Hope for Humanity",
+    });
+  } catch (err) {
+    console.error("Easter egg resolve error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -972,10 +1090,14 @@ router.get("/cantina/eavesdrop", requireAuth, async (req, res) => {
     if (error) return res.status(status).json({ error });
 
     // Pick a random conversation
-    const convo =
-      EAVESDROP_CONVERSATIONS[
-        Math.floor(Math.random() * EAVESDROP_CONVERSATIONS.length)
-      ];
+    const convoIndex = Math.floor(
+      Math.random() * EAVESDROP_CONVERSATIONS.length,
+    );
+    const convo = EAVESDROP_CONVERSATIONS[convoIndex];
+
+    // Mission progress: eavesdrop
+    const io = req.app.get("io");
+    checkAndUpdateMissions(req.session.playerId!, "eavesdrop", {}, io);
 
     res.json({
       speakers: convo.speakers,
@@ -984,6 +1106,7 @@ router.get("/cantina/eavesdrop", requireAuth, async (req, res) => {
         text: line,
       })),
       hint: convo.hint,
+      convoIndex,
     });
   } catch (err) {
     console.error("Cantina eavesdrop error:", err);

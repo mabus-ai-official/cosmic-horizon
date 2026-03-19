@@ -16,6 +16,8 @@ interface ActivityBarProps {
   onRestorePanel?: () => void;
   viewportMinimized?: boolean;
   onToggleViewport?: () => void;
+  isAdmin?: boolean;
+  tabLabelOverrides?: Record<string, string>;
 }
 
 const SEPARATOR_AFTER: GroupId[] = ["ship", "commerce"];
@@ -33,7 +35,22 @@ export default function ActivityBar({
   onRestorePanel,
   viewportMinimized,
   onToggleViewport,
+  isAdmin,
+  tabLabelOverrides,
 }: ActivityBarProps) {
+  // Inject admin tab into pilot group if admin
+  const groups = React.useMemo(() => {
+    if (!isAdmin) return PANEL_GROUPS;
+    return PANEL_GROUPS.map((g) =>
+      g.id === "pilot"
+        ? {
+            ...g,
+            tabs: [...g.tabs, { id: "admin" as PanelId, label: "Admin" }],
+          }
+        : g,
+    );
+  }, [isAdmin]);
+
   const [expandedGroup, setExpandedGroup] = useState<GroupId | null>(
     panelMinimized ? null : activeGroup,
   );
@@ -65,7 +82,7 @@ export default function ActivityBar({
         const groupId = keyToGroup(key);
         if (groupId) onSelectGroup(groupId);
       } else {
-        const group = PANEL_GROUPS.find((g) => g.hotkey === key);
+        const group = groups.find((g) => g.hotkey === key);
         if (group) onSelectGroup(group.id);
       }
     };
@@ -77,7 +94,7 @@ export default function ActivityBar({
     <div className="activity-bar">
       {/* Group buttons with inline tabs */}
       <div className="activity-bar__groups">
-        {PANEL_GROUPS.map((group) => {
+        {groups.map((group) => {
           const isActive = activeGroup === group.id;
           const badge = groupBadge(group.id);
           const hasTabs = group.tabs.length > 1;
@@ -146,7 +163,7 @@ export default function ActivityBar({
                         <span className="activity-bar__inline-tab-dot">
                           {isActiveTab ? "▸" : "·"}
                         </span>
-                        {tab.label}
+                        {tabLabelOverrides?.[tab.id] ?? tab.label}
                         {tabBadge > 0 && (
                           <span className="activity-bar__tab-badge">
                             {tabBadge}

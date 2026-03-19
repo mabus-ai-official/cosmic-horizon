@@ -3,6 +3,13 @@ import { getOutpost } from "../services/api";
 import CollapsiblePanel from "./CollapsiblePanel";
 import PixelSprite from "./PixelSprite";
 
+const COMMODITY_NAMES: Record<string, string> = {
+  cyrillium: "Cyrillium",
+  food: "Food",
+  tech: "Tech",
+  vedic: "Vedic Crystal",
+};
+
 interface TradeTableProps {
   outpostId: string | null;
   onBuy: (outpostId: string, commodity: string, quantity: number) => void;
@@ -81,7 +88,7 @@ export default function TradeTable({
               <td className="commodity-name">
                 <span className="commodity-cell">
                   <PixelSprite spriteKey={`commodity_${commodity}`} size={14} />
-                  {commodity}
+                  {COMMODITY_NAMES[commodity] || commodity}
                 </span>
               </td>
               <td className="text-trade">{info.price} cr</td>

@@ -1,0 +1,288 @@
+/* === Comm Screen — Star Fox-style floating comm window === */
+
+.comm-screen {
+  position: absolute;
+  top: 48px;
+  right: 290px;
+  width: 275px;
+  z-index: 15;
+  pointer-events: auto;
+  border: 1px solid rgba(86, 212, 221, 0.25);
+  border-radius: 8px;
+  background: rgba(8, 12, 18, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.6),
+    0 0 1px rgba(86, 212, 221, 0.3),
+    inset 0 0 30px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  transition: all 0.3s ease;
+  opacity: 0.85;
+}
+
+.comm-screen:hover {
+  opacity: 1;
+  border-color: rgba(86, 212, 221, 0.4);
+}
+
+.comm-screen--active {
+  border-color: rgba(86, 212, 221, 0.5);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.6),
+    0 0 12px rgba(86, 212, 221, 0.15),
+    inset 0 0 30px rgba(0, 0, 0, 0.3);
+  opacity: 1;
+  animation: comm-pop-in 0.25s ease-out;
+}
+
+@keyframes comm-pop-in {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Minimized state */
+.comm-screen--minimized {
+  position: absolute;
+  top: 48px;
+  right: 290px;
+  width: 36px;
+  height: 36px;
+  z-index: 15;
+  pointer-events: auto;
+  border: 1px solid rgba(86, 212, 221, 0.2);
+  border-radius: 6px;
+  background: rgba(8, 12, 18, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  opacity: 0.6;
+}
+
+.comm-screen--minimized:hover {
+  opacity: 1;
+  border-color: rgba(86, 212, 221, 0.5);
+  box-shadow: 0 0 8px rgba(86, 212, 221, 0.15);
+}
+
+.comm-screen__mini-icon {
+  color: var(--cyan);
+  font-size: 16px;
+}
+
+/* Scanline overlay */
+.comm-screen__scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  opacity: 0.6;
+}
+
+/* Header */
+.comm-screen__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(86, 212, 221, 0.15);
+  background: rgba(86, 212, 221, 0.04);
+  position: relative;
+  z-index: 3;
+  cursor: grab;
+  user-select: none;
+}
+
+.comm-screen__header:active {
+  cursor: grabbing;
+}
+
+.comm-screen__freq {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(86, 212, 221, 0.6);
+  text-transform: uppercase;
+}
+
+.comm-screen__controls {
+  display: flex;
+  gap: 2px;
+}
+
+.comm-screen__btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.comm-screen__btn:hover {
+  color: var(--cyan);
+}
+
+/* Body */
+.comm-screen__body {
+  padding: 10px;
+  position: relative;
+  z-index: 1;
+  min-height: 204px;
+  display: flex;
+  gap: 10px;
+}
+
+/* Portrait */
+.comm-screen__portrait {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(86, 212, 221, 0.2);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.comm-screen__portrait-placeholder {
+  color: var(--cyan);
+  font-size: 20px;
+  opacity: 0.5;
+}
+
+/* Dialogue */
+.comm-screen__dialogue {
+  flex: 1;
+  min-width: 0;
+}
+
+.comm-screen__sender {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--cyan);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  text-shadow: 0 0 8px rgba(86, 212, 221, 0.3);
+}
+
+.comm-screen__text {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  word-wrap: break-word;
+}
+
+.comm-screen__cursor {
+  color: var(--cyan);
+  animation: comm-blink 0.6s step-end infinite;
+  font-size: 10px;
+  margin-left: 1px;
+}
+
+@keyframes comm-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Idle / no signal state */
+.comm-screen__idle {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  gap: 8px;
+  position: relative;
+}
+
+.comm-screen__static {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 64px 64px;
+  opacity: 0.04;
+  animation: comm-static 0.15s steps(4) infinite;
+}
+
+@keyframes comm-static {
+  0% {
+    background-position: 0 0;
+  }
+  25% {
+    background-position: 32px 16px;
+  }
+  50% {
+    background-position: -16px 32px;
+  }
+  75% {
+    background-position: 16px -16px;
+  }
+}
+
+.comm-screen__idle-text {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: rgba(86, 212, 221, 0.25);
+  text-transform: uppercase;
+  position: relative;
+  z-index: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .comm-screen,
+  .comm-screen--minimized {
+    right: 8px;
+    top: 48px;
+  }
+
+  .comm-screen {
+    width: 200px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .comm-screen,
+  .comm-screen--minimized {
+    right: 350px;
+  }
+}
+
+@media (min-width: 3840px) {
+  .comm-screen,
+  .comm-screen--minimized {
+    right: 410px;
+  }
+}

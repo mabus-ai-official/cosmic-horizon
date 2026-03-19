@@ -120,3 +120,63 @@
     rgba(160, 0, 160, 0.55) 100%
   );
 }
+
+/* Event flash — amber/yellow, 3 pulses (asteroid fields, discoveries) */
+.event-vignette-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  animation: vignette-pulse 0.6s ease-in-out 3;
+}
+.event-vignette-flash::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 45%,
+    rgba(220, 180, 30, 0.35) 75%,
+    rgba(180, 140, 0, 0.55) 100%
+  );
+}
+
+/* Encounter flash — cyan, 2 pulses (NPC encounters, intel) */
+.encounter-vignette-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  animation: vignette-pulse 0.6s ease-in-out 2;
+}
+.encounter-vignette-flash::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 45%,
+    rgba(0, 200, 220, 0.35) 75%,
+    rgba(0, 160, 180, 0.55) 100%
+  );
+}
+
+/* Trade flash — green, 2 pulses (trade NPC encounters) */
+.trade-vignette-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  animation: vignette-pulse 0.6s ease-in-out 2;
+}
+.trade-vignette-flash::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 45%,
+    rgba(30, 200, 60, 0.35) 75%,
+    rgba(0, 160, 30, 0.55) 100%
+  );
+}

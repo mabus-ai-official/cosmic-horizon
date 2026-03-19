@@ -10,6 +10,7 @@ import TradeOffersPanel from "./TradeOffersPanel";
 import TradeComputerPanel from "./TradeComputerPanel";
 import MallPanel from "./MallPanel";
 import CombatGroupPanel from "./CombatGroupPanel";
+import BountiesPanel from "./BountiesPanel";
 import ActiveMissionsPanel from "./ActiveMissionsPanel";
 import ExplorePanel from "./ExplorePanel";
 import PlanetsPanel from "./PlanetsPanel";
@@ -26,6 +27,7 @@ import TradeHistoryPanel from "./TradeHistoryPanel";
 import ProfilePanel from "./ProfilePanel";
 import CodexPanel from "./CodexPanel";
 import FactionQuestlinesPanel from "./FactionQuestlinesPanel";
+import AdminPanel from "./AdminPanel";
 import type { ChatMessage, ChatChannel } from "./SectorChatPanel";
 import type { ToastType } from "../hooks/useToast";
 import {
@@ -65,6 +67,7 @@ interface PanelRouterProps {
   aria: any;
   eventOverlay: any;
   showToast: (msg: string, type?: ToastType, duration?: number) => number;
+  onDrink?: () => void;
 }
 
 export default function PanelRouter({
@@ -98,6 +101,7 @@ export default function PanelRouter({
   aria,
   eventOverlay,
   showToast,
+  onDrink,
 }: PanelRouterProps) {
   switch (activePanel) {
     case "nav":
@@ -135,6 +139,7 @@ export default function PanelRouter({
           hasNamingAuthority={game.player?.hasNamingAuthority}
           onAddLine={game.addLine}
           onRefreshStatus={game.refreshStatus}
+          showToast={showToast}
         />
       );
     case "trade": {
@@ -167,6 +172,8 @@ export default function PanelRouter({
             }}
             onArcade={() => setShowArcade(true)}
             showToast={showToast}
+            onDrink={onDrink}
+            onStoryEvent={(data: any) => eventOverlay.enqueueEvent(data)}
             bare
           />
         );
@@ -193,6 +200,42 @@ export default function PanelRouter({
           onCombatAnimationDone={game.clearCombatAnimation}
           playerName={game.player?.username}
           refreshKey={refreshKey}
+          bare
+        />
+      );
+    case "bounties":
+      return (
+        <BountiesPanel
+          refreshKey={refreshKey}
+          credits={game.player?.credits ?? 0}
+          onAction={() => {
+            game.refreshStatus();
+            setRefreshKey((k) => k + 1);
+          }}
+          showToast={showToast}
+          readOnly
+        />
+      );
+    case "helm-planets":
+      return (
+        <PlanetsPanel
+          refreshKey={refreshKey}
+          currentSectorId={game.player?.currentSectorId ?? null}
+          hasNamingAuthority={game.player?.hasNamingAuthority}
+          hasTransporter={game.player?.hasTransporter}
+          playerRace={game.player?.race ?? null}
+          shipFoodCargo={game.player?.currentShip?.foodCargo ?? 0}
+          colonistsByRace={game.player?.currentShip?.colonistsByRace}
+          onAction={() => {
+            game.refreshStatus();
+            game.refreshSector();
+            setRefreshKey((k) => k + 1);
+          }}
+          onLand={game.doLand}
+          onLiftoff={handleLiftoff}
+          onWarpTo={game.doWarpTo}
+          landedAtPlanetId={game.player?.landedAtPlanetId ?? null}
+          limitTabs={["sector", "owned"]}
           bare
         />
       );
@@ -440,6 +483,8 @@ export default function PanelRouter({
       );
     case "profile":
       return <ProfilePanel refreshKey={refreshKey} bare />;
+    case "admin":
+      return <AdminPanel />;
     default:
       return null;
   }

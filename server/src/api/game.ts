@@ -4,8 +4,11 @@ import { canAffordAction, deductEnergy, getActionCost } from "../engine/energy";
 import {
   checkAndUpdateMissions,
   checkRescueMerchant,
+  checkTarriIntelMerchant,
+  checkVedicCrystalNPC,
 } from "../services/mission-tracker";
 import { checkRandomEvents } from "../engine/random-events";
+import { checkRandomNPCEncounter } from "../engine/npc-encounters";
 import { applyUpgradesToShip } from "../engine/upgrades";
 import { getFactionItemBonuses } from "../engine/faction-items";
 import {
@@ -282,6 +285,7 @@ router.get("/status", requireAuth, async (req, res) => {
       hasSeenPostTutorial: !!player.has_seen_post_tutorial,
       hasNamingAuthority,
       hasTransporter,
+      avatarUrl: player.avatar_url || null,
       walletAddress: player.wallet_address || null,
       dockedAtOutpostId: player.docked_at_outpost_id || null,
       landedAtPlanetId: player.landed_at_planet_id || null,
@@ -321,6 +325,7 @@ router.get("/status", requireAuth, async (req, res) => {
             cyrilliumCargo: ship.cyrillium_cargo,
             foodCargo: ship.food_cargo,
             techCargo: ship.tech_cargo,
+            vedicCargo: ship.vedic_cargo ?? 0,
             colonistsCargo: ship.colonist_cargo,
             colonistsByRace,
           }
@@ -466,10 +471,18 @@ router.post("/move/:sectorId", requireAuth, async (req, res) => {
 
     // Mission progress: move
     const io = req.app.get("io");
+    const starMallSector = await db("sectors")
+      .where({ id: targetSectorId, has_star_mall: true })
+      .first();
+    const hasStarMall = !!starMallSector;
     checkAndUpdateMissions(
       player.id,
       "move",
-      { sectorId: targetSectorId, currentSectorId: targetSectorId },
+      {
+        sectorId: targetSectorId,
+        currentSectorId: targetSectorId,
+        hasStarMall,
+      },
       io,
     );
     checkRandomEvents(player.id, "explore", { sectorId: targetSectorId }, io);
@@ -480,6 +493,21 @@ router.post("/move/:sectorId", requireAuth, async (req, res) => {
 
     // Check if a rescue merchant should appear for deliver_cargo phases
     await checkRescueMerchant(player.id, targetSectorId, io);
+
+    // Random NPC encounters during travel missions (~18% chance)
+    checkRandomNPCEncounter(player.id, targetSectorId, io).catch((e) =>
+      console.error("Random NPC encounter error:", e),
+    );
+
+    // Tar'ri intel merchant for mission 13 phase 2
+    checkTarriIntelMerchant(player.id, targetSectorId, io).catch((e) =>
+      console.error("Tarri intel error:", e),
+    );
+
+    // Vedic Crystal NPC encounters for mission 14
+    checkVedicCrystalNPC(player.id, targetSectorId, io).catch((e) =>
+      console.error("Vedic crystal NPC error:", e),
+    );
 
     // Query players AFTER ambush spawn so spawned NPCs appear in the response
     const playersInSector = await db("players")
@@ -1127,6 +1155,7 @@ router.get("/map", requireAuth, async (req, res) => {
               "cyrillium_mode",
               "food_mode",
               "tech_mode",
+              "vedic_mode",
               "sells_fuel",
             )
             .whereIn("sector_id", explored)
@@ -1141,6 +1170,8 @@ router.get("/map", requireAuth, async (req, res) => {
         sellsFood: boolean;
         buysTech: boolean;
         sellsTech: boolean;
+        buysVedic: boolean;
+        sellsVedic: boolean;
         sellsFuel: boolean;
       }
     >();
@@ -1152,6 +1183,8 @@ router.get("/map", requireAuth, async (req, res) => {
         sellsFood: false,
         buysTech: false,
         sellsTech: false,
+        buysVedic: false,
+        sellsVedic: false,
         sellsFuel: false,
       };
       if (r.cyrillium_mode === "buy") existing.buysCyr = true;
@@ -1160,6 +1193,8 @@ router.get("/map", requireAuth, async (req, res) => {
       if (r.food_mode === "sell") existing.sellsFood = true;
       if (r.tech_mode === "buy") existing.buysTech = true;
       if (r.tech_mode === "sell") existing.sellsTech = true;
+      if (r.vedic_mode === "buy") existing.buysVedic = true;
+      if (r.vedic_mode === "sell") existing.sellsVedic = true;
       if (r.sells_fuel) existing.sellsFuel = true;
       sectorCommodityMap.set(r.sector_id, existing);
     }

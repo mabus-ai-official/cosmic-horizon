@@ -35,7 +35,11 @@ export default function ShipStatusPanel({ player }: Props) {
   }
 
   const totalCargo =
-    ship.cyrilliumCargo + ship.foodCargo + ship.techCargo + ship.colonistsCargo;
+    ship.cyrilliumCargo +
+    ship.foodCargo +
+    ship.techCargo +
+    ship.colonistsCargo +
+    (ship.vedicCargo || 0);
   const cargoPercent =
     ship.maxCargoHolds > 0
       ? Math.round((totalCargo / ship.maxCargoHolds) * 100)
@@ -124,6 +128,11 @@ export default function ShipStatusPanel({ player }: Props) {
           {ship.techCargo > 0 && (
             <span className="cargo-item cargo-item--tech">
               Tech: {ship.techCargo}
+            </span>
+          )}
+          {(ship.vedicCargo || 0) > 0 && (
+            <span className="cargo-item" style={{ color: "#c0f" }}>
+              VCry: {ship.vedicCargo}
             </span>
           )}
           {ship.colonistsCargo > 0 && (

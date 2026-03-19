@@ -1,6 +1,6 @@
 import { GAME_CONFIG } from "../config/game";
 
-export type CommodityType = "cyrillium" | "food" | "tech";
+export type CommodityType = "cyrillium" | "food" | "tech" | "vedic";
 export type TradeMode = "buy" | "sell" | "none";
 
 export interface OutpostState {
@@ -13,6 +13,9 @@ export interface OutpostState {
   techStock: number;
   techCapacity: number;
   techMode: TradeMode;
+  vedicStock: number;
+  vedicCapacity: number;
+  vedicMode: TradeMode;
   treasury: number;
 }
 
@@ -31,6 +34,7 @@ const BASE_PRICES: Record<CommodityType, number> = {
   cyrillium: GAME_CONFIG.BASE_CYRILLIUM_PRICE,
   food: GAME_CONFIG.BASE_FOOD_PRICE,
   tech: GAME_CONFIG.BASE_TECH_PRICE,
+  vedic: GAME_CONFIG.BASE_VEDIC_PRICE,
 };
 
 /**
@@ -73,6 +77,12 @@ function getStockInfo(outpost: OutpostState, commodity: CommodityType) {
         stock: outpost.techStock,
         capacity: outpost.techCapacity,
         mode: outpost.techMode,
+      };
+    case "vedic":
+      return {
+        stock: outpost.vedicStock,
+        capacity: outpost.vedicCapacity,
+        mode: outpost.vedicMode,
       };
   }
 }

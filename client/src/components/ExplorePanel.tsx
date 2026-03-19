@@ -69,6 +69,7 @@ interface Props {
   hasNamingAuthority?: boolean;
   onAddLine?: (text: string, type?: LineType) => void;
   onRefreshStatus?: () => void;
+  showToast?: (msg: string, type?: any, duration?: number) => number;
 }
 
 type TabView = "events" | "resources" | "deployables" | "sector";
@@ -95,6 +96,7 @@ export default function ExplorePanel({
   hasNamingAuthority,
   onAddLine,
   onRefreshStatus,
+  showToast,
 }: Props) {
   const [tab, setTab] = useState<TabView>("events");
   const [events, setEvents] = useState<SectorEvent[]>([]);
@@ -187,6 +189,7 @@ export default function ExplorePanel({
     try {
       await nameSector(sectorId, sectorNameInput.trim());
       onAddLine?.(`Sector renamed to "${sectorNameInput.trim()}"`, "success");
+      showToast?.(`Sector renamed to "${sectorNameInput.trim()}"`, "success");
       onRefreshStatus?.();
       await fetchSectorInfo();
       setSectorNameInput("");
@@ -224,6 +227,10 @@ export default function ExplorePanel({
     try {
       const { data } = await registerSectorFaction(sectorId, selectedFaction);
       onAddLine?.(`${data.message} (+${data.fameAwarded} fame)`, "success");
+      showToast?.(
+        `+${data.fameAwarded} Fame with ${data.factionName}`,
+        "achievement",
+      );
       onRefreshStatus?.();
       await fetchSectorInfo();
     } catch (err: any) {

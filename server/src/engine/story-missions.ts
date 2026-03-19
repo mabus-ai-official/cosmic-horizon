@@ -377,6 +377,13 @@ export async function handleStoryMissionClaim(
     }
   }
 
+  // Mission 14 completion: enable Vedic Crystal trading at 10% of outposts
+  if (storyOrder === 14) {
+    const { enableVedicCrystalTrading } =
+      await import("../services/mission-tracker");
+    await enableVedicCrystalTrading();
+  }
+
   // Check if this is the last mission in its chapter
   const chapter = template.chapter || act;
   const chapterSize =

@@ -1,0 +1,148 @@
+/* ── Drunk Effect Overlay (blur + color only) ─────────── */
+.drunk-overlay {
+  position: fixed;
+  inset: -20px;
+  z-index: 50;
+  pointer-events: none;
+}
+
+/* Level 1: Tipsy — slow color drift */
+.drunk-overlay--level-1 {
+  backdrop-filter: blur(1px) saturate(1.3);
+  background: radial-gradient(
+    ellipse at center,
+    transparent 60%,
+    rgba(180, 120, 40, 0.1) 100%
+  );
+  animation: drunk-hue-slow 20s linear infinite;
+}
+
+/* Level 2: Buzzed — colors pick up */
+.drunk-overlay--level-2 {
+  backdrop-filter: blur(2px) saturate(1.5);
+  background: radial-gradient(
+    ellipse at center,
+    transparent 45%,
+    rgba(180, 120, 40, 0.15) 100%
+  );
+  animation: drunk-hue-slow 15s linear infinite;
+}
+
+/* Level 3: Drunk — vivid cycling */
+.drunk-overlay--level-3 {
+  backdrop-filter: blur(3px) saturate(1.7) brightness(1.05);
+  background: radial-gradient(
+    ellipse at center,
+    transparent 35%,
+    rgba(180, 120, 40, 0.2) 100%
+  );
+  animation: drunk-hue-slow 10s linear infinite;
+}
+
+/* Level 4: Hammered — faster */
+.drunk-overlay--level-4 {
+  backdrop-filter: blur(4.5px) saturate(1.9) brightness(1.1);
+  background: radial-gradient(
+    ellipse at center,
+    transparent 25%,
+    rgba(180, 120, 40, 0.25) 100%
+  );
+  animation: drunk-hue-slow 7s linear infinite;
+}
+
+/* Level 5: Wasted — rapid */
+.drunk-overlay--level-5 {
+  backdrop-filter: blur(6px) saturate(2.2) brightness(1.15);
+  background: radial-gradient(
+    ellipse at center,
+    transparent 15%,
+    rgba(180, 120, 40, 0.3) 100%
+  );
+  animation: drunk-hue-slow 5s linear infinite;
+}
+
+/* Level 6+: Blackout — psychedelic */
+.drunk-overlay--level-6 {
+  backdrop-filter: blur(8px) saturate(2.5) brightness(1.2) contrast(1.1);
+  background: radial-gradient(
+    ellipse at center,
+    transparent 10%,
+    rgba(180, 120, 40, 0.35) 100%
+  );
+  animation: drunk-hue-slow 3s linear infinite;
+}
+
+/* Smooth 360° hue rotation on the overlay — fades through all colors */
+@keyframes drunk-hue-slow {
+  0% {
+    filter: hue-rotate(0deg);
+  }
+  100% {
+    filter: hue-rotate(360deg);
+  }
+}
+
+/* ── Wobble on game-layout (content moves, not overlay) ── */
+/* Wobble caps at level 3 intensity, zoom stays subtle throughout */
+.drunk-wobble--level-1 {
+  animation: drunk-sway-1 6s ease-in-out infinite;
+}
+
+.drunk-wobble--level-2 {
+  animation: drunk-sway-2 5s ease-in-out infinite;
+}
+
+.drunk-wobble--level-3,
+.drunk-wobble--level-4,
+.drunk-wobble--level-5,
+.drunk-wobble--level-6 {
+  animation: drunk-sway-3 4s ease-in-out infinite;
+}
+
+@keyframes drunk-sway-1 {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(0.3deg) scale(1.002);
+  }
+  75% {
+    transform: rotate(-0.3deg) scale(0.998);
+  }
+}
+
+@keyframes drunk-sway-2 {
+  0%,
+  100% {
+    transform: rotate(0deg) translateX(0) scale(1);
+  }
+  20% {
+    transform: rotate(0.6deg) translateX(2px) scale(1.003);
+  }
+  50% {
+    transform: rotate(-0.4deg) translateX(-2px) scale(0.997);
+  }
+  80% {
+    transform: rotate(0.3deg) translateX(1px) scale(1.002);
+  }
+}
+
+@keyframes drunk-sway-3 {
+  0%,
+  100% {
+    transform: rotate(0deg) translateX(0) scale(1);
+  }
+  15% {
+    transform: rotate(1deg) translateX(4px) scale(1.005);
+  }
+  40% {
+    transform: rotate(-0.8deg) translateX(-3px) scale(0.995);
+  }
+  65% {
+    transform: rotate(0.6deg) translateX(3px) scale(1.004);
+  }
+  85% {
+    transform: rotate(-0.4deg) translateX(-2px) scale(0.997);
+  }
+}

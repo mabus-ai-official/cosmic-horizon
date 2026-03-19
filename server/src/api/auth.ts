@@ -669,4 +669,35 @@ router.delete("/account", requireAuth, async (req, res) => {
   }
 });
 
+// Upload avatar (base64 data URI, max 256KB)
+router.post("/avatar", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.session.playerId!;
+    const { avatarUrl } = req.body;
+
+    if (!avatarUrl) {
+      // Clear avatar
+      await db("players").where({ id: playerId }).update({ avatar_url: null });
+      return res.json({ success: true, avatarUrl: null });
+    }
+
+    // Validate it's a data URI and not too large
+    if (!avatarUrl.startsWith("data:image/")) {
+      return res.status(400).json({ error: "Invalid image format" });
+    }
+    if (avatarUrl.length > 256 * 1024) {
+      return res.status(400).json({ error: "Image too large (max 256KB)" });
+    }
+
+    await db("players")
+      .where({ id: playerId })
+      .update({ avatar_url: avatarUrl });
+
+    res.json({ success: true, avatarUrl });
+  } catch (err) {
+    console.error("Avatar upload error:", err);
+    res.status(500).json({ error: "Failed to update avatar" });
+  }
+});
+
 export default router;

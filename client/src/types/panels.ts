@@ -20,7 +20,10 @@ export type PanelId =
   | "notes"
   | "codex"
   | "factions"
-  | "profile";
+  | "bounties"
+  | "helm-planets"
+  | "profile"
+  | "admin";
 
 export type GroupId =
   | "pilot"
@@ -74,6 +77,8 @@ export const PANEL_GROUPS: PanelGroupDef[] = [
     tabs: [
       { id: "nav", label: "Navigation" },
       { id: "combat", label: "Combat" },
+      { id: "bounties", label: "Bounties" },
+      { id: "helm-planets", label: "Planets" },
       { id: "aria", label: "ARIA" },
     ],
   },

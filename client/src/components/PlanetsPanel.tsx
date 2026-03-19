@@ -74,6 +74,7 @@ interface Props {
   onWarpTo?: (sectorId: number) => void;
   landedAtPlanetId?: string | null;
   bare?: boolean;
+  limitTabs?: ("sector" | "owned" | "discovered" | "analytics")[];
 }
 
 const CLASS_LABELS: Record<string, string> = {
@@ -141,6 +142,7 @@ export default function PlanetsPanel({
   onWarpTo,
   landedAtPlanetId,
   bare,
+  limitTabs,
 }: Props) {
   const [planets, setPlanets] = useState<PlanetData[]>([]);
   const [discovered, setDiscovered] = useState<DiscoveredPlanetData[]>([]);
@@ -405,41 +407,34 @@ export default function PlanetsPanel({
     (p) => p.sectorId === currentSectorId,
   );
 
+  const allTabs: { key: TabView; label: string }[] = [
+    { key: "sector", label: "Sector" },
+    { key: "owned", label: "Owned" },
+    { key: "discovered", label: "Discovered" },
+    { key: "analytics", label: "Analytics" },
+  ];
+  const visibleTabs = limitTabs
+    ? allTabs.filter((t) => limitTabs.includes(t.key))
+    : allTabs;
+
   const tabBar = (
     <div className="group-panel-tabs">
-      <span
-        onClick={() => setTab("sector")}
-        style={{ cursor: "pointer", color: tab === "sector" ? "#0f0" : "#666" }}
-      >
-        {tab === "sector" ? "[Sector]" : "Sector"}
-      </span>
-      <span style={{ color: "#444", margin: "0 0.5rem" }}>|</span>
-      <span
-        onClick={() => setTab("owned")}
-        style={{ cursor: "pointer", color: tab === "owned" ? "#0f0" : "#666" }}
-      >
-        {tab === "owned" ? "[Owned]" : "Owned"}
-      </span>
-      <span style={{ color: "#444", margin: "0 0.5rem" }}>|</span>
-      <span
-        onClick={() => setTab("discovered")}
-        style={{
-          cursor: "pointer",
-          color: tab === "discovered" ? "#0f0" : "#666",
-        }}
-      >
-        {tab === "discovered" ? "[Discovered]" : "Discovered"}
-      </span>
-      <span style={{ color: "#444", margin: "0 0.5rem" }}>|</span>
-      <span
-        onClick={() => setTab("analytics")}
-        style={{
-          cursor: "pointer",
-          color: tab === "analytics" ? "#0f0" : "#666",
-        }}
-      >
-        {tab === "analytics" ? "[Analytics]" : "Analytics"}
-      </span>
+      {visibleTabs.map((t, i) => (
+        <span key={t.key}>
+          {i > 0 && (
+            <span style={{ color: "#444", margin: "0 0.5rem" }}>|</span>
+          )}
+          <span
+            onClick={() => setTab(t.key)}
+            style={{
+              cursor: "pointer",
+              color: tab === t.key ? "#0f0" : "#666",
+            }}
+          >
+            {tab === t.key ? `[${t.label}]` : t.label}
+          </span>
+        </span>
+      ))}
     </div>
   );
 

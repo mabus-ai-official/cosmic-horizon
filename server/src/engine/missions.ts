@@ -106,6 +106,10 @@ export interface MissionProgress {
   planetUpgraded?: boolean;
   syndicateJoined?: boolean;
   tradeOfferSent?: boolean;
+  // Cantina mission objectives
+  starmallVisited?: boolean;
+  drinkOrdered?: boolean;
+  eavesdropCompleted?: boolean;
 }
 
 export interface ObjectiveDetail {
@@ -367,6 +371,30 @@ export function checkMissionProgress(
         updated = true;
       }
       break;
+
+    case "visit_starmall":
+      if (action === "move" || action === "warp") {
+        // Complete when player enters a sector that has a star mall
+        if (data.hasStarMall) {
+          p.starmallVisited = true;
+          updated = true;
+        }
+      }
+      break;
+
+    case "order_drink":
+      if (action === "order_drink") {
+        p.drinkOrdered = true;
+        updated = true;
+      }
+      break;
+
+    case "eavesdrop":
+      if (action === "eavesdrop") {
+        p.eavesdropCompleted = true;
+        updated = true;
+      }
+      break;
   }
 
   const completed = isMissionComplete(type, objectives, p);
@@ -441,6 +469,12 @@ function isMissionComplete(
       return !!progress.syndicateJoined;
     case "send_trade_offer":
       return !!progress.tradeOfferSent;
+    case "visit_starmall":
+      return !!progress.starmallVisited;
+    case "order_drink":
+      return !!progress.drinkOrdered;
+    case "eavesdrop":
+      return !!progress.eavesdropCompleted;
     default:
       return false;
   }
@@ -467,6 +501,7 @@ export function buildObjectivesDetail(
   objectives: MissionObjectives,
   hints?: string[],
   descriptionSuffix?: string,
+  phaseDescription?: string,
 ): ObjectiveDetail[] {
   const details: ObjectiveDetail[] = [];
   const hint = hints?.[0];
@@ -474,7 +509,9 @@ export function buildObjectivesDetail(
   switch (type) {
     case "visit_sector":
       details.push({
-        description: `Visit ${objectives.sectorsToVisit} distinct sectors`,
+        description:
+          phaseDescription ||
+          `Visit ${objectives.sectorsToVisit} distinct sectors`,
         target: objectives.sectorsToVisit || 0,
         current: 0,
         complete: false,
@@ -519,7 +556,14 @@ export function buildObjectivesDetail(
       break;
     case "deliver_cargo": {
       const commodity = objectives.commodity || "unknown";
+      const COMMODITY_DISPLAY: Record<string, string> = {
+        cyrillium: "Cyrillium",
+        food: "Food",
+        tech: "Tech",
+        vedic: "Vedic Crystals",
+      };
       const capCommodity =
+        COMMODITY_DISPLAY[commodity] ||
         commodity.charAt(0).toUpperCase() + commodity.slice(1);
       details.push({
         description: `Sell ${objectives.quantity} ${capCommodity} at any outpost${descriptionSuffix || ""}`,

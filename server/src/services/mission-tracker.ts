@@ -355,6 +355,9 @@ async function handlePhasedMission(
       const detail = buildObjectivesDetail(
         nextPhase.objective_type,
         nextObjectives,
+        undefined,
+        undefined,
+        nextPhase.description,
       );
       let phaseDescriptionWithHint = nextPhase.description;
 
@@ -657,6 +660,14 @@ async function completeMission(
   io?: SocketIOServer,
   updatedDetail?: ObjectiveDetail[] | null,
 ): Promise<void> {
+  // Optimistic lock: re-check status to prevent duplicate completion
+  // (warp handler fires both "warp" and "move" checks concurrently)
+  const current = await db("player_missions")
+    .where({ id: mission.missionId })
+    .select("status")
+    .first();
+  if (!current || current.status === "completed") return;
+
   const isStory = mission.source === "story";
   const requiresClaim = isStory || !!mission.requires_claim_at_mall;
 
@@ -901,6 +912,9 @@ export async function handleMissionChoice(
       const nextDetail = buildObjectivesDetail(
         nextPhase.objective_type,
         nextObjectives,
+        undefined,
+        undefined,
+        nextPhase.description,
       );
 
       await db("player_missions")
@@ -1306,4 +1320,393 @@ export async function handleRescuePurchase(
   }
 
   return { success: true, quantity: needed, cost: totalCost };
+}
+
+/**
+ * Check if the Tar'ri intel merchant should appear during mission 13 phase 2.
+ * After 10 moves, Tar'ri offers:
+ * - Intel (location of cyrillium outpost) if player hasn't found one
+ * - Actual cyrillium at max_galaxy_price + 5 if player has
+ */
+const TARRI_MOVE_THRESHOLD = 10;
+
+export async function checkTarriIntelMerchant(
+  playerId: string,
+  sectorId: number,
+  io?: SocketIOServer,
+): Promise<void> {
+  if (!io) return;
+
+  // Only for mission 13 (story_order 13), phase 2 (deliver_cargo)
+  const mission = await db("player_missions")
+    .join(
+      "mission_templates",
+      "player_missions.template_id",
+      "mission_templates.id",
+    )
+    .where({
+      "player_missions.player_id": playerId,
+      "player_missions.status": "active",
+      "mission_templates.story_order": 13,
+    })
+    .whereNotNull("player_missions.current_phase")
+    .select(
+      "player_missions.id as missionId",
+      "player_missions.current_phase",
+      "player_missions.phase_progress",
+      "mission_templates.title",
+    )
+    .first();
+
+  if (!mission) return;
+
+  // Check current phase is deliver_cargo
+  const phase = await db("mission_phases")
+    .where({
+      template_id: (
+        await db("player_missions")
+          .where({ id: mission.missionId })
+          .select("template_id")
+          .first()
+      )?.template_id,
+      phase_order: mission.current_phase,
+    })
+    .first();
+
+  if (!phase || phase.objective_type !== "deliver_cargo") return;
+
+  const progress = mission.phase_progress
+    ? JSON.parse(mission.phase_progress)
+    : {};
+
+  // Already spawned — re-notify if same sector
+  if (progress.tarriNpcSectorId) {
+    if (progress.tarriNpcSectorId === sectorId) {
+      // Re-emit event
+      await emitTarriEvent(playerId, sectorId, io);
+    }
+    return;
+  }
+
+  // Increment move counter
+  const tarriMoves = (progress.tarriMoves || 0) + 1;
+  progress.tarriMoves = tarriMoves;
+
+  await db("player_missions")
+    .where({ id: mission.missionId })
+    .update({ phase_progress: JSON.stringify(progress) });
+
+  if (tarriMoves < TARRI_MOVE_THRESHOLD) return;
+
+  // Spawn Tar'ri
+  progress.tarriNpcSectorId = sectorId;
+  await db("player_missions")
+    .where({ id: mission.missionId })
+    .update({ phase_progress: JSON.stringify(progress) });
+
+  await emitTarriEvent(playerId, sectorId, io);
+}
+
+async function emitTarriEvent(
+  playerId: string,
+  sectorId: number,
+  io: SocketIOServer,
+): Promise<void> {
+  // Find highest cyrillium price in the galaxy
+  const maxPrice = await db("outposts")
+    .where("sells_cyr", true)
+    .max("cyr_sell_price as maxPrice")
+    .first();
+  const pricePerUnit =
+    (Number(maxPrice?.maxPrice) || GAME_CONFIG.BASE_CYRILLIUM_PRICE) + 5;
+
+  // Check if player has discovered any outpost selling cyrillium
+  const playerExplored = await db("players")
+    .where({ id: playerId })
+    .select("explored_sectors")
+    .first();
+  const exploredIds: number[] = JSON.parse(
+    playerExplored?.explored_sectors || "[]",
+  );
+
+  let hasDiscovered = false;
+  if (exploredIds.length > 0) {
+    const found = await db("outposts")
+      .whereIn("sector_id", exploredIds)
+      .where("sells_cyr", true)
+      .first();
+    hasDiscovered = !!found;
+  }
+
+  notifyPlayer(io, playerId, "npc:tarri_intel", {
+    sectorId,
+    npcName: "Kessik the Broker",
+    npcRace: "Tar'ri",
+    pricePerUnit,
+    hasDiscoveredOutpost: hasDiscovered,
+    // If discovered, offer to sell cyrillium; otherwise offer intel
+    offerType: hasDiscovered ? "sell_commodity" : "sell_intel",
+  });
+}
+
+export async function handleTarriPurchase(
+  playerId: string,
+  offerType: string,
+  pricePerUnit: number,
+  io?: SocketIOServer,
+): Promise<{
+  success: boolean;
+  error?: string;
+  quantity?: number;
+  cost?: number;
+  intelSectorId?: number;
+}> {
+  const player = await db("players").where({ id: playerId }).first();
+  if (!player) return { success: false, error: "Player not found" };
+
+  if (offerType === "sell_intel") {
+    // Find a random unexplored outpost that sells cyrillium
+    const pData = await db("players")
+      .where({ id: playerId })
+      .select("explored_sectors")
+      .first();
+    const pExplored: number[] = JSON.parse(pData?.explored_sectors || "[]");
+    const outpostQ = db("outposts")
+      .where("sells_cyr", true)
+      .orderByRaw("RANDOM()");
+    if (pExplored.length > 0) {
+      outpostQ.whereNotIn("sector_id", pExplored);
+    }
+    const outpost = await outpostQ.first();
+
+    const cost = pricePerUnit;
+    if (Number(player.credits) < cost) {
+      return { success: false, error: "Not enough credits" };
+    }
+
+    await db("players")
+      .where({ id: playerId })
+      .update({ credits: Number(player.credits) - cost });
+
+    const intelSectorId = outpost?.sector_id ?? null;
+
+    if (io) {
+      const { syncPlayer } = await import("../ws/sync");
+      syncPlayer(io, playerId, "sync:status");
+    }
+
+    return { success: true, cost, intelSectorId };
+  } else {
+    // Sell actual cyrillium at premium
+    const ship = await db("ships")
+      .where({ id: player.current_ship_id })
+      .first();
+    if (!ship) return { success: false, error: "No ship" };
+
+    const totalCargo =
+      Number(ship.cyrillium_cargo) +
+      Number(ship.food_cargo) +
+      Number(ship.tech_cargo) +
+      Number(ship.colonists_cargo);
+    const space = Number(ship.max_cargo_holds) - totalCargo;
+    const quantity = Math.min(15, space);
+
+    if (quantity <= 0) {
+      return { success: false, error: "No cargo space" };
+    }
+
+    const cost = quantity * pricePerUnit;
+    if (Number(player.credits) < cost) {
+      return { success: false, error: "Not enough credits" };
+    }
+
+    await db("players")
+      .where({ id: playerId })
+      .update({ credits: Number(player.credits) - cost });
+
+    await db("ships")
+      .where({ id: ship.id })
+      .increment("cyrillium_cargo", quantity);
+
+    // Clear Tar'ri NPC
+    const mission = await db("player_missions")
+      .join(
+        "mission_templates",
+        "player_missions.template_id",
+        "mission_templates.id",
+      )
+      .where({
+        "player_missions.player_id": playerId,
+        "player_missions.status": "active",
+        "mission_templates.story_order": 13,
+      })
+      .select("player_missions.id", "player_missions.phase_progress")
+      .first();
+
+    if (mission) {
+      const progress = mission.phase_progress
+        ? JSON.parse(mission.phase_progress)
+        : {};
+      delete progress.tarriNpcSectorId;
+      await db("player_missions")
+        .where({ id: mission.id })
+        .update({ phase_progress: JSON.stringify(progress) });
+    }
+
+    if (io) {
+      const { syncPlayer } = await import("../ws/sync");
+      syncPlayer(io, playerId, "sync:status");
+    }
+
+    return { success: true, quantity, cost };
+  }
+}
+
+/**
+ * Check if Vedic Crystal NPCs should appear during mission 14.
+ * Phase 1: After 4 moves, Vedic emissary gives 25 crystals.
+ * Phase 3: After 15 moves, Tar'ri trash-talks about crystal value.
+ */
+export async function checkVedicCrystalNPC(
+  playerId: string,
+  sectorId: number,
+  io?: SocketIOServer,
+): Promise<void> {
+  if (!io) return;
+
+  const mission = await db("player_missions")
+    .join(
+      "mission_templates",
+      "player_missions.template_id",
+      "mission_templates.id",
+    )
+    .where({
+      "player_missions.player_id": playerId,
+      "player_missions.status": "active",
+      "mission_templates.story_order": 14,
+    })
+    .whereNotNull("player_missions.current_phase")
+    .select(
+      "player_missions.id as missionId",
+      "player_missions.current_phase",
+      "player_missions.phase_progress",
+      "player_missions.template_id",
+    )
+    .first();
+
+  if (!mission) return;
+
+  const progress = mission.phase_progress
+    ? JSON.parse(mission.phase_progress)
+    : {};
+
+  if (mission.current_phase === 1) {
+    // Phase 1: Vedic emissary after 4 sector moves
+    if (progress.vedicNpcSpawned) return;
+
+    const moves = (progress.vedicMoves || 0) + 1;
+    progress.vedicMoves = moves;
+    await db("player_missions")
+      .where({ id: mission.missionId })
+      .update({ phase_progress: JSON.stringify(progress) });
+
+    if (moves >= 3) {
+      progress.vedicNpcSpawned = true;
+      await db("player_missions")
+        .where({ id: mission.missionId })
+        .update({ phase_progress: JSON.stringify(progress) });
+
+      // Give player 25 Vedic crystals
+      const player = await db("players").where({ id: playerId }).first();
+      if (player?.current_ship_id) {
+        await db("ships")
+          .where({ id: player.current_ship_id })
+          .increment("vedic_cargo", 25);
+      }
+
+      // Enable vedic crystal trading at ~10% of outposts so player can sell
+      await enableVedicCrystalTrading();
+
+      // Find nearest outpost that buys vedic crystals for the hint
+      const playerData = await db("players")
+        .where({ id: playerId })
+        .select("explored_sectors")
+        .first();
+      const exploredIds: number[] = JSON.parse(
+        playerData?.explored_sectors || "[]",
+      );
+      let hintSector: number | null = null;
+      if (exploredIds.length > 0) {
+        const buyingOutpost = await db("outposts")
+          .whereIn("sector_id", exploredIds)
+          .where("vedic_mode", "buy")
+          .first();
+        hintSector = buyingOutpost?.sector_id ?? null;
+      }
+      if (!hintSector) {
+        const anyBuying = await db("outposts")
+          .where("vedic_mode", "buy")
+          .first();
+        hintSector = anyBuying?.sector_id ?? null;
+      }
+
+      const { syncPlayer } = await import("../ws/sync");
+      syncPlayer(io, playerId, "sync:status");
+
+      notifyPlayer(io, playerId, "npc:vedic_crystal_emissary", {
+        sectorId,
+        npcName: "Sella Brightvane",
+        npcRace: "Vedic",
+        crystalsGiven: 25,
+        hintSector,
+      });
+    }
+  } else if (mission.current_phase === 3) {
+    // Phase 3: Tar'ri trash-talk after 15 moves
+    if (progress.tarriTrashTalkDone) return;
+
+    const moves = (progress.tarriTrashMoves || 0) + 1;
+    progress.tarriTrashMoves = moves;
+    await db("player_missions")
+      .where({ id: mission.missionId })
+      .update({ phase_progress: JSON.stringify(progress) });
+
+    if (moves >= 15) {
+      progress.tarriTrashTalkDone = true;
+      await db("player_missions")
+        .where({ id: mission.missionId })
+        .update({ phase_progress: JSON.stringify(progress) });
+
+      notifyPlayer(io, playerId, "npc:tarri_crystal_opinion", {
+        sectorId,
+        npcName: "Gravel-Voice Krix",
+        npcRace: "Tar'ri",
+      });
+    }
+  }
+}
+
+/**
+ * Enable Vedic Crystal trading at 10% of outposts.
+ * Called when mission 14 is completed.
+ */
+export async function enableVedicCrystalTrading(): Promise<void> {
+  const outposts: { id: string }[] = await db("outposts").select("id");
+  const count = Math.ceil(outposts.length * 0.1);
+
+  // Shuffle and pick 10%
+  const shuffled = outposts.sort(() => Math.random() - 0.5);
+  const selected = shuffled.slice(0, count);
+
+  for (const o of selected) {
+    const mode = Math.random() > 0.5 ? "sell" : "buy";
+    const stock =
+      mode === "sell"
+        ? 1000 + Math.floor(Math.random() * 4000)
+        : Math.floor(Math.random() * 500);
+    await db("outposts").where({ id: o.id }).update({
+      vedic_mode: mode,
+      vedic_stock: stock,
+    });
+  }
 }

@@ -33,6 +33,9 @@ export async function seed(knex: Knex): Promise<void> {
     storyMissionId(10), // Wormhole Transit
     storyMissionId(12), // The Philosopher's Test
     storyMissionId(13), // Cyrillium Veins
+    storyMissionId(14), // Crystal Resonance (Vedic crystals)
+    storyMissionId(15), // Valandor's Warning (escort convoy)
+    storyMissionId(16), // The Calvatian Gate (eavesdrop)
     // Missions 17-24 (Chapter 3)
     storyMissionId(18), // Tar'ri Traders
     storyMissionId(19), // Trade Diplomacy
@@ -336,6 +339,91 @@ export async function seed(knex: Knex): Promise<void> {
       objective_type: "deliver_cargo",
       objectives: JSON.stringify({ commodity: "cyrillium", quantity: 15 }),
       narration_key: "ch2_m13_p2",
+    },
+  ]);
+
+  // Mission 14: Crystal Resonance — Vedic Crystals commodity (3 phases)
+  await knex("mission_phases").insert([
+    {
+      id: phaseId(14, 1),
+      template_id: storyMissionId(14),
+      phase_order: 1,
+      title: "Meet the Vedic Emissary",
+      description:
+        "Fly through 4 sectors. A Vedic crystal merchant will find you along the way.",
+      objective_type: "visit_sector",
+      objectives: JSON.stringify({ sectorsToVisit: 4 }),
+      lore_text:
+        "Sella Brightvane, the Vedic crystal merchant, has been instructed to intercept your vessel in transit. Navigate through a few sectors and she will find you.",
+      narration_key: "ch2_m14_p1",
+    },
+    {
+      id: phaseId(14, 2),
+      template_id: storyMissionId(14),
+      phase_order: 2,
+      title: "Sell Vedic Crystals",
+      description:
+        "Sell 20 Vedic crystals at any outpost to formalize the trade agreement.",
+      objective_type: "deliver_cargo",
+      objectives: JSON.stringify({ commodity: "vedic", quantity: 20 }),
+      lore_text:
+        "You now carry 25 Vedic crystals — memory-encoded lattices that hum faintly when held. Sell 20 at any outpost to demonstrate the Muscarian commitment to fair commerce.",
+      narration_key: "ch2_m14_p2",
+    },
+    {
+      id: phaseId(14, 3),
+      template_id: storyMissionId(14),
+      phase_order: 3,
+      title: "The Tar'ri's Opinion",
+      description:
+        "Travel the trade lanes. A Tar'ri merchant named Gravel-Voice Krix has been asking about your Vedic Crystal shipment.",
+      objective_type: "visit_sector",
+      objectives: JSON.stringify({ sectorsToVisit: 15 }),
+      lore_text:
+        "Word has spread through the trade networks that the Muscarians are carrying Vedic crystals. The Tar'ri — who consider themselves the galaxy's premiere merchants — will undoubtedly have an opinion. Keep moving through the sectors and Gravel-Voice Krix will find you.",
+      narration_key: "ch2_m14_p3",
+    },
+  ]);
+
+  // Mission 16: The Calvatian Gate — eavesdrop mission (3 phases)
+  await knex("mission_phases").insert([
+    {
+      id: phaseId(16, 1),
+      template_id: storyMissionId(16),
+      phase_order: 1,
+      title: "Find a Star Mall",
+      description: "Travel to any star mall along the frontier.",
+      objective_type: "visit_starmall",
+      objectives: JSON.stringify({}),
+      lore_text:
+        "The frontier star malls are the last bastions of commerce before the boundary. Find one and dock.",
+      narration_key: "ch2_m16_p1",
+    },
+    {
+      id: phaseId(16, 2),
+      template_id: storyMissionId(16),
+      phase_order: 2,
+      title: "Order a Drink",
+      description:
+        "Go to the cantina and order a drink to blend in with the locals.",
+      objective_type: "order_drink",
+      objectives: JSON.stringify({}),
+      lore_text:
+        "You'll stand out like a colony ship at a fighter meet if you don't order something. Sit down, get a drink, and wait.",
+      narration_key: "ch2_m16_p2",
+    },
+    {
+      id: phaseId(16, 3),
+      template_id: storyMissionId(16),
+      phase_order: 3,
+      title: "Eavesdrop on the Pirates",
+      description:
+        "A group of rough-looking pirates has entered. Listen to their conversation.",
+      objective_type: "eavesdrop",
+      objectives: JSON.stringify({}),
+      lore_text:
+        "The cantina door swings open and a group of scarred, heavily armed figures shoulders their way to the bar. They order in low voices but their conversation carries — something about the boundary, a convoy, and a bounty. This is what you came for.",
+      narration_key: "ch2_m16_p3",
     },
   ]);
 

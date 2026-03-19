@@ -290,7 +290,22 @@ export const submitStoryChoice = (
 ) => api.post("/story/choice", { missionId, choiceId, optionId });
 export const rescueMerchantBuy = (missionId: string) =>
   api.post("/story/rescue-buy", { missionId });
+export const npcEncounterBuy = (offering: any) =>
+  api.post("/story/npc-encounter-buy", { offering });
+export const tarriBuy = (offerType: string, pricePerUnit: number) =>
+  api.post("/story/tarri-buy", { offerType, pricePerUnit });
 export const getStoryFlags = () => api.get("/story/flags");
+export const adminSkipToMission = (targetStoryOrder: number) =>
+  api.post("/story/admin/skip-to", { targetStoryOrder });
+export const adminCheck = () => api.get("/story/admin/check");
+export const uploadAvatar = (avatarUrl: string | null) =>
+  api.post("/auth/avatar", { avatarUrl });
+
+// Cantina Easter Egg
+export const checkCantinaEasterEgg = (drinkHistory: string[]) =>
+  api.post("/starmall/cantina/easter-egg/check", { drinkHistory });
+export const resolveCantinaEasterEgg = (gaveChange: boolean) =>
+  api.post("/starmall/cantina/easter-egg/resolve", { gaveChange });
 
 // Sector Events
 export const getSectorEvents = () => api.get("/events/sector");

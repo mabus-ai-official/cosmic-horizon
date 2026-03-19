@@ -12,6 +12,7 @@ export interface TutorialOutpost {
   cyrillium: { stock: number; capacity: number; mode: "buy" | "sell" | "none" };
   food: { stock: number; capacity: number; mode: "buy" | "sell" | "none" };
   tech: { stock: number; capacity: number; mode: "buy" | "sell" | "none" };
+  vedic: { stock: number; capacity: number; mode: "buy" | "sell" | "none" };
 }
 
 export interface TutorialPlanet {
@@ -70,6 +71,7 @@ export const TUTORIAL_SECTORS: Record<number, TutorialSector> = {
       cyrillium: { stock: 500, capacity: 1000, mode: "sell" },
       food: { stock: 300, capacity: 1000, mode: "sell" },
       tech: { stock: 100, capacity: 1000, mode: "sell" },
+      vedic: { stock: 0, capacity: 1000, mode: "none" },
     },
   },
   90003: {
@@ -93,6 +95,7 @@ export const TUTORIAL_SECTORS: Record<number, TutorialSector> = {
       cyrillium: { stock: 50, capacity: 1000, mode: "buy" },
       food: { stock: 50, capacity: 1000, mode: "buy" },
       tech: { stock: 50, capacity: 1000, mode: "buy" },
+      vedic: { stock: 0, capacity: 1000, mode: "none" },
     },
   },
   90005: {

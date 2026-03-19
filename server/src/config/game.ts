@@ -33,6 +33,7 @@ export const GAME_CONFIG = {
   BASE_CYRILLIUM_PRICE: 10,
   BASE_FOOD_PRICE: 15,
   BASE_TECH_PRICE: 50,
+  BASE_VEDIC_PRICE: 75,
   PRICE_ELASTICITY: 0.02, // price change per unit of supply delta
 
   // Decay

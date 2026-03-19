@@ -13,6 +13,7 @@ import { checkPrerequisite } from "../engine/missions";
 import { applyUpgradesToShip } from "../engine/upgrades";
 import { awardXP } from "../engine/progression";
 import { checkAchievements } from "../engine/achievements";
+import { grantRandomTablet } from "../engine/tablets";
 import { notifyPlayer } from "../ws/handlers";
 import { GAME_CONFIG } from "../config/game";
 import { PLANET_TYPES } from "../config/planet-types";
@@ -536,6 +537,18 @@ router.post("/:id/claim", requireAuth, async (req, res) => {
       }
     }
 
+    // 10% chance of tablet drop on planet claim
+    let tabletDrop: { name: string; rarity: string } | null = null;
+    if (Math.random() < 0.1) {
+      const result = await grantRandomTablet(player.id);
+      if (result?.name) {
+        tabletDrop = { name: result.name, rarity: result.rarity ?? "common" };
+        if (io) {
+          notifyPlayer(io, player.id, "tablet:found", tabletDrop);
+        }
+      }
+    }
+
     const claimRace = (player.race as RaceId) || "generic";
     res.json({
       planetId: planet.id,
@@ -548,6 +561,7 @@ router.post("/:id/claim", requireAuth, async (req, res) => {
         levelUp: xpResult.levelUp,
       },
       message: pickFlavor("planet_claim", claimRace, { planet: planet.name }),
+      tabletDrop,
     });
   } catch (err) {
     console.error("Claim error:", err);

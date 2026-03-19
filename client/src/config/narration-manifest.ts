@@ -267,6 +267,40 @@ export function getEventNarrationUrl(eventKey: string): string | null {
   return EVENT_NARRATION[eventKey] ?? null;
 }
 
+/** Act/chapter completion narration — keyed by act number */
+const ACT_COMPLETION_NARRATION: Record<number, string> = {
+  1: "/audio/narration/chapter_01_complete.mp3",
+  2: "/audio/narration/chapter_02_complete.mp3",
+  3: "/audio/narration/chapter_03_complete.mp3",
+  4: "/audio/narration/chapter_04_complete.mp3",
+  5: "/audio/narration/chapter_05_complete.mp3",
+  6: "/audio/narration/chapter_06_complete.mp3",
+  7: "/audio/narration/chapter_07_complete.mp3",
+  8: "/audio/narration/chapter_08_complete.mp3",
+};
+
+export function getActCompletionNarrationUrl(act: number): string | null {
+  return ACT_COMPLETION_NARRATION[act] ?? null;
+}
+
+/** Eavesdrop conversation narration — keyed by conversation index (0-9) */
+const EAVESDROP_NARRATION: string[] = [
+  "/audio/narration/eavesdrop_01.mp3",
+  "/audio/narration/eavesdrop_02.mp3",
+  "/audio/narration/eavesdrop_03.mp3",
+  "/audio/narration/eavesdrop_04.mp3",
+  "/audio/narration/eavesdrop_05.mp3",
+  "/audio/narration/eavesdrop_06.mp3",
+  "/audio/narration/eavesdrop_07.mp3",
+  "/audio/narration/eavesdrop_08.mp3",
+  "/audio/narration/eavesdrop_09.mp3",
+  "/audio/narration/eavesdrop_10.mp3",
+];
+
+export function getEavesdropNarrationUrl(index: number): string | null {
+  return EAVESDROP_NARRATION[index] ?? null;
+}
+
 export { getPhaseNarrationUrl, getChoiceNarrationUrl };
 
 /** Intro sequence beat narration URLs (0-indexed) */

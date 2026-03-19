@@ -34,7 +34,6 @@
   color: var(--yellow);
 }
 
-
 /* === Mission Item Actions === */
 .mission-item__actions {
   display: flex;
@@ -288,6 +287,156 @@
 .story-mission-next {
   border-color: var(--yellow);
   border-style: dashed;
+}
+
+/* ── Next Quest Card (Redesigned) ─────────────────────── */
+.story-next-quest {
+  position: relative;
+  border: 1px solid rgba(210, 153, 34, 0.4);
+  border-radius: 8px;
+  padding: 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(210, 153, 34, 0.06) 0%,
+    rgba(0, 0, 0, 0.4) 40%,
+    rgba(86, 212, 221, 0.04) 100%
+  );
+  overflow: hidden;
+}
+
+.story-next-quest::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--yellow) 30%,
+    var(--cyan) 70%,
+    transparent 100%
+  );
+}
+
+.story-next-quest__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.story-next-quest__order {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--yellow);
+  border-radius: 50%;
+  color: var(--yellow);
+  font-size: 15px;
+  font-weight: 700;
+  flex-shrink: 0;
+  text-shadow: 0 0 8px rgba(210, 153, 34, 0.4);
+  background: rgba(210, 153, 34, 0.08);
+}
+
+.story-next-quest__title-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.story-next-quest__label {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.story-next-quest__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--yellow);
+  letter-spacing: 1px;
+  text-shadow: 0 0 12px rgba(210, 153, 34, 0.3);
+}
+
+.story-next-quest__divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--border) 20%,
+    var(--border) 80%,
+    transparent 100%
+  );
+  margin-bottom: 12px;
+}
+
+.story-next-quest__desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 14px;
+}
+
+.story-next-quest__rewards {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.story-next-quest__reward {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green);
+  letter-spacing: 0.5px;
+}
+
+.story-next-quest__reward-icon {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.story-next-quest__accept {
+  display: block;
+  width: 100%;
+  padding: 10px 0;
+  background: linear-gradient(
+    135deg,
+    rgba(210, 153, 34, 0.15) 0%,
+    rgba(210, 153, 34, 0.08) 100%
+  );
+  border: 1px solid var(--yellow);
+  border-radius: 4px;
+  color: var(--yellow);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-shadow: 0 0 8px rgba(210, 153, 34, 0.3);
+}
+
+.story-next-quest__accept:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(210, 153, 34, 0.3) 0%,
+    rgba(210, 153, 34, 0.15) 100%
+  );
+  box-shadow: 0 0 20px rgba(210, 153, 34, 0.2);
+}
+
+.story-next-quest__accept:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .story-mission-title {

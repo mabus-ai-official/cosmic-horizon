@@ -1,6 +1,6 @@
-import crypto from 'crypto';
-import { PLANET_TYPES } from '../config/planet-types';
-import { GAME_CONFIG } from '../config/game';
+import crypto from "crypto";
+import { PLANET_TYPES } from "../config/planet-types";
+import { GAME_CONFIG } from "../config/game";
 
 // Seeded RNG (same implementation as universe.ts / 001_universe.ts)
 export function createRng(seed: number): () => number {
@@ -15,8 +15,22 @@ export function createRng(seed: number): () => number {
 
 export function toRoman(num: number): string {
   const vals = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
-  const syms = ['M', 'CM', 'D', 'CD', 'C', 'XC', 'L', 'XL', 'X', 'IX', 'V', 'IV', 'I'];
-  let result = '';
+  const syms = [
+    "M",
+    "CM",
+    "D",
+    "CD",
+    "C",
+    "XC",
+    "L",
+    "XL",
+    "X",
+    "IX",
+    "V",
+    "IV",
+    "I",
+  ];
+  let result = "";
   for (let i = 0; i < vals.length; i++) {
     while (num >= vals[i]) {
       result += syms[i];
@@ -27,22 +41,79 @@ export function toRoman(num: number): string {
 }
 
 export const OUTPOST_NAMES = [
-  'Nebula Station', 'Void Bazaar', 'Frontier Post', 'Drift Market',
-  "Comet's Rest", 'Starfall Depot', 'Eclipse Trading Post', 'Quasar Exchange',
-  'Pulsar Hub', 'Nova Outpost', 'Meteor Market', 'Warp Gate Station',
-  'Asteroid Emporium', 'Horizon Dock', 'Singularity Store', 'Cosmic Crossroads',
-  'Dust Trail Depot', 'Rim Station', 'Deep Space Market', 'Orbital Exchange',
+  "Nebula Station",
+  "Void Bazaar",
+  "Frontier Post",
+  "Drift Market",
+  "Comet's Rest",
+  "Starfall Depot",
+  "Eclipse Trading Post",
+  "Quasar Exchange",
+  "Pulsar Hub",
+  "Nova Outpost",
+  "Meteor Market",
+  "Warp Gate Station",
+  "Asteroid Emporium",
+  "Horizon Dock",
+  "Singularity Store",
+  "Cosmic Crossroads",
+  "Dust Trail Depot",
+  "Rim Station",
+  "Deep Space Market",
+  "Orbital Exchange",
 ];
 
 export const PLANET_NAMES = [
-  'Aurelia', 'Boreas', 'Calypso', 'Daedalus', 'Elysium', 'Fortuna', 'Gaia',
-  'Helios', 'Icarus', 'Janus', 'Kronos', 'Luna', 'Minerva', 'Neptune',
-  'Olympus', 'Prometheus', 'Quirinus', 'Rhea', 'Solaris', 'Titan',
-  'Ursa', 'Vesta', 'Wyvern', 'Xanthe', 'Ymir', 'Zenith',
-  'Aether', 'Bastion', 'Cygnus', 'Draco', 'Erebus', 'Fenrir',
-  'Grendel', 'Hades', 'Io', 'Jotun', 'Kairos', 'Lethe',
-  'Morpheus', 'Nyx', 'Oberon', 'Pandora', 'Quetzal', 'Ragnar',
-  'Styx', 'Tartarus', 'Umbra', 'Valkyrie', 'Wyrm', 'Xibalba',
+  "Aurelia",
+  "Boreas",
+  "Calypso",
+  "Daedalus",
+  "Elysium",
+  "Fortuna",
+  "Gaia",
+  "Helios",
+  "Icarus",
+  "Janus",
+  "Kronos",
+  "Luna",
+  "Minerva",
+  "Neptune",
+  "Olympus",
+  "Prometheus",
+  "Quirinus",
+  "Rhea",
+  "Solaris",
+  "Titan",
+  "Ursa",
+  "Vesta",
+  "Wyvern",
+  "Xanthe",
+  "Ymir",
+  "Zenith",
+  "Aether",
+  "Bastion",
+  "Cygnus",
+  "Draco",
+  "Erebus",
+  "Fenrir",
+  "Grendel",
+  "Hades",
+  "Io",
+  "Jotun",
+  "Kairos",
+  "Lethe",
+  "Morpheus",
+  "Nyx",
+  "Oberon",
+  "Pandora",
+  "Quetzal",
+  "Ragnar",
+  "Styx",
+  "Tartarus",
+  "Umbra",
+  "Valkyrie",
+  "Wyrm",
+  "Xibalba",
 ];
 
 export interface OutpostData {
@@ -59,6 +130,9 @@ export interface OutpostData {
   cyrillium_mode: string;
   food_mode: string;
   tech_mode: string;
+  vedic_stock: number;
+  vedic_capacity: number;
+  vedic_mode: string;
   treasury: number;
 }
 
@@ -73,11 +147,11 @@ export interface PlanetData {
   upgrade_level: number;
 }
 
-const commodityModes = ['buy', 'sell', 'none'] as const;
+const commodityModes = ["buy", "sell", "none"] as const;
 
 function stockForMode(mode: string, rng: () => number): number {
-  if (mode === 'sell') return 3000 + Math.floor(rng() * 7000);
-  if (mode === 'buy') return Math.floor(rng() * 2000);
+  if (mode === "sell") return 3000 + Math.floor(rng() * 7000);
+  if (mode === "buy") return Math.floor(rng() * 2000);
   return 0;
 }
 
@@ -99,7 +173,10 @@ export function generateOutposts(
   }
 
   // Fill remaining randomly
-  while (outpostSectors.size < count && outpostSectors.size < allSectorIds.length) {
+  while (
+    outpostSectors.size < count &&
+    outpostSectors.size < allSectorIds.length
+  ) {
     const idx = Math.floor(rng() * allSectorIds.length);
     outpostSectors.add(allSectorIds[idx]);
   }
@@ -108,7 +185,11 @@ export function generateOutposts(
   let nameIdx = 0;
 
   for (const sectorId of outpostSectors) {
-    const name = `${OUTPOST_NAMES[nameIdx % OUTPOST_NAMES.length]} ${Math.floor(nameIdx / OUTPOST_NAMES.length) + 1}`.replace(/ 1$/, '');
+    const name =
+      `${OUTPOST_NAMES[nameIdx % OUTPOST_NAMES.length]} ${Math.floor(nameIdx / OUTPOST_NAMES.length) + 1}`.replace(
+        / 1$/,
+        "",
+      );
     nameIdx++;
 
     const cyrMode = commodityModes[Math.floor(rng() * 3)];
@@ -126,6 +207,9 @@ export function generateOutposts(
       cyrillium_capacity: 10000,
       food_capacity: 10000,
       tech_capacity: 10000,
+      vedic_stock: 0,
+      vedic_capacity: 10000,
+      vedic_mode: "none",
       cyrillium_mode: cyrMode,
       food_mode: foodMode,
       tech_mode: techMode,
@@ -144,7 +228,7 @@ export function generatePlanets(
   rng: () => number,
   count: number,
 ): PlanetData[] {
-  const planetClasses = Object.keys(PLANET_TYPES).filter(c => c !== 'S');
+  const planetClasses = Object.keys(PLANET_TYPES).filter((c) => c !== "S");
   const planets: PlanetData[] = [];
   let nameIdx = 0;
 
@@ -184,7 +268,7 @@ export function generateSeedPlanets(
     name: `Seed World ${toRoman(i + 1)}`,
     sector_id: sectorId,
     owner_id: null,
-    planet_class: 'S',
+    planet_class: "S",
     colonists: 25000,
     ideal_population: PLANET_TYPES.S.idealPopulation,
     upgrade_level: 0,

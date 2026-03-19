@@ -60,7 +60,7 @@ export async function seed(knex: Knex): Promise<void> {
   await updateMission(1, {
     title: "First Light",
     description:
-      "Launch from Docking Platform Seven and visit 3 nearby sectors to calibrate your navigation systems for the journey ahead.",
+      "Pilot, visit 3 nearby sectors to calibrate your navigation systems.",
     type: "visit_sector",
     objectives: { sectorsToVisit: 3 },
     chapter: 1,
@@ -295,34 +295,34 @@ export async function seed(knex: Knex): Promise<void> {
     reward_xp: 300,
   });
 
-  // Mission 14: Crystal Resonance
+  // Mission 14: Crystal Resonance (Vedic Crystals — new commodity introduction)
   await updateMission(14, {
     title: "Crystal Resonance",
     description:
-      "Trade 20 units of Vedic crystals to establish economic ties between the Muscarian fleet and the Vedic Concord.",
-    type: "trade_units",
-    objectives: { unitsToTrade: 20 },
+      "Receive Vedic crystals from a Vedic emissary, sell 20 units to formalize trade, and encounter the Tar'ri's opinion on your new merchandise.",
+    type: "visit_sector",
+    objectives: { sectorsToVisit: 4 },
     chapter: 2,
     lore_text:
-      'Diplomacy moves on many legs, and commerce is the steadiest. Valandor has arranged for Vedic crystal merchants to open limited trade with the Muscarian fleet — a gesture of goodwill, but also a test. The Vedic want to see how the Muscarians conduct business: fairly, or exploitatively.\n\nVedic crystals are remarkable. Unlike cyrillium, which channels biological energy, these crystals store information — memories, calculations, even emotions encoded in their lattice structure. A single crystal the size of your fist can hold the collected wisdom of a Vedic scholar\'s entire lifetime.\n\n"Twenty units must change hands to formalize the trade agreement. I am Sella Brightvane, and I will be your counterpart in these negotiations. Know that I have traded with species older than your recorded history. Impress me."\n\nElenion has emphasized that the prices you accept and the manner in which you negotiate will shape how the Vedic perceive the entire Muscarian species. Every transaction is a sentence in a story the Vedic will tell about your people for generations.',
+      'Diplomacy moves on many legs, and commerce is the steadiest. Valandor has arranged for Vedic crystal merchants to open limited trade with the Muscarian fleet — a gesture of goodwill, but also a test. The Vedic want to see how the Muscarians conduct business: fairly, or exploitatively.\n\nVedic crystals are remarkable. Unlike cyrillium, which channels biological energy, these crystals store information — memories, calculations, even emotions encoded in their lattice structure. A single crystal the size of your fist can hold the collected wisdom of a Vedic scholar\'s entire lifetime.\n\n"Twenty units must change hands to formalize the trade agreement. I am Sella Brightvane, and I will be your counterpart in these negotiations. Know that I have traded with species older than your recorded history. Impress me."\n\nFly through a few sectors and the Vedic emissary will find you. Once you have crystals, sell 20 units at outposts to complete the trade agreement.',
     recap_text:
       "Miraen's cyrillium analysis confirmed that the crystal is a byproduct of the ancient Spore Network. Meanwhile, the Vedic have opened limited trade channels.",
-    has_phases: false,
+    has_phases: true,
     has_choices: false,
     reward_credits: 3500,
     reward_xp: 350,
   });
 
-  // Mission 15: Valandor's Warning
+  // Mission 15: Valandor's Warning (escort convoy)
   await updateMission(15, {
     title: "Valandor's Warning",
     description:
-      "Escort a Vedic data caravan through 3 sectors after Valandor warns of a growing threat in the outer regions.",
-    type: "deliver_cargo",
-    objectives: { commodity: "food", quantity: 20 },
+      "Escort a Vedic data caravan through 10 sectors. Stay with the caravan — it won't wait for stragglers.",
+    type: "escort",
+    objectives: { caravansToEscort: 1 },
     chapter: 2,
     lore_text:
-      'Valandor\'s demeanor has changed. The serene patience is gone, replaced by something you have not seen in the elder scholar before: urgency. He shares intelligence that the Vedic have kept classified for centuries — something is stirring in the outer regions of explored space. Communications have gone dark across multiple outposts. Ships have vanished without distress signals.\n\n"We do not know what it is. But we know it is not natural. And we know it is getting closer. I tell you this not to frighten you, but because I have learned something unexpected: I trust you."\n\nA Vedic data caravan — three vessels carrying archived knowledge from the threatened outposts — must be escorted through three sectors to safety. The caravan\'s cargo is irreplaceable: the collective memory of Vedic settlements that may already be lost. The escort route passes through sectors where the jamming has been worst, and your sensors flicker with ghost signatures that vanish when you try to lock on.\n\n"Protect these vessels. They carry the memory of worlds that may no longer exist. Do not make me regret placing this trust in Muscarian hands."',
+      'Valandor\'s demeanor has changed. The serene patience is gone, replaced by something you have not seen in the elder scholar before: urgency. He shares intelligence that the Vedic have kept classified for centuries — something is stirring in the outer regions of explored space. Communications have gone dark across multiple outposts. Ships have vanished without distress signals.\n\n"We do not know what it is. But we know it is not natural. And we know it is getting closer. I tell you this not to frighten you, but because I have learned something unexpected: I trust you."\n\nA Vedic data caravan — three vessels carrying archived knowledge from the threatened outposts — must be escorted through ten sectors to safety. The caravan moves every seven seconds and will not wait. On the sixth waypoint, expect trouble — the jamming zones have been worst in this corridor.\n\n"Protect these vessels. They carry the memory of worlds that may no longer exist. Do not make me regret placing this trust in Muscarian hands."',
     recap_text:
       "Crystal trade has strengthened Muscarian-Vedic ties, but Valandor has grown troubled. Something is threatening Vedic outposts in the outer regions.",
     has_phases: false,
@@ -331,19 +331,19 @@ export async function seed(knex: Knex): Promise<void> {
     reward_xp: 400,
   });
 
-  // Mission 16: The Calvatian Gate
+  // Mission 16: The Calvatian Gate (eavesdrop mission)
   await updateMission(16, {
     title: "The Calvatian Gate",
     description:
-      "Navigate to the edge of explored space where the Vedic charts end and the Calvatian Galaxy begins.",
-    type: "visit_sector",
+      "Gather intelligence at a star mall cantina before crossing the boundary into Calvatian space.",
+    type: "visit_starmall",
     objectives: { sectorsToVisit: 1 },
     chapter: 2,
     lore_text:
-      "The Vedic charts show a boundary — the edge of their explored space — beyond which lies what they call the Calvatian Expanse. An entire galaxy, unmapped and unknown, connected to Vedic space by a narrow corridor of stable spacetime. The Vedic have never crossed the boundary. Their philosophy counsels patience, observation, study. But the Muscarians are not Vedic.\n\nAs your ship reaches the boundary marker — a Vedic beacon that has stood for ten thousand years — you see it: the Calvatian Galaxy, a spiral of silver and gold light stretching across the viewport like a promise. Whatever drove the Vedic outposts dark is behind you. Whatever waits in Calvatia is ahead.\n\n\"I have studied the old charts. The Spore Network's threads grow denser toward the Calvatian core. Whatever the ancient builders intended, the answer lies beyond this gate. We are a people without a home — standing still is not an option.\"\n\nThe beacon's light plays across your hull as you cross the threshold. The only way is forward. Codex Entry Unlocked: Gateway to Calvatia.",
+      "Before crossing the boundary into the Calvatian Expanse, Elenion has ordered the fleet to make a final supply stop and gather intelligence. The star malls along the frontier are the last outposts of known civilization — waypoints where traders, smugglers, and refugees share rumors about what lies beyond the charts.\n\nValandor's scouts have reported unusual traffic at these outposts: pirates, mercenaries, and unaffiliated captains arriving in numbers that suggest something is drawing them toward the boundary. The Vedic are concerned. Pirates don't gather without cause.\n\n\"Go to the nearest star mall. Buy a drink in the cantina — you'll look out of place otherwise — and listen. The frontier cantinas are where secrets are sold cheapest. If someone knows what's happening at the boundary, you'll hear about it over a glass of void stout.\"",
     recap_text:
-      "You escorted the Vedic data caravan to safety. Valandor has pointed the fleet toward the Calvatian Expanse — uncharted space that may hold answers and new allies.",
-    has_phases: false,
+      "You escorted the Vedic data caravan to safety. Before crossing into the Calvatian Expanse, intelligence must be gathered at a frontier cantina.",
+    has_phases: true,
     has_choices: false,
     reward_credits: 5000,
     reward_xp: 500,

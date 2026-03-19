@@ -41,6 +41,9 @@
 /* Missions: active missions, mission board, story missions, fame/rep bars */
 @import "./missions.css";
 
+/* Drunk: cantina drink visual effects */
+@import "./drunk.css";
+
 /* Planets: planets panel */
 @import "./planets.css";
 
@@ -73,3 +76,9 @@
 
 /* Arcade: arcade modal */
 @import "./arcade.css";
+
+/* Starmall: starmall modal */
+@import "./starmall.css";
+
+/* Comm Screen: Star Fox-style comm overlay */
+@import "./comm-screen.css";

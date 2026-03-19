@@ -86,6 +86,16 @@ router.get("/outpost/:id", requireAuth, async (req, res) => {
         capacity: outpost.tech_capacity,
         mode: outpost.tech_mode,
       },
+      vedic: {
+        price: calculatePrice(
+          "vedic",
+          outpost.vedic_stock ?? 0,
+          outpost.vedic_capacity ?? 10000,
+        ),
+        stock: outpost.vedic_stock ?? 0,
+        capacity: outpost.vedic_capacity ?? 10000,
+        mode: outpost.vedic_mode ?? "none",
+      },
     };
 
     res.json({
@@ -112,7 +122,7 @@ router.post("/buy", requireAuth, async (req, res) => {
     if (!outpostId || !commodity || !quantity || quantity < 1) {
       return res.status(400).json({ error: "Missing or invalid fields" });
     }
-    if (!["cyrillium", "food", "tech"].includes(commodity)) {
+    if (!["cyrillium", "food", "tech", "vedic"].includes(commodity)) {
       return res.status(400).json({ error: "Invalid commodity" });
     }
 
@@ -151,7 +161,8 @@ router.post("/buy", requireAuth, async (req, res) => {
       (ship.cyrillium_cargo || 0) +
       (ship.food_cargo || 0) +
       (ship.tech_cargo || 0) +
-      (ship.colonist_cargo || 0);
+      (ship.colonist_cargo || 0) +
+      (ship.vedic_cargo || 0);
     const freeSpace = ship.max_cargo_holds + upgrades.cargoBonus - currentCargo;
     const maxBuyable = Math.min(quantity, freeSpace);
     if (maxBuyable <= 0) {
@@ -168,6 +179,9 @@ router.post("/buy", requireAuth, async (req, res) => {
       techStock: outpost.tech_stock,
       techCapacity: outpost.tech_capacity,
       techMode: outpost.tech_mode,
+      vedicStock: outpost.vedic_stock ?? 0,
+      vedicCapacity: outpost.vedic_capacity ?? 10000,
+      vedicMode: outpost.vedic_mode ?? "none",
       treasury: outpost.treasury,
     };
 
@@ -374,7 +388,7 @@ router.post("/sell", requireAuth, async (req, res) => {
     if (!outpostId || !commodity || !quantity || quantity < 1) {
       return res.status(400).json({ error: "Missing or invalid fields" });
     }
-    if (!["cyrillium", "food", "tech"].includes(commodity)) {
+    if (!["cyrillium", "food", "tech", "vedic"].includes(commodity)) {
       return res.status(400).json({ error: "Invalid commodity" });
     }
 
@@ -425,6 +439,9 @@ router.post("/sell", requireAuth, async (req, res) => {
       techStock: outpost.tech_stock,
       techCapacity: outpost.tech_capacity,
       techMode: outpost.tech_mode,
+      vedicStock: outpost.vedic_stock ?? 0,
+      vedicCapacity: outpost.vedic_capacity ?? 10000,
+      vedicMode: outpost.vedic_mode ?? "none",
       treasury: outpost.treasury,
     };
 

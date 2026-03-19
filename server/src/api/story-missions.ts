@@ -15,6 +15,7 @@ import {
   awardMissionRewards,
   handleMissionChoice,
   handleRescuePurchase,
+  handleTarriPurchase,
 } from "../services/mission-tracker";
 import {
   spawnStoryNPCs,
@@ -23,6 +24,7 @@ import {
 } from "../engine/story-npcs";
 import db from "../db/connection";
 import { syncPlayer } from "../ws/sync";
+import { handleNPCEncounterPurchase } from "../engine/npc-encounters";
 
 const router = Router();
 
@@ -554,6 +556,9 @@ router.post("/accept", requireAuth, async (req, res) => {
       effectiveObjectives,
       hints,
       descriptionSuffix,
+      template.has_phases
+        ? (phase1Description ?? undefined)
+        : template.description,
     );
 
     const missionId = crypto.randomUUID();
@@ -998,6 +1003,176 @@ router.get("/recap", requireAuth, async (req, res) => {
     console.error("Story recap error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
+});
+
+// Purchase from Tar'ri intel merchant (mission 13)
+router.post("/tarri-buy", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.session.playerId!;
+    const { offerType, pricePerUnit } = req.body;
+
+    if (!offerType || !pricePerUnit) {
+      return res
+        .status(400)
+        .json({ error: "offerType and pricePerUnit required" });
+    }
+
+    const io = req.app.get("io");
+    const result = await handleTarriPurchase(
+      playerId,
+      offerType,
+      pricePerUnit,
+      io,
+    );
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error("Tarri buy error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Purchase from random NPC encounter (intel, trade goods, faction rep)
+router.post("/npc-encounter-buy", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.session.playerId!;
+    const { offering } = req.body;
+
+    if (!offering) {
+      return res.status(400).json({ error: "offering is required" });
+    }
+
+    const io = req.app.get("io");
+    const result = await handleNPCEncounterPurchase(playerId, offering, io);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("NPC encounter buy error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Admin: skip to a specific story mission (testing only)
+// Completes and claims all missions up to the target story_order
+const ADMIN_USERNAME = "zaphodthebeebs";
+
+router.post("/admin/skip-to", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.session.playerId!;
+    const { targetStoryOrder } = req.body;
+
+    if (
+      !targetStoryOrder ||
+      typeof targetStoryOrder !== "number" ||
+      targetStoryOrder < 1 ||
+      targetStoryOrder > 60
+    ) {
+      return res.status(400).json({ error: "targetStoryOrder must be 1-60" });
+    }
+
+    // Check if player is the admin
+    const player = await db("players").where({ id: playerId }).first();
+    if (!player || player.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ error: "Admin only" });
+    }
+
+    // Get all story missions up to (but not including) the target
+    const templates = await db("mission_templates")
+      .where("source", "story")
+      .where("story_order", "<", targetStoryOrder)
+      .orderBy("story_order", "asc");
+
+    let skipped = 0;
+    const now = new Date().toISOString();
+
+    for (const tmpl of templates) {
+      // Check if player already has this mission
+      const existing = await db("player_missions")
+        .where({ player_id: playerId, template_id: tmpl.id })
+        .first();
+
+      if (existing) {
+        // If not completed, mark it completed + claimed
+        if (
+          existing.status !== "completed" ||
+          existing.claim_status !== "claimed"
+        ) {
+          await db("player_missions").where({ id: existing.id }).update({
+            status: "completed",
+            completed_at: now,
+            claim_status: "claimed",
+          });
+          skipped++;
+        }
+      } else {
+        // Create mission as completed + claimed
+        await db("player_missions").insert({
+          id: crypto.randomUUID(),
+          player_id: playerId,
+          template_id: tmpl.id,
+          status: "completed",
+          progress: JSON.stringify({}),
+          accepted_at: now,
+          completed_at: now,
+          claim_status: "claimed",
+        });
+        skipped++;
+      }
+    }
+
+    // Now accept the target mission if it's not already active
+    const targetTemplate = await db("mission_templates")
+      .where("source", "story")
+      .where("story_order", targetStoryOrder)
+      .first();
+
+    let targetAccepted = false;
+    if (targetTemplate) {
+      const existingTarget = await db("player_missions")
+        .where({ player_id: playerId, template_id: targetTemplate.id })
+        .first();
+
+      if (!existingTarget) {
+        await db("player_missions").insert({
+          id: crypto.randomUUID(),
+          player_id: playerId,
+          template_id: targetTemplate.id,
+          status: "active",
+          progress: JSON.stringify({}),
+          accepted_at: now,
+          claim_status: "auto",
+        });
+        targetAccepted = true;
+      }
+    }
+
+    res.json({
+      success: true,
+      skipped,
+      targetStoryOrder,
+      targetMission: targetTemplate?.title || "Unknown",
+      targetAccepted,
+    });
+  } catch (err) {
+    console.error("Admin skip error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Admin: check if current player is admin
+router.get("/admin/check", requireAuth, async (req, res) => {
+  const player = await db("players")
+    .where({ id: req.session.playerId })
+    .first();
+  res.json({ isAdmin: player?.username === ADMIN_USERNAME });
 });
 
 export default router;

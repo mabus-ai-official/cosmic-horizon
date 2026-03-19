@@ -5,9 +5,7 @@ import ProfileDropdown from "./ProfileDropdown";
 
 interface StatusBarProps {
   player: PlayerState | null;
-  muted?: boolean;
   paused?: boolean;
-  onToggleMute?: () => void;
   onTogglePause?: () => void;
   onSkipTrack?: () => void;
   onPrevTrack?: () => void;
@@ -51,9 +49,7 @@ function FlashValue({
 
 export default function StatusBar({
   player,
-  muted,
   paused,
-  onToggleMute,
   onTogglePause,
   onSkipTrack,
   onPrevTrack,
@@ -72,7 +68,8 @@ export default function StatusBar({
     ? ship.cyrilliumCargo +
       ship.foodCargo +
       ship.techCargo +
-      ship.colonistsCargo
+      ship.colonistsCargo +
+      (ship.vedicCargo || 0)
     : 0;
 
   return (
@@ -233,26 +230,8 @@ export default function StatusBar({
           <div className="status-value text-success">DOCKED</div>
         </div>
       )}
-      {player.walletAddress && (
-        <div className="status-section">
-          <div className="status-label">WALLET</div>
-          <div className="status-value text-success">
-            {player.walletAddress.slice(0, 6)}...
-            {player.walletAddress.slice(-4)}
-          </div>
-        </div>
-      )}
       <div className="status-bar__actions">
         <div className="audio-controls">
-          {onToggleMute && (
-            <button
-              className="audio-controls__btn"
-              onClick={onToggleMute}
-              title={muted ? "Unmute" : "Mute"}
-            >
-              {muted ? "\u{1F507}" : "\u{1F50A}"}
-            </button>
-          )}
           {canPrevTrack && onPrevTrack && (
             <button
               className="audio-controls__btn"

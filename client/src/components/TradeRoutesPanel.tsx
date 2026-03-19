@@ -670,10 +670,20 @@ function CreateTab({
 
       <button
         className="btn-sm btn-buy"
+        style={{
+          width: "100%",
+          padding: "8px 0",
+          opacity: creating || planets.length === 0 ? 0.4 : 1,
+          cursor: creating || planets.length === 0 ? "not-allowed" : "pointer",
+        }}
         onClick={handleCreate}
         disabled={creating || planets.length === 0}
       >
-        {creating ? "CREATING..." : "CREATE ROUTE"}
+        {creating
+          ? "CREATING..."
+          : planets.length === 0
+            ? "NO PLANETS OWNED"
+            : "CREATE ROUTE"}
       </button>
     </>
   );

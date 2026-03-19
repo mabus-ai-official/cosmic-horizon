@@ -7,9 +7,11 @@ type FilterId =
   | "buy_cyrillium"
   | "buy_food"
   | "buy_tech"
+  | "buy_vedic"
   | "sell_cyrillium"
   | "sell_food"
   | "sell_tech"
+  | "sell_vedic"
   | "sells_fuel";
 
 interface CommodityInfo {
@@ -28,6 +30,7 @@ interface OutpostEntry {
   cyrillium: CommodityInfo;
   food: CommodityInfo;
   tech: CommodityInfo;
+  vedic: CommodityInfo;
 }
 
 interface TradeComputerPanelProps {
@@ -42,6 +45,8 @@ const FILTERS: { id: FilterId; label: string }[] = [
   { id: "buy_cyrillium", label: "Sell Cyr" },
   { id: "buy_food", label: "Sell Food" },
   { id: "buy_tech", label: "Sell Tech" },
+  { id: "sell_vedic", label: "Buy VCry" },
+  { id: "buy_vedic", label: "Sell VCry" },
   { id: "sells_fuel", label: "Fuel" },
 ];
 

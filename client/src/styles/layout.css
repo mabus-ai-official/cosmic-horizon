@@ -88,37 +88,69 @@
   font-weight: 600;
 }
 
-/* === Bottom Cards Container — flex row for equal widths === */
+/* === Bottom Cards Container — centered === */
 .game-bottom-cards {
   pointer-events: none;
   position: absolute;
-  bottom: 8px;
-  left: 8px;
-  right: 286px;
-  z-index: 12;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(calc(-50% - 40px));
+  width: 1040px;
+  max-width: calc(100vw - 500px);
   z-index: 5;
   display: flex;
   gap: 8px;
   align-items: stretch;
-  height: 40vh;
-  max-height: 45vh;
+  height: 28vh;
+  max-height: 32vh;
 }
 
-/* === Panel Card (left) — Activity Panel Content === */
+/* === Panel Card — Cockpit-style floating HUD === */
 .game-panel-card {
   pointer-events: auto;
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: rgba(13, 17, 23, 0.8);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
+  background: rgba(8, 12, 18, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(86, 212, 221, 0.15);
+  border-radius: 20px;
   overflow: hidden;
   box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.5),
-    0 0 1px rgba(255, 255, 255, 0.1);
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 1px rgba(86, 212, 221, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transition: border-color 0.3s;
+}
+
+.game-panel-card:hover {
+  border-color: rgba(86, 212, 221, 0.25);
+}
+
+/* Top gradient accent line */
+.game-panel-card::before {
+  content: "";
+  display: block;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--cyan) 30%,
+    var(--yellow) 70%,
+    transparent 100%
+  );
+  opacity: 0.5;
+}
+
+.game-card-header {
+  border-bottom: 1px solid rgba(86, 212, 221, 0.08);
+  background: rgba(86, 212, 221, 0.03);
+}
+
+.game-card-label {
+  color: var(--cyan);
+  text-shadow: 0 0 10px rgba(86, 212, 221, 0.25);
 }
 
 .game-panel-card__body {
@@ -126,7 +158,20 @@
   overflow-y: auto;
   min-height: 0;
   scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+  scrollbar-color: rgba(86, 212, 221, 0.2) transparent;
+}
+
+.game-panel-card__body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.game-panel-card__body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.game-panel-card__body::-webkit-scrollbar-thumb {
+  background: rgba(86, 212, 221, 0.2);
+  border-radius: 2px;
 }
 
 /* === Viewport Card (right) — Bridge View === */
@@ -238,9 +283,8 @@
   .game-bottom-cards {
     left: 8px;
     right: 8px;
-  }
-  .game-viewport-card {
-    display: none;
+    width: auto;
+    transform: none;
   }
   .game-log-bar {
     left: 8px;
@@ -254,7 +298,7 @@
     width: 340px;
   }
   .game-bottom-cards {
-    right: 346px;
+    width: 600px;
   }
   .game-log-bar {
     right: 346px;
@@ -266,7 +310,7 @@
     width: 400px;
   }
   .game-bottom-cards {
-    right: 406px;
+    width: 700px;
   }
   .game-log-bar {
     right: 406px;

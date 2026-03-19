@@ -6,7 +6,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import PixelSprite from "./PixelSprite";
-import { getInventory, getFactionReps } from "../services/api";
+import { getInventory, getFactionReps, getAchievements } from "../services/api";
 import type { PlayerState } from "../hooks/useGameState";
 import type { ChatMessage, ChatChannel } from "./SectorChatPanel";
 import {
@@ -89,6 +89,14 @@ export default function ContextPanel({
       .catch(() => setFactionReps([]));
   }, [refreshKey]);
 
+  // Load achievement trophies
+  const [trophies, setTrophies] = useState<Record<string, number>>({});
+  useEffect(() => {
+    getAchievements()
+      .then(({ data }) => setTrophies(data.trophies || {}))
+      .catch(() => setTrophies({}));
+  }, [refreshKey]);
+
   const [showEmoji, setShowEmoji] = useState(false);
   const userScrolledUp = useRef(false);
 
@@ -161,7 +169,8 @@ export default function ContextPanel({
     ? ship.cyrilliumCargo +
       ship.foodCargo +
       ship.techCargo +
-      ship.colonistsCargo
+      ship.colonistsCargo +
+      (ship.vedicCargo || 0)
     : 0;
   const cargoPct =
     ship && ship.maxCargoHolds > 0
@@ -185,12 +194,25 @@ export default function ContextPanel({
       {/* Player Profile */}
       <div className="profile-section">
         <div className="profile-portrait" style={{ borderColor: raceColor }}>
-          <div
-            className="profile-portrait__silhouette"
-            style={{ color: raceColor }}
-          >
-            {player?.race ? player.race.charAt(0).toUpperCase() : "?"}
-          </div>
+          {player?.avatarUrl ? (
+            <img
+              src={player.avatarUrl}
+              alt="avatar"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                borderRadius: "50%",
+              }}
+            />
+          ) : (
+            <div
+              className="profile-portrait__silhouette"
+              style={{ color: raceColor }}
+            >
+              {player?.race ? player.race.charAt(0).toUpperCase() : "?"}
+            </div>
+          )}
         </div>
         <div className="profile-section__info">
           <div className="profile-section__name">
@@ -217,6 +239,46 @@ export default function ContextPanel({
           </div>
         </div>
       </div>
+
+      {/* Achievement Trophies */}
+      {Object.keys(trophies).length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            gap: 6,
+            padding: "4px 8px",
+            flexWrap: "wrap",
+          }}
+        >
+          {Object.entries(trophies).map(([category, tier]) => {
+            const tierNames = ["", "Bronze", "Silver", "Gold", "Diamond"];
+            const tierColors = ["", "#cd7f32", "#c0c0c0", "#ffd700", "#b9f2ff"];
+            const tierIcons = [
+              "",
+              "\u{1F949}",
+              "\u{1F948}",
+              "\u{1F947}",
+              "\u{1F48E}",
+            ];
+            return (
+              <span
+                key={category}
+                title={`${tierNames[tier]} ${category}`}
+                style={{
+                  fontSize: 11,
+                  color: tierColors[tier],
+                  background: "rgba(255,255,255,0.05)",
+                  borderRadius: 4,
+                  padding: "1px 5px",
+                  border: `1px solid ${tierColors[tier]}33`,
+                }}
+              >
+                {tierIcons[tier]} {category.slice(0, 3).toUpperCase()}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       {/* Level & XP Progress */}
       {player && player.level > 0 && (
@@ -358,6 +420,9 @@ export default function ContextPanel({
                 )}
                 {ship.techCargo > 0 && (
                   <span className="cargo-item--tech">Tc:{ship.techCargo}</span>
+                )}
+                {(ship.vedicCargo || 0) > 0 && (
+                  <span style={{ color: "#c0f" }}>VC:{ship.vedicCargo}</span>
                 )}
                 {ship.colonistsCargo > 0 && (
                   <span className="cargo-item--col">

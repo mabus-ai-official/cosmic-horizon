@@ -12,6 +12,8 @@ import {
   submitStoryChoice,
   submitFactionChoice,
   rescueMerchantBuy,
+  npcEncounterBuy,
+  tarriBuy,
 } from "../services/api";
 import {
   getAlliances,
@@ -32,6 +34,7 @@ import {
   getNarrationUrl,
   getPhaseNarrationUrl,
   getChoiceNarrationUrl,
+  getActCompletionNarrationUrl,
   TUTORIAL_WELCOME_NARRATION,
 } from "../config/narration-manifest";
 import {
@@ -113,6 +116,34 @@ export function useGameEffects({
   const [combatFlash, setCombatFlash] = useState(false);
   const [combatShake, setCombatShake] = useState(false);
   const [merchantFlash, setMerchantFlash] = useState(false);
+  const [eventFlash, setEventFlash] = useState(false);
+  const [encounterFlash, setEncounterFlash] = useState(false);
+  const [tradeFlash, setTradeFlash] = useState(false);
+
+  /** Trigger a vignette flash by type. Duration matches CSS animation. */
+  const triggerFlash = useCallback(
+    (type: "combat" | "merchant" | "event" | "encounter" | "trade") => {
+      const setters: Record<string, (v: boolean) => void> = {
+        combat: setCombatFlash,
+        merchant: setMerchantFlash,
+        event: setEventFlash,
+        encounter: setEncounterFlash,
+        trade: setTradeFlash,
+      };
+      const durations: Record<string, number> = {
+        combat: 2500,
+        merchant: 1300,
+        event: 1900,
+        encounter: 1300,
+        trade: 1300,
+      };
+      const setter = setters[type];
+      if (!setter) return;
+      setter(true);
+      setTimeout(() => setter(false), durations[type]);
+    },
+    [],
+  );
   const [showSPComplete, setShowSPComplete] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showArcade, setShowArcade] = useState(false);
@@ -569,19 +600,8 @@ export function useGameEffects({
       .catch(() => {});
   }, []);
 
-  // Reset panels to nav when entering main game (after intro/tutorial)
-  const hasResetPanels = useRef(false);
-  useEffect(() => {
-    if (!game.player) return;
-    if (
-      game.player.hasSeenIntro &&
-      game.player.hasSeenPostTutorial &&
-      !hasResetPanels.current
-    ) {
-      hasResetPanels.current = true;
-      selectPanel("nav");
-    }
-  }, [game.player?.hasSeenIntro, game.player?.hasSeenPostTutorial]);
+  // No-op: useActivePanel("nav") already initialises to nav.
+  // Previously this called selectPanel("nav") which also unminimised the panel card.
 
   // Audio track switching based on game context
   useEffect(() => {
@@ -958,12 +978,14 @@ export function useGameEffects({
       on(
         "story:act_complete",
         (data: { act: number; actTitle: string; actSummary: string }) => {
+          const interstitialData = ACT_COMPLETIONS[data.act];
           eventOverlay.enqueueEvent({
             category: "story_act",
-            title: `CHAPTER ${data.act} COMPLETE`,
-            subtitle: data.actTitle,
-            body: data.actSummary,
-            colorScheme: "yellow",
+            title: interstitialData?.title || `CHAPTER ${data.act} COMPLETE`,
+            subtitle: interstitialData?.subtitle || data.actTitle,
+            body: interstitialData?.body || data.actSummary,
+            narrationUrl: getActCompletionNarrationUrl(data.act) ?? undefined,
+            colorScheme: interstitialData?.colorScheme || "yellow",
             duration: 0,
             priority: "blocking",
             actions: [
@@ -1291,6 +1313,318 @@ export function useGameEffects({
           });
         },
       ),
+      on(
+        "npc:random_encounter",
+        (data: {
+          npcName: string;
+          npcRace: string;
+          encounterType: string;
+          flash: string;
+          sectorId: number;
+          offering: {
+            type: string;
+            description: string;
+            cost: number;
+            commodity?: string;
+            quantity?: number;
+            factionId?: string;
+            factionName?: string;
+            fameAmount?: number;
+          };
+          tabletDrop: { name: string; rarity: string } | null;
+        }) => {
+          // Trigger flash based on encounter type
+          triggerFlash(data.flash as "encounter" | "trade" | "event");
+
+          // Build action label
+          let buyLabel = `PAY ${data.offering.cost} CREDITS`;
+          if (data.offering.type === "buy_item" && data.offering.commodity) {
+            buyLabel = `BUY ${data.offering.quantity} ${data.offering.commodity.toUpperCase()} (${data.offering.cost} cr)`;
+          } else if (
+            data.offering.type === "faction_rep" &&
+            data.offering.factionName
+          ) {
+            buyLabel = `DONATE ${data.offering.cost} cr (+${data.offering.fameAmount} Fame)`;
+          }
+
+          eventOverlay.enqueueEvent({
+            category: "npc_merchant",
+            title: "ENCOUNTER",
+            subtitle: data.npcName,
+            body: `"${data.offering.description}"`,
+            colorScheme: data.flash === "trade" ? "green" : "cyan",
+            duration: 0,
+            priority: "interstitial",
+            portrait: {
+              npcName: data.npcName,
+              npcRace: data.npcRace,
+            },
+            actions: [
+              { id: "encounter-buy", label: buyLabel, variant: "primary" },
+              {
+                id: "encounter-decline",
+                label: "DECLINE",
+                variant: "secondary",
+              },
+            ],
+            onAction: (actionId: string) => {
+              if (actionId === "encounter-buy") {
+                npcEncounterBuy(data.offering)
+                  .then(() => {
+                    if (data.offering.type === "faction_rep") {
+                      showToast(
+                        `+${data.offering.fameAmount} Fame with ${data.offering.factionName}`,
+                        "achievement",
+                        4000,
+                      );
+                    } else if (data.offering.type === "buy_item") {
+                      showToast(
+                        `Purchased ${data.offering.quantity} ${data.offering.commodity}`,
+                        "success",
+                        4000,
+                      );
+                    } else {
+                      showToast("Transaction complete", "success", 4000);
+                    }
+                    game.refreshStatus();
+                    setRefreshKey((k) => k + 1);
+                  })
+                  .catch((err) => {
+                    showToast(
+                      err.response?.data?.error || "Purchase failed",
+                      "error",
+                      4000,
+                    );
+                  });
+              }
+              // Show tablet drop if one happened
+              if (data.tabletDrop) {
+                showToast(
+                  `Tablet Found: ${data.tabletDrop.name} (${data.tabletDrop.rarity})`,
+                  "achievement",
+                  5000,
+                );
+              }
+            },
+          });
+        },
+      ),
+      on(
+        "npc:tarri_intel",
+        (data: {
+          sectorId: number;
+          npcName: string;
+          npcRace: string;
+          pricePerUnit: number;
+          hasDiscoveredOutpost: boolean;
+          offerType: "sell_commodity" | "sell_intel";
+        }) => {
+          triggerFlash("merchant");
+          const isIntel = data.offerType === "sell_intel";
+          const body = isIntel
+            ? `"Looking for cyrillium, are we? I happen to know where the best veins are. Information like this doesn't come cheap — ${data.pricePerUnit} credits for the location of a seller. Take it or leave it."`
+            : `"Ha! You've already found a few outposts. Smart. But I can save you a trip — I've got cyrillium right here. ${data.pricePerUnit} credits per unit. It's above market, but then again, you're not at market, are you?"`;
+
+          eventOverlay.enqueueEvent({
+            category: "npc_merchant",
+            title: "A TAR'RI APPROACHES",
+            subtitle: data.npcName,
+            body,
+            colorScheme: "yellow",
+            duration: 0,
+            priority: "blocking",
+            portrait: {
+              npcName: data.npcName,
+              npcRace: data.npcRace,
+            },
+            actions: [
+              {
+                id: "tarri-buy",
+                label: isIntel
+                  ? `BUY INTEL (${data.pricePerUnit} cr)`
+                  : `BUY CYRILLIUM (${data.pricePerUnit} cr/unit)`,
+                variant: "primary",
+              },
+              {
+                id: "tarri-decline",
+                label: "NO THANKS",
+                variant: "secondary",
+              },
+            ],
+            onAction: (actionId: string) => {
+              if (actionId === "tarri-buy") {
+                tarriBuy(data.offerType, data.pricePerUnit)
+                  .then(({ data: result }) => {
+                    if (isIntel && result.intelSectorId) {
+                      showToast(
+                        `Intel acquired: Cyrillium seller in Sector ${result.intelSectorId}`,
+                        "success",
+                        6000,
+                      );
+                    } else if (result.quantity) {
+                      showToast(
+                        `Purchased ${result.quantity} Cyrillium for ${result.cost} credits`,
+                        "success",
+                        4000,
+                      );
+                    } else {
+                      showToast("Transaction complete", "success", 4000);
+                    }
+                    game.refreshStatus();
+                    setRefreshKey((k) => k + 1);
+                  })
+                  .catch((err) => {
+                    showToast(
+                      err.response?.data?.error || "Purchase failed",
+                      "error",
+                      4000,
+                    );
+                  });
+              }
+            },
+          });
+        },
+      ),
+      // Vedic Crystal NPC events (mission 14)
+      on(
+        "npc:vedic_crystal_emissary",
+        (data: {
+          sectorId: number;
+          npcName: string;
+          npcRace: string;
+          crystalsGiven: number;
+          hintSector: number | null;
+        }) => {
+          triggerFlash("encounter");
+          const hint = data.hintSector
+            ? `\n\nA nearby outpost in Sector ${data.hintSector} is known to trade in Vedic crystals.`
+            : "";
+          eventOverlay.enqueueEvent({
+            category: "npc_merchant",
+            title: "VEDIC EMISSARY",
+            subtitle: data.npcName,
+            body: `"Greetings, Muscarian. Valandor has instructed me to provide you with ${data.crystalsGiven} Vedic knowledge crystals. Each one contains the accumulated wisdom of a Vedic scholar. Treat them with reverence — and sell them wisely. The manner of your commerce will shape how my people view yours for generations."${hint}`,
+            colorScheme: "cyan",
+            duration: 0,
+            priority: "blocking",
+            portrait: {
+              npcName: data.npcName,
+              npcRace: data.npcRace,
+            },
+            actions: [
+              {
+                id: "vedic-accept",
+                label: `ACCEPT ${data.crystalsGiven} VEDIC CRYSTALS`,
+                variant: "primary",
+              },
+            ],
+            onAction: () => {
+              showToast(
+                `Received ${data.crystalsGiven} Vedic Crystals`,
+                "achievement",
+                5000,
+              );
+              game.refreshStatus();
+              setRefreshKey((k) => k + 1);
+            },
+          });
+        },
+      ),
+      on(
+        "npc:tarri_crystal_opinion",
+        (data: { sectorId: number; npcName: string; npcRace: string }) => {
+          triggerFlash("trade");
+          eventOverlay.enqueueEvent({
+            category: "npc_merchant",
+            title: "A TAR'RI SCOFFS",
+            subtitle: data.npcName,
+            body: `"Ha! You're carrying Vedic crystals? Let me tell you something, friend — those things are some of the most valuable assets in the galaxy. The Vedic practically give them away because they don't understand economics. If you're lucky, you'll find outposts willing to buy and sell them. But don't come crying to me when you realize what you sold for pennies."`,
+            colorScheme: "yellow",
+            duration: 0,
+            priority: "interstitial",
+            portrait: {
+              npcName: data.npcName,
+              npcRace: data.npcRace,
+            },
+            actions: [
+              {
+                id: "tarri-dismiss",
+                label: "NOTED",
+                variant: "primary",
+              },
+            ],
+          });
+        },
+      ),
+      // Escort convoy events
+      on(
+        "escort:started",
+        (data: {
+          missionId: string;
+          caravanSectorId: number;
+          totalMoves: number;
+        }) => {
+          showToast(
+            `Caravan deployed in Sector ${data.caravanSectorId} — keep up!`,
+            "story",
+            6000,
+          );
+        },
+      ),
+      on(
+        "escort:caravan_moved",
+        (data: {
+          caravanSectorId: number;
+          moveCount: number;
+          totalMoves: number;
+          playerInRange: boolean;
+        }) => {
+          showToast(
+            `Caravan → Sector ${data.caravanSectorId} (${data.moveCount}/${data.totalMoves})`,
+            data.playerInRange ? "success" : "warning",
+            5000,
+          );
+        },
+      ),
+      on(
+        "escort:ambush",
+        (_data: { caravanSectorId: number; moveCount: number }) => {
+          triggerFlash("combat");
+          showToast(
+            "AMBUSH! The caravan is under attack — defend it!",
+            "combat",
+            8000,
+          );
+        },
+      ),
+      on(
+        "escort:resumed",
+        (data: {
+          caravanSectorId: number;
+          moveCount: number;
+          totalMoves: number;
+        }) => {
+          showToast(
+            `Ambush cleared! Caravan resumes — Sector ${data.caravanSectorId}`,
+            "success",
+            5000,
+          );
+        },
+      ),
+      on("escort:completed", () => {
+        showToast(
+          "Caravan escorted safely! Mission complete.",
+          "achievement",
+          6000,
+        );
+        game.refreshStatus();
+        setRefreshKey((k) => k + 1);
+      }),
+      on("escort:failed", (data: { missionId: string; message: string }) => {
+        showToast(data.message, "error", 6000);
+        game.refreshStatus();
+        setRefreshKey((k) => k + 1);
+      }),
     ];
 
     return () => {
@@ -1450,6 +1784,10 @@ export function useGameEffects({
     setRefreshKey,
     combatFlash,
     merchantFlash,
+    eventFlash,
+    encounterFlash,
+    tradeFlash,
+    triggerFlash,
     combatShake,
     showPostTutorialScene,
     setShowPostTutorialScene,

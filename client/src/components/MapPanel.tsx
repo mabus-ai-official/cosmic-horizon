@@ -242,175 +242,181 @@ export default function MapPanel({
         )}
       </div>
 
-      {/* Warp Navigation */}
-      {!isLanded && (
-        <div className="panel-section panel-section--accent">
-          <div className="panel-section__header">Warp Drive</div>
-          <div className="helm-warp-row">
-            <input
-              className="helm-warp-input"
-              type="text"
-              value={warpTarget}
-              onChange={(e) => {
-                setWarpTarget(e.target.value);
-                setConfirmWarp(false);
-              }}
-              placeholder="Sector #"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleWarpTo();
-                if (e.key === "Escape") handleCancelWarp();
-              }}
-            />
-            {confirmWarp ? (
-              <>
-                <button
-                  className="helm-warp-btn helm-warp-btn--confirm"
-                  onClick={handleWarpTo}
-                >
-                  CONFIRM
-                </button>
-                <button
-                  className="helm-warp-btn helm-warp-btn--cancel"
-                  onClick={handleCancelWarp}
-                >
-                  CANCEL
-                </button>
-              </>
-            ) : (
-              <button className="helm-warp-btn" onClick={handleWarpTo}>
-                ENGAGE
-              </button>
-            )}
-            {warpTarget &&
-              !confirmWarp &&
-              (() => {
-                const num = parseInt(warpTarget, 10);
-                if (isNaN(num) || num <= 0 || !exploredSet) return null;
-                const isExplored = exploredSet.has(num);
-                return (
-                  <span
-                    className={`warp-risk-icon warp-risk-icon--${isExplored ? "explored" : "unknown"}`}
-                    title={
-                      isExplored
-                        ? "Explored sector"
-                        : "Unexplored — proceed with caution"
-                    }
-                  >
-                    {isExplored ? "✓" : "⚠"}
-                  </span>
-                );
-              })()}
-          </div>
-          {confirmWarp && (
-            <div
-              style={{
-                color: "var(--yellow)",
-                fontSize: "0.75rem",
-              }}
-            >
-              Sector {warpTarget} is unexplored. Unknown risks ahead — confirm
-              warp?
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Sector Info */}
-      <div className="panel-section panel-section--accent">
-        <div className="panel-section__header">Sector Info</div>
-        <div className="panel-kv">
-          <span className="panel-kv__label">Type</span>
-          <span className={`panel-kv__value sector-type-${sector.type}`}>
-            {sector.type}
-          </span>
-        </div>
-        <div className="panel-kv">
-          <span className="panel-kv__label">Region</span>
-          <span className="panel-kv__value">{sector.regionId}</span>
-        </div>
-        {sector.hasStarMall && (
-          <div className="panel-kv">
-            <span className="panel-kv__label">Facility</span>
-            <span className="panel-kv__value panel-kv__value--success">
-              ★ Star Mall
-            </span>
-          </div>
-        )}
-        {!sector.hasStarMall && nearestMall && (
+      {/* Warp / Info / Alerts — horizontal row */}
+      <div className="helm-info-row">
+        {/* Warp Navigation */}
+        {!isLanded && (
           <div
-            className="panel-list-item panel-list-item--clickable"
-            onClick={() => {
-              setWarpTarget(String(nearestMall.sectorId));
-              setConfirmWarp(false);
-            }}
-            title={`Warp to nearest Star Mall (Sector ${nearestMall.sectorId})`}
+            className="panel-section panel-section--accent"
+            style={{ flex: 1, minWidth: 0 }}
           >
-            <span className="panel-list-item__dot panel-list-item__dot--warning" />
-            <span style={{ color: "var(--yellow)", fontSize: "0.769rem" }}>
-              Nearest Star Mall: Sector {nearestMall.sectorId} (
-              {nearestMall.distance} hops)
-            </span>
+            <div className="panel-section__header">Warp Drive</div>
+            <div className="helm-warp-row">
+              <input
+                className="helm-warp-input"
+                type="text"
+                value={warpTarget}
+                onChange={(e) => {
+                  setWarpTarget(e.target.value);
+                  setConfirmWarp(false);
+                }}
+                placeholder="Sector #"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleWarpTo();
+                  if (e.key === "Escape") handleCancelWarp();
+                }}
+              />
+              {confirmWarp ? (
+                <>
+                  <button
+                    className="helm-warp-btn helm-warp-btn--confirm"
+                    onClick={handleWarpTo}
+                  >
+                    CONFIRM
+                  </button>
+                  <button
+                    className="helm-warp-btn helm-warp-btn--cancel"
+                    onClick={handleCancelWarp}
+                  >
+                    CANCEL
+                  </button>
+                </>
+              ) : (
+                <button className="helm-warp-btn" onClick={handleWarpTo}>
+                  ENGAGE
+                </button>
+              )}
+              {warpTarget &&
+                !confirmWarp &&
+                (() => {
+                  const num = parseInt(warpTarget, 10);
+                  if (isNaN(num) || num <= 0 || !exploredSet) return null;
+                  const isExplored = exploredSet.has(num);
+                  return (
+                    <span
+                      className={`warp-risk-icon warp-risk-icon--${isExplored ? "explored" : "unknown"}`}
+                      title={
+                        isExplored
+                          ? "Explored sector"
+                          : "Unexplored — proceed with caution"
+                      }
+                    >
+                      {isExplored ? "✓" : "⚠"}
+                    </span>
+                  );
+                })()}
+            </div>
+            {confirmWarp && (
+              <div
+                style={{
+                  color: "var(--yellow)",
+                  fontSize: "0.75rem",
+                }}
+              >
+                Sector {warpTarget} is unexplored. Unknown risks ahead — confirm
+                warp?
+              </div>
+            )}
           </div>
         )}
-      </div>
 
-      {/* Sector Alerts */}
-      {(hasResourceEvents ||
-        variantPlanets.length > 0 ||
-        npcs.length > 0 ||
-        hasAlienCache) && (
-        <div className="panel-section panel-section--warning">
-          <div className="panel-section__header panel-section__header--warning">
-            Alerts
+        {/* Sector Info */}
+        <div
+          className="panel-section panel-section--accent"
+          style={{ flex: 1, minWidth: 0 }}
+        >
+          <div className="panel-section__header">Sector Info</div>
+          <div className="panel-kv">
+            <span className="panel-kv__label">Type</span>
+            <span className={`panel-kv__value sector-type-${sector.type}`}>
+              {sector.type}
+            </span>
           </div>
-          {hasResourceEvents && (
-            <div
-              className="panel-list-item panel-list-item--clickable"
-              onClick={() => onAlertClick?.("explore")}
-            >
-              <span className="panel-list-item__dot panel-list-item__dot--resource" />
-              {resourceEvents.length} resource event
-              {resourceEvents.length !== 1 ? "s" : ""} detected
-            </div>
-          )}
-          {hasAlienCache && (
-            <div
-              className="panel-list-item panel-list-item--clickable"
-              onClick={() => onAlertClick?.("explore")}
-            >
-              <span className="panel-list-item__dot panel-list-item__dot--danger" />
-              <span style={{ color: "var(--red)" }}>
-                Alien cache guardian active
+          <div className="panel-kv">
+            <span className="panel-kv__label">Region</span>
+            <span className="panel-kv__value">{sector.regionId}</span>
+          </div>
+          {sector.hasStarMall && (
+            <div className="panel-kv">
+              <span className="panel-kv__label">Facility</span>
+              <span className="panel-kv__value panel-kv__value--success">
+                ★ Star Mall
               </span>
             </div>
           )}
-          {variantPlanets.length > 0 && (
-            <div
-              className="panel-list-item panel-list-item--clickable"
-              onClick={() => onAlertClick?.("planets")}
-            >
-              <span className="panel-list-item__dot panel-list-item__dot--special" />
-              {variantPlanets.length} variant planet
-              {variantPlanets.length !== 1 ? "s" : ""}
-            </div>
-          )}
-          {npcs.length > 0 && (
+          {!sector.hasStarMall && nearestMall && (
             <div
               className="panel-list-item panel-list-item--clickable"
               onClick={() => {
-                if (onNPCClick && npcs.length === 1) {
-                  onNPCClick(npcs[0].id);
-                } else if (onNPCClick) {
-                  onNPCClick("");
-                }
+                setWarpTarget(String(nearestMall.sectorId));
+                setConfirmWarp(false);
               }}
+              title={`Warp to nearest Star Mall (Sector ${nearestMall.sectorId})`}
             >
-              <span className="panel-list-item__dot panel-list-item__dot--npc" />
-              {npcs.length} NPC{npcs.length !== 1 ? "s" : ""} present
+              <span className="panel-list-item__dot panel-list-item__dot--warning" />
+              <span style={{ color: "var(--yellow)", fontSize: "0.769rem" }}>
+                Nearest Star Mall: Sector {nearestMall.sectorId} (
+                {nearestMall.distance} hops)
+              </span>
             </div>
           )}
         </div>
-      )}
+
+        {/* Sector Alerts */}
+        {(hasResourceEvents ||
+          variantPlanets.length > 0 ||
+          npcs.length > 0 ||
+          hasAlienCache) && (
+          <div
+            className="panel-section panel-section--warning"
+            style={{ flex: 1, minWidth: 0 }}
+          >
+            <div className="panel-section__header panel-section__header--warning">
+              Alerts
+            </div>
+            {hasResourceEvents && (
+              <div
+                className="panel-list-item panel-list-item--clickable"
+                onClick={() => onAlertClick?.("explore")}
+              >
+                <span className="panel-list-item__dot panel-list-item__dot--resource" />
+                {resourceEvents.length} resource event
+                {resourceEvents.length !== 1 ? "s" : ""} detected
+              </div>
+            )}
+            {hasAlienCache && (
+              <div
+                className="panel-list-item panel-list-item--clickable"
+                onClick={() => onAlertClick?.("explore")}
+              >
+                <span className="panel-list-item__dot panel-list-item__dot--danger" />
+                <span style={{ color: "var(--red)" }}>
+                  Alien cache guardian active
+                </span>
+              </div>
+            )}
+            {variantPlanets.length > 0 && (
+              <div
+                className="panel-list-item panel-list-item--clickable"
+                onClick={() => onAlertClick?.("planets")}
+              >
+                <span className="panel-list-item__dot panel-list-item__dot--special" />
+                {variantPlanets.length} variant planet
+                {variantPlanets.length !== 1 ? "s" : ""}
+              </div>
+            )}
+            {npcs.length > 0 && (
+              <div
+                className="panel-list-item panel-list-item--clickable"
+                onClick={() => onAlertClick?.("crew")}
+              >
+                <span className="panel-list-item__dot panel-list-item__dot--npc" />
+                {npcs.length} NPC{npcs.length !== 1 ? "s" : ""} present
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Adjacent Sectors */}
       {!isLanded && (

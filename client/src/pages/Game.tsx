@@ -576,7 +576,7 @@ export default function Game({ onLogout }: GameProps) {
                         handleItemUsed={handlers.handleItemUsed}
                         handleChatSend={handlers.handleChatSend}
                         selectPanel={selectPanel}
-                        selectTab={selectTab}
+                        selectTab={wrappedSelectTab}
                         chatMessages={effects.chatMessages}
                         alliedPlayerIds={effects.alliedPlayerIds}
                         pendingAllianceIds={effects.pendingAllianceIds}
@@ -753,7 +753,7 @@ export default function Game({ onLogout }: GameProps) {
             handleItemUsed={handlers.handleItemUsed}
             handleChatSend={handlers.handleChatSend}
             selectPanel={selectPanel}
-            selectTab={selectTab}
+            selectTab={wrappedSelectTab}
             chatMessages={effects.chatMessages}
             alliedPlayerIds={effects.alliedPlayerIds}
             pendingAllianceIds={effects.pendingAllianceIds}

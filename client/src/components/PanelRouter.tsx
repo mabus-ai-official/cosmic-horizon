@@ -112,7 +112,7 @@ export default function PanelRouter({
           onWarpTo={game.doWarpTo}
           onCommand={handleActionButton}
           onNPCClick={handleNPCClick}
-          onAlertClick={(panel) => selectPanel(panel as any)}
+          onAlertClick={(panel) => selectTab(panel as any)}
           isDocked={!!game.player?.dockedAtOutpostId}
           isLanded={!!game.player?.landedAtPlanetId}
           hasPlanets={(game.sector?.planets?.length ?? 0) > 0}

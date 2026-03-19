@@ -587,6 +587,13 @@
   border-color: var(--red);
 }
 
+/* === Helm Info Row — Warp / Sector Info / Alerts side by side === */
+.helm-info-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
 /* === Helm Dock Button === */
 .helm-dock-btn {
   display: flex;

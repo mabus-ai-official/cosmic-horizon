@@ -174,6 +174,13 @@
   border-radius: 2px;
 }
 
+/* Scroll hint — fade gradient at bottom */
+.game-panel-card__body {
+  position: relative;
+  -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+}
+
 /* === Viewport Card (right) — Bridge View === */
 .game-viewport-card {
   pointer-events: auto;

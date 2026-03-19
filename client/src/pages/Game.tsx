@@ -50,9 +50,13 @@ export default function Game({ onLogout }: GameProps) {
   const [modalPanel, setModalPanel] = useState<PanelId | null>(null);
   const [commMessage, setCommMessage] = useState<CommMessage | null>(null);
   const commIdRef = useRef(0);
+  const setCrewInitialTabRef = useRef<
+    (tab: "players" | "npcs" | "contacts" | undefined) => void
+  >(() => {});
 
   // Panels that open as modals instead of side panels
   const MODAL_PANELS: Set<PanelId> = new Set([
+    "trade",
     "missions",
     "profile",
     "gear",
@@ -82,6 +86,7 @@ export default function Game({ onLogout }: GameProps) {
     selectTab,
     badges,
     incrementBadge,
+    clearBadge,
     groupBadge,
   } = useActivePanel("nav");
 
@@ -119,15 +124,29 @@ export default function Game({ onLogout }: GameProps) {
   );
 
   // Wrap selectTab: open modal for modal panels, normal panel otherwise
+  // Supports "panel:subtab" hints (e.g., "crew:npcs")
   const wrappedSelectTab = useCallback(
-    (id: PanelId) => {
-      if (isModalTab(id)) {
-        setModalPanel(id);
+    (id: PanelId | string) => {
+      let panelId = id as PanelId;
+      let subTab: string | undefined;
+      if (typeof id === "string" && id.includes(":")) {
+        const [p, s] = id.split(":");
+        panelId = p as PanelId;
+        subTab = s;
+      }
+      if (isModalTab(panelId)) {
+        if (panelId === "crew" && subTab) {
+          setCrewInitialTabRef.current(
+            subTab as "players" | "npcs" | "contacts",
+          );
+        }
+        setModalPanel(panelId);
         return;
       }
       setModalPanel(null);
-      selectTab(id);
+      selectTab(panelId);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [selectTab, isModalTab],
   );
 
@@ -158,6 +177,9 @@ export default function Game({ onLogout }: GameProps) {
     eventOverlay,
     narration,
   });
+
+  // Keep ref in sync so wrappedSelectTab can call it
+  setCrewInitialTabRef.current = effects.setCrewInitialTab;
 
   // Bridge ARIA comments into the comm screen
   useEffect(() => {
@@ -192,7 +214,7 @@ export default function Game({ onLogout }: GameProps) {
     audio,
     selectPanel,
     selectGroup,
-    selectTab,
+    selectTab: wrappedSelectTab,
     eventOverlay,
     lastListingRef: effects.lastListingRef,
     setChatMessages: effects.setChatMessages,
@@ -586,6 +608,7 @@ export default function Game({ onLogout }: GameProps) {
                         crewInitialTab={effects.crewInitialTab}
                         autoTalkNpcId={effects.autoTalkNpcId}
                         setShowArcade={effects.setShowArcade}
+                        clearBadge={clearBadge}
                         aria={aria}
                         eventOverlay={eventOverlay}
                         showToast={showToast}
@@ -726,7 +749,7 @@ export default function Game({ onLogout }: GameProps) {
         />
       )}
 
-      {modalPanel && modalPanel !== "trade" && (
+      {modalPanel && !(modalPanel === "trade" && atStarMall) && (
         <PanelModal
           title={getPanelLabel(modalPanel) ?? modalPanel.toUpperCase()}
           accentColor={
@@ -763,6 +786,7 @@ export default function Game({ onLogout }: GameProps) {
             crewInitialTab={effects.crewInitialTab}
             autoTalkNpcId={effects.autoTalkNpcId}
             setShowArcade={effects.setShowArcade}
+            clearBadge={clearBadge}
             aria={aria}
             eventOverlay={eventOverlay}
             showToast={showToast}

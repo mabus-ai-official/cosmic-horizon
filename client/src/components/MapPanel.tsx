@@ -52,7 +52,7 @@ export default function MapPanel({
   onMoveToSector,
   onWarpTo,
   onCommand,
-  onNPCClick,
+  onNPCClick: _onNPCClick,
   onAlertClick,
   isDocked,
   isLanded,
@@ -363,59 +363,65 @@ export default function MapPanel({
         </div>
 
         {/* Sector Alerts */}
-        {(hasResourceEvents ||
+        <div
+          className="panel-section panel-section--warning"
+          style={{ flex: 1, minWidth: 0 }}
+        >
+          <div className="panel-section__header panel-section__header--warning">
+            Alerts
+          </div>
+          {hasResourceEvents ||
           variantPlanets.length > 0 ||
           npcs.length > 0 ||
-          hasAlienCache) && (
-          <div
-            className="panel-section panel-section--warning"
-            style={{ flex: 1, minWidth: 0 }}
-          >
-            <div className="panel-section__header panel-section__header--warning">
-              Alerts
+          hasAlienCache ? (
+            <>
+              {hasResourceEvents && (
+                <div
+                  className="panel-list-item panel-list-item--clickable"
+                  onClick={() => onAlertClick?.("explore")}
+                >
+                  <span className="panel-list-item__dot panel-list-item__dot--resource" />
+                  {resourceEvents.length} resource event
+                  {resourceEvents.length !== 1 ? "s" : ""} detected
+                </div>
+              )}
+              {hasAlienCache && (
+                <div
+                  className="panel-list-item panel-list-item--clickable"
+                  onClick={() => onAlertClick?.("explore")}
+                >
+                  <span className="panel-list-item__dot panel-list-item__dot--danger" />
+                  <span style={{ color: "var(--red)" }}>
+                    Alien cache guardian active
+                  </span>
+                </div>
+              )}
+              {variantPlanets.length > 0 && (
+                <div
+                  className="panel-list-item panel-list-item--clickable"
+                  onClick={() => onAlertClick?.("planets")}
+                >
+                  <span className="panel-list-item__dot panel-list-item__dot--special" />
+                  {variantPlanets.length} variant planet
+                  {variantPlanets.length !== 1 ? "s" : ""}
+                </div>
+              )}
+              {npcs.length > 0 && (
+                <div
+                  className="panel-list-item panel-list-item--clickable"
+                  onClick={() => onAlertClick?.("crew:npcs")}
+                >
+                  <span className="panel-list-item__dot panel-list-item__dot--npc" />
+                  {npcs.length} NPC{npcs.length !== 1 ? "s" : ""} present
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-muted" style={{ fontSize: "0.769rem" }}>
+              None
             </div>
-            {hasResourceEvents && (
-              <div
-                className="panel-list-item panel-list-item--clickable"
-                onClick={() => onAlertClick?.("explore")}
-              >
-                <span className="panel-list-item__dot panel-list-item__dot--resource" />
-                {resourceEvents.length} resource event
-                {resourceEvents.length !== 1 ? "s" : ""} detected
-              </div>
-            )}
-            {hasAlienCache && (
-              <div
-                className="panel-list-item panel-list-item--clickable"
-                onClick={() => onAlertClick?.("explore")}
-              >
-                <span className="panel-list-item__dot panel-list-item__dot--danger" />
-                <span style={{ color: "var(--red)" }}>
-                  Alien cache guardian active
-                </span>
-              </div>
-            )}
-            {variantPlanets.length > 0 && (
-              <div
-                className="panel-list-item panel-list-item--clickable"
-                onClick={() => onAlertClick?.("planets")}
-              >
-                <span className="panel-list-item__dot panel-list-item__dot--special" />
-                {variantPlanets.length} variant planet
-                {variantPlanets.length !== 1 ? "s" : ""}
-              </div>
-            )}
-            {npcs.length > 0 && (
-              <div
-                className="panel-list-item panel-list-item--clickable"
-                onClick={() => onAlertClick?.("crew")}
-              >
-                <span className="panel-list-item__dot panel-list-item__dot--npc" />
-                {npcs.length} NPC{npcs.length !== 1 ? "s" : ""} present
-              </div>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Adjacent Sectors */}

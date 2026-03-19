@@ -55,6 +55,10 @@ export function useActivePanel(defaultPanel: PanelId = "nav") {
     setBadges((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
   }, []);
 
+  const clearBadge = useCallback((id: PanelId) => {
+    setBadges((prev) => ({ ...prev, [id]: 0 }));
+  }, []);
+
   /** Total badge count for a group (sum of its tabs) */
   const groupBadge = useCallback(
     (groupId: GroupId): number => {
@@ -73,6 +77,7 @@ export function useActivePanel(defaultPanel: PanelId = "nav") {
     selectTab,
     badges,
     incrementBadge,
+    clearBadge,
     groupBadge,
   };
 }

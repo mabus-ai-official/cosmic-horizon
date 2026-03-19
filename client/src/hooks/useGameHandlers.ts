@@ -148,7 +148,7 @@ export function useGameHandlers({
 
   const handleDock = useCallback(async () => {
     await game.doDock();
-    selectPanel("trade");
+    selectTab("trade");
     aria.triggerDock();
     if (!hasSeenFirstTime("first_dock")) {
       markFirstTimeSeen("first_dock");
@@ -162,7 +162,7 @@ export function useGameHandlers({
         duration: ft.duration,
       });
     }
-  }, [game.doDock, selectPanel, aria.triggerDock]);
+  }, [game.doDock, selectTab, aria.triggerDock]);
 
   const handleNPCClick = useCallback(
     (npcId: string) => {

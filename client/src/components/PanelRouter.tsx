@@ -65,6 +65,7 @@ interface PanelRouterProps {
   autoTalkNpcId: string | null;
   setShowArcade: React.Dispatch<React.SetStateAction<boolean>>;
   aria: any;
+  clearBadge: (id: any) => void;
   eventOverlay: any;
   showToast: (msg: string, type?: ToastType, duration?: number) => number;
   onDrink?: () => void;
@@ -98,6 +99,7 @@ export default function PanelRouter({
   crewInitialTab,
   autoTalkNpcId,
   setShowArcade,
+  clearBadge,
   aria,
   eventOverlay,
   showToast,
@@ -262,6 +264,7 @@ export default function PanelRouter({
           onAction={() => {
             game.refreshStatus();
             setRefreshKey((k) => k + 1);
+            clearBadge("missions");
           }}
           onStoryEvent={(data) => {
             if (data.type === "journey_begin") {

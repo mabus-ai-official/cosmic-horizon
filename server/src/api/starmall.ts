@@ -176,19 +176,33 @@ router.get("/garage", requireAuth, async (req, res) => {
     );
     if (error) return res.status(status).json({ error });
 
+    // Show stored ships (null sector_id) AND PvP-disabled ships at this starmall
     const storedShips = await db("ships")
       .where({ owner_id: player!.id })
-      .whereNull("sector_id")
+      .where(function () {
+        this.whereNull("sector_id").orWhere({
+          stored_at_star_mall_sector: player!.current_sector_id,
+        });
+      })
+      .whereNot({ id: player!.current_ship_id })
       .select(
         "id",
         "ship_type_id",
         "weapon_energy",
         "engine_energy",
         "cargo_holds",
+        "hull_hp",
+        "max_hull_hp",
+        "stored_at_star_mall_sector",
       );
 
-    const ships = storedShips.map((s) => {
+    const ships = storedShips.map((s: any) => {
       const shipType = SHIP_TYPES.find((st) => st.id === s.ship_type_id);
+      const needsRepair =
+        s.hull_hp <= 0 && s.stored_at_star_mall_sector != null;
+      const repairCost = needsRepair
+        ? Math.round((shipType?.price ?? 5000) * 0.15)
+        : 0;
       return {
         id: s.id,
         type: s.ship_type_id,
@@ -196,12 +210,78 @@ router.get("/garage", requireAuth, async (req, res) => {
         weaponEnergy: s.weapon_energy,
         engineEnergy: s.engine_energy,
         cargoHolds: s.cargo_holds,
+        hullHp: s.hull_hp,
+        maxHullHp: s.max_hull_hp,
+        needsRepair,
+        repairCost,
       };
     });
 
-    res.json({ ships });
+    res.json({ ships, credits: Number(player!.credits) });
   } catch (err) {
     console.error("Garage list error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Repair a disabled ship (PvP defeat — restores hull + subsystems)
+router.post("/garage/repair/:shipId", requireAuth, async (req, res) => {
+  try {
+    const { player, error, status } = await requireStarMall(
+      req.session.playerId!,
+    );
+    if (error) return res.status(status).json({ error });
+
+    const ship = await db("ships")
+      .where({ id: req.params.shipId, owner_id: player!.id })
+      .first();
+    if (!ship) return res.status(404).json({ error: "Ship not found" });
+
+    if (ship.hull_hp > 0) {
+      return res.status(400).json({ error: "Ship does not need repair" });
+    }
+
+    const shipType = SHIP_TYPES.find((st) => st.id === ship.ship_type_id);
+    const repairCost = Math.round((shipType?.price ?? 5000) * 0.15);
+
+    if (Number(player!.credits) < repairCost) {
+      return res
+        .status(400)
+        .json({ error: `Insufficient credits. Repair costs ${repairCost}` });
+    }
+
+    // Deduct credits
+    await db("players")
+      .where({ id: player!.id })
+      .decrement("credits", repairCost);
+
+    // Restore hull to full
+    await db("ships").where({ id: ship.id }).update({
+      hull_hp: ship.max_hull_hp,
+      stored_at_star_mall_sector: null,
+    });
+
+    // Restore all subsystems to full
+    try {
+      const subsystems = await db("ship_subsystems")
+        .where({ ship_id: ship.id })
+        .select("subsystem_type", "max_hp");
+      for (const sub of subsystems) {
+        await db("ship_subsystems")
+          .where({ ship_id: ship.id, subsystem_type: sub.subsystem_type })
+          .update({ current_hp: sub.max_hp, is_disabled: false });
+      }
+    } catch {
+      /* table may not exist */
+    }
+
+    res.json({
+      success: true,
+      newCredits: Number(player!.credits) - repairCost,
+      message: `Ship repaired for ${repairCost} credits. All systems restored.`,
+    });
+  } catch (err) {
+    console.error("Garage repair error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

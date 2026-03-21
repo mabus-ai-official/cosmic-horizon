@@ -43,6 +43,7 @@ export const GAME_CONFIG = {
   DEPLOYABLE_LIFETIME_DAYS: 7,
 
   // Combat
+  COMBAT_V2_ENABLED: true,
   MIN_FLEE_CHANCE: 0.15,
   MULTI_SHIP_FLEE_BONUS: 0.1, // per additional attacker
   RACHE_DAMAGE_MULTIPLIER: 0.5,

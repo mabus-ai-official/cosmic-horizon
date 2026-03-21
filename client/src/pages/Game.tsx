@@ -17,6 +17,7 @@ import ModalLayer from "../components/ModalLayer";
 import StarmallModal from "../components/StarmallModal";
 import PanelModal from "../components/PanelModal";
 import CommScreen from "../components/CommScreen";
+import CombatV2Modal from "../components/CombatV2Modal";
 import type { CommMessage } from "../components/CommScreen";
 import MapArea from "../components/MapArea";
 import SectorMap, { type CommodityFilter } from "../components/SectorMap";
@@ -48,6 +49,7 @@ export default function Game({ onLogout }: GameProps) {
   const [panelMinimized, setPanelMinimized] = useState(true);
   const [show2DMap, setShow2DMap] = useState(false);
   const [modalPanel, setModalPanel] = useState<PanelId | null>(null);
+  const [showCombatV2, setShowCombatV2] = useState(false);
   const [commMessage, setCommMessage] = useState<CommMessage | null>(null);
   const commIdRef = useRef(0);
   const setCrewInitialTabRef = useRef<
@@ -181,9 +183,9 @@ export default function Game({ onLogout }: GameProps) {
   // Keep ref in sync so wrappedSelectTab can call it
   setCrewInitialTabRef.current = effects.setCrewInitialTab;
 
-  // Bridge ARIA comments into the comm screen
+  // Bridge ARIA comments into the comm screen (skip during active combat — combat uses comm for battle scenes)
   useEffect(() => {
-    if (aria.comment && aria.showComment) {
+    if (aria.comment && aria.showComment && !showCombatV2) {
       commIdRef.current++;
       setCommMessage({
         id: commIdRef.current,
@@ -192,7 +194,7 @@ export default function Game({ onLogout }: GameProps) {
         duration: 8000,
       });
     }
-  }, [aria.comment, aria.showComment]);
+  }, [aria.comment, aria.showComment, showCombatV2]);
 
   // Close mission modal when an event overlay appears (accept, complete, choice, etc.)
   useEffect(() => {
@@ -200,6 +202,29 @@ export default function Game({ onLogout }: GameProps) {
       setModalPanel(null);
     }
   }, [eventOverlay.currentEvent, modalPanel]);
+
+  // Register global callback for combat V2 session start (from useGameEffects socket listener)
+  useEffect(() => {
+    (window as any).__openCombatV2 = () => setShowCombatV2(true);
+    return () => {
+      delete (window as any).__openCombatV2;
+    };
+  }, []);
+
+  // Check for active combat session on page load (reconnect after refresh)
+  useEffect(() => {
+    if (!game.player?.id) return;
+    import("../services/api").then((api) => {
+      api
+        .combatV2GetState()
+        .then(({ data }) => {
+          if (data.inCombat) {
+            setShowCombatV2(true);
+          }
+        })
+        .catch(() => {});
+    });
+  }, [game.player?.id]);
 
   const dismissComm = useCallback(() => {
     setCommMessage(null);
@@ -613,6 +638,8 @@ export default function Game({ onLogout }: GameProps) {
                         eventOverlay={eventOverlay}
                         showToast={showToast}
                         onDrink={drunk.addDrink}
+                        combatV2Enabled={true}
+                        onCombatV2Start={() => setShowCombatV2(true)}
                       />
                     </div>
                   </div>
@@ -791,8 +818,24 @@ export default function Game({ onLogout }: GameProps) {
             eventOverlay={eventOverlay}
             showToast={showToast}
             onDrink={drunk.addDrink}
+            combatV2Enabled={true}
+            onCombatV2Start={() => setShowCombatV2(true)}
           />
         </PanelModal>
+      )}
+      {/* Combat V2 Modal — rendered when in active combat session */}
+      {showCombatV2 && game.player?.id && (
+        <CombatV2Modal
+          playerId={game.player.id}
+          playerName={game.player.username}
+          on={on}
+          onClose={() => {
+            setShowCombatV2(false);
+            game.refreshStatus();
+            game.refreshSector();
+          }}
+          onCommMessage={setCommMessage}
+        />
       )}
     </>
   );

@@ -3,6 +3,7 @@ import CollapsiblePanel from "./CollapsiblePanel";
 import PixelSprite from "./PixelSprite";
 import PixelScene from "./PixelScene";
 import { buildCombatScene } from "../config/scenes/combat-scene";
+import * as api from "../services/api";
 import type { SectorState } from "../hooks/useGameState";
 
 interface CombatViewProps {
@@ -13,6 +14,8 @@ interface CombatViewProps {
   combatAnimation?: { attackerShipType: string; damage: number } | null;
   onCombatAnimationDone?: () => void;
   bare?: boolean;
+  combatV2Enabled?: boolean;
+  onCombatV2Start?: () => void;
 }
 
 export default function CombatView({
@@ -23,6 +26,8 @@ export default function CombatView({
   combatAnimation,
   onCombatAnimationDone,
   bare,
+  combatV2Enabled = true,
+  onCombatV2Start,
 }: CombatViewProps) {
   const [energy, setEnergy] = useState(10);
   const [target, setTarget] = useState<string>("");
@@ -62,34 +67,60 @@ export default function CombatView({
 
         {target && (
           <div className="combat-controls">
-            <div className="panel-row">
-              <label>Energy:</label>
-              <input
-                type="number"
-                min={1}
-                max={weaponEnergy}
-                value={energy}
-                onChange={(e) =>
-                  setEnergy(Math.max(1, parseInt(e.target.value) || 1))
-                }
-                className="qty-input"
-              />
-              <span className="text-muted">/ {weaponEnergy}</span>
-            </div>
-            <div className="combat-buttons">
-              <button
-                className="btn btn-fire"
-                disabled={weaponEnergy <= 0}
-                onClick={() => onFire(target, Math.min(energy, weaponEnergy))}
-              >
-                {weaponEnergy <= 0
-                  ? "NO WEAPON ENERGY"
-                  : `FIRE (${Math.min(energy, weaponEnergy)} energy)`}
-              </button>
-              <button className="btn btn-flee" onClick={onFlee}>
-                FLEE
-              </button>
-            </div>
+            {combatV2Enabled ? (
+              <div className="combat-buttons">
+                <button
+                  className="btn btn-fire"
+                  onClick={async () => {
+                    try {
+                      const { data } = await api.combatV2Initiate(target);
+                      if (data.sessionId) {
+                        onCombatV2Start?.();
+                      }
+                    } catch (err: any) {
+                      const msg =
+                        err?.response?.data?.error || "Combat initiate failed";
+                      alert(msg);
+                    }
+                  }}
+                >
+                  ATTACK
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="panel-row">
+                  <label>Energy:</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={weaponEnergy}
+                    value={energy}
+                    onChange={(e) =>
+                      setEnergy(Math.max(1, parseInt(e.target.value) || 1))
+                    }
+                    className="qty-input"
+                  />
+                  <span className="text-muted">/ {weaponEnergy}</span>
+                </div>
+                <div className="combat-buttons">
+                  <button
+                    className="btn btn-fire"
+                    disabled={weaponEnergy <= 0}
+                    onClick={() =>
+                      onFire(target, Math.min(energy, weaponEnergy))
+                    }
+                  >
+                    {weaponEnergy <= 0
+                      ? "NO WEAPON ENERGY"
+                      : `FIRE (${Math.min(energy, weaponEnergy)} energy)`}
+                  </button>
+                  <button className="btn btn-flee" onClick={onFlee}>
+                    FLEE
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
       </>

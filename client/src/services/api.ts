@@ -181,6 +181,36 @@ export const getClaimedBounties = () => api.get("/social/bounties/claimed");
 export const getBountiesOnMe = () => api.get("/social/bounties/on-me");
 export const getCombatLog = () => api.get("/social/combat-log");
 
+// Combat V2
+export const combatV2Initiate = (targetPlayerId: string) =>
+  api.post("/combat-v2/initiate", { targetPlayerId });
+export const combatV2SubmitOrders = (sessionId: string, orders: any) =>
+  api.post("/combat-v2/submit-orders", { sessionId, orders });
+export const combatV2GetState = () => api.get("/combat-v2/state");
+export const combatV2Flee = (sessionId: string) =>
+  api.post("/combat-v2/flee", { sessionId });
+export const combatV2Surrender = (sessionId: string) =>
+  api.post("/combat-v2/surrender", { sessionId });
+
+// Weapons
+export const getWeaponDealer = () => api.get("/weapons/dealer");
+export const buyWeapon = (weaponTypeId: string) =>
+  api.post(`/weapons/buy/${weaponTypeId}`);
+export const equipWeapon = (playerWeaponId: string, slotIndex: number) =>
+  api.post("/weapons/equip", { playerWeaponId, slotIndex });
+export const unequipWeapon = (slotIndex: number) =>
+  api.post("/weapons/unequip", { slotIndex });
+
+// Crew
+export const getCrewRoster = () => api.get("/crew/roster");
+export const getCrewForHire = () => api.get("/crew/for-hire");
+export const hireCrew = (crewForHireId: string) =>
+  api.post(`/crew/hire/${crewForHireId}`);
+export const assignCrew = (crewMemberId: string, station: string | null) =>
+  api.post("/crew/assign", { crewMemberId, station });
+export const dismissCrew = (crewMemberId: string) =>
+  api.post(`/crew/dismiss/${crewMemberId}`);
+
 export const getAlliances = () => api.get("/social/alliances");
 export const getPendingAlliances = () => api.get("/social/alliance/pending");
 export const acceptAlliance = (playerId: string) =>
@@ -235,6 +265,8 @@ export const getGarage = () => api.get("/starmall/garage");
 export const storeShipInGarage = () => api.post("/starmall/garage/store");
 export const retrieveShipFromGarage = (shipId: string) =>
   api.post(`/starmall/garage/retrieve/${shipId}`);
+export const repairShipInGarage = (shipId: string) =>
+  api.post(`/starmall/garage/repair/${shipId}`);
 export const getSalvageOptions = () => api.get("/starmall/salvage");
 export const salvageShip = (shipId: string) =>
   api.post(`/starmall/salvage/sell/${shipId}`);

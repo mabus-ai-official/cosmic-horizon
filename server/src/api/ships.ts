@@ -115,6 +115,14 @@ router.post("/buy/:shipTypeId", requireAuth, async (req, res) => {
       max_hull_hp: shipType.maxHullHp,
     });
 
+    // Initialize combat V2 subsystems + weapons
+    try {
+      const { setupShipCombatData } = require("../engine/ship-setup");
+      await setupShipCombatData(shipId, shipType.id);
+    } catch {
+      /* migration may not have run yet */
+    }
+
     await db("players")
       .where({ id: player.id })
       .update({

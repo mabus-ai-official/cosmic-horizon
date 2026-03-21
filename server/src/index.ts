@@ -45,8 +45,12 @@ import storyMissionsRouter from "./api/story-missions";
 import arcadeRouter from "./api/arcade";
 import factionMissionsRouter from "./api/faction-missions";
 import randomEventsRouter from "./api/random-events";
+import combatV2Router from "./api/combat-v2";
+import weaponsRouter from "./api/weapons";
+import crewRouter from "./api/crew";
 import { setupWebSocket } from "./ws/handlers";
 import { startGameTick } from "./engine/game-tick";
+import { recoverActiveSessions } from "./engine/combat-v2-state";
 import { startDiscordBridge } from "./services/discord-bridge";
 import {
   loadTutorialState,
@@ -148,6 +152,27 @@ app.use(
   blockDuringTutorial,
   loadSPContext,
   combatRouter,
+);
+app.use(
+  "/api/combat-v2",
+  loadTutorialState,
+  blockDuringTutorial,
+  loadSPContext,
+  combatV2Router,
+);
+app.use(
+  "/api/weapons",
+  loadTutorialState,
+  blockDuringTutorial,
+  loadSPContext,
+  weaponsRouter,
+);
+app.use(
+  "/api/crew",
+  loadTutorialState,
+  blockDuringTutorial,
+  loadSPContext,
+  crewRouter,
 );
 app.use(
   "/api/social",
@@ -353,6 +378,11 @@ setupWebSocket(io);
 
 // Game tick
 startGameTick(io);
+
+// Recover any active combat sessions from before restart
+recoverActiveSessions(io).catch((err) =>
+  console.error("Combat V2 session recovery error:", err),
+);
 
 // Discord chat bridge (non-blocking — server starts even if Discord fails)
 startDiscordBridge(io).catch((err) =>

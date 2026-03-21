@@ -13,6 +13,8 @@ interface Props {
   playerName?: string;
   refreshKey?: number;
   bare?: boolean;
+  combatV2Enabled?: boolean;
+  onCombatV2Start?: () => void;
 }
 
 type TabView = "targeting" | "log";
@@ -27,6 +29,8 @@ export default function CombatGroupPanel({
   playerName,
   refreshKey,
   bare,
+  combatV2Enabled,
+  onCombatV2Start,
 }: Props) {
   const [tab, setTab] = useState<TabView>("targeting");
 
@@ -62,6 +66,8 @@ export default function CombatGroupPanel({
           weaponEnergy={weaponEnergy}
           combatAnimation={combatAnimation}
           onCombatAnimationDone={onCombatAnimationDone}
+          combatV2Enabled={combatV2Enabled}
+          onCombatV2Start={onCombatV2Start}
           bare
         />
       )}

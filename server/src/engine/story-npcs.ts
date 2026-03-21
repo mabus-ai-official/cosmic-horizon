@@ -211,6 +211,16 @@ export async function spawnStoryNPCs(
       is_registered: true,
     });
 
+    // Create subsystem rows for combat V2
+    await createNpcSubsystems(
+      npcShipId,
+      resolvedShipType.id,
+      config.hullHpFraction,
+    );
+
+    // Create weapon slots for combat V2
+    await createNpcWeaponSlots(npcShipId, resolvedShipType.id);
+
     npcIds.push(npcPlayerId);
   }
 
@@ -286,6 +296,16 @@ export async function spawnAmbushNPC(
     is_registered: true,
   });
 
+  // Create subsystem rows for combat V2
+  await createNpcSubsystems(
+    npcShipId,
+    resolvedShipType.id,
+    config.hullHpFraction,
+  );
+
+  // Create weapon slots for combat V2
+  await createNpcWeaponSlots(npcShipId, resolvedShipType.id);
+
   return npcPlayerId;
 }
 
@@ -334,6 +354,10 @@ export async function cleanupDestroyedNPC(npcPlayerId: string): Promise<void> {
   const nonCascadeTables: { table: string; column: string }[] = [
     { table: "combat_logs", column: "attacker_id" },
     { table: "combat_logs", column: "defender_id" },
+    { table: "combat_sessions", column: "attacker_id" },
+    { table: "combat_sessions", column: "defender_id" },
+    { table: "combat_rounds", column: "player_a_id" },
+    { table: "combat_rounds", column: "player_b_id" },
     { table: "trade_logs", column: "player_id" },
     { table: "game_events", column: "player_id" },
     { table: "bounties", column: "placed_by_id" },
@@ -374,4 +398,152 @@ export async function getStoryNPCLocations(
     name: n.username,
     sectorId: n.current_sector_id,
   }));
+}
+
+// ─── Combat V2 helpers for NPC ship setup ──────────────────────────────────
+
+/** Subsystem HP baselines per ship type — matches migration 067 values */
+const SHIP_SUBSYSTEM_BASELINES: Record<
+  string,
+  {
+    shield: number;
+    weapon: number;
+    engine: number;
+    sensor: number;
+    life: number;
+    slots: number;
+    reactor: number;
+  }
+> = {
+  dodge_pod: {
+    shield: 0,
+    weapon: 0,
+    engine: 10,
+    sensor: 5,
+    life: 5,
+    slots: 0,
+    reactor: 5,
+  },
+  scout: {
+    shield: 25,
+    weapon: 20,
+    engine: 30,
+    sensor: 15,
+    life: 15,
+    slots: 2,
+    reactor: 30,
+  },
+  freighter: {
+    shield: 35,
+    weapon: 15,
+    engine: 25,
+    sensor: 10,
+    life: 20,
+    slots: 1,
+    reactor: 25,
+  },
+  corvette: {
+    shield: 40,
+    weapon: 35,
+    engine: 30,
+    sensor: 20,
+    life: 20,
+    slots: 3,
+    reactor: 50,
+  },
+  cruiser: {
+    shield: 60,
+    weapon: 50,
+    engine: 40,
+    sensor: 30,
+    life: 25,
+    slots: 4,
+    reactor: 70,
+  },
+  battleship: {
+    shield: 75,
+    weapon: 65,
+    engine: 35,
+    sensor: 25,
+    life: 25,
+    slots: 5,
+    reactor: 90,
+  },
+  stealth: {
+    shield: 15,
+    weapon: 20,
+    engine: 35,
+    sensor: 40,
+    life: 15,
+    slots: 2,
+    reactor: 35,
+  },
+  colony_ship: {
+    shield: 30,
+    weapon: 10,
+    engine: 20,
+    sensor: 10,
+    life: 30,
+    slots: 1,
+    reactor: 20,
+  },
+};
+
+/**
+ * Create ship_subsystems rows for an NPC ship.
+ * HP scaled by the act's hullHpFraction (same difficulty scaling as hull HP).
+ */
+async function createNpcSubsystems(
+  shipId: string,
+  shipTypeId: string,
+  hpFraction: number,
+): Promise<void> {
+  const baselines = SHIP_SUBSYSTEM_BASELINES[shipTypeId];
+  if (!baselines) return;
+
+  const subsystems = [
+    { type: "shields", hp: baselines.shield },
+    { type: "weapons", hp: baselines.weapon },
+    { type: "engines", hp: baselines.engine },
+    { type: "sensors", hp: baselines.sensor },
+    { type: "life_support", hp: baselines.life },
+  ];
+
+  for (const sub of subsystems) {
+    const scaledHp = Math.max(0, Math.round(sub.hp * hpFraction));
+    await db("ship_subsystems").insert({
+      ship_id: shipId,
+      subsystem_type: sub.type,
+      current_hp: scaledHp,
+      max_hp: sub.hp,
+      is_disabled: scaledHp <= 0,
+    });
+  }
+
+  // Also set reactor power on the ship
+  await db("ships").where({ id: shipId }).update({
+    reactor_power: baselines.reactor,
+    max_reactor_power: baselines.reactor,
+    weapon_slot_count: baselines.slots,
+  });
+}
+
+/**
+ * Create weapon_slots rows for an NPC ship (pulse_lasers by default).
+ */
+async function createNpcWeaponSlots(
+  shipId: string,
+  shipTypeId: string,
+): Promise<void> {
+  const baselines = SHIP_SUBSYSTEM_BASELINES[shipTypeId];
+  if (!baselines || baselines.slots === 0) return;
+
+  for (let i = 0; i < baselines.slots; i++) {
+    await db("weapon_slots").insert({
+      ship_id: shipId,
+      weapon_type_id: "pulse_laser",
+      slot_index: i,
+      cooldown_remaining: 0,
+    });
+  }
 }

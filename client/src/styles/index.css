@@ -28,6 +28,7 @@
 
 /* Combat: adjacent sectors, target selection, combat controls */
 @import "./combat.css";
+@import "./combat-v2.css";
 
 /* Trade: trade table, trade history, trade routes, trade computer, mall, cantina */
 @import "./trade.css";

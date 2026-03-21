@@ -781,6 +781,12 @@ export function useGameEffects({
           }
         },
       ),
+      on("combat-v2:session_start", () => {
+        // Auto-open combat modal when attacked
+        if (typeof (window as any).__openCombatV2 === "function") {
+          (window as any).__openCombatV2();
+        }
+      }),
       on("combat:destroyed", (data: { destroyerName: string }) => {
         game.addLine(
           `Your ship was destroyed by ${data.destroyerName}!`,

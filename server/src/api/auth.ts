@@ -135,6 +135,14 @@ router.post("/register", async (req, res) => {
       max_hull_hp: shipTypeConfig.maxHullHp,
     });
 
+    // Initialize combat V2 subsystems + weapons
+    try {
+      const { setupShipCombatData } = require("../engine/ship-setup");
+      await setupShipCombatData(shipId, raceConfig.starterShipType);
+    } catch {
+      /* migration may not have run yet */
+    }
+
     await db("players")
       .where({ id: playerId })
       .update({ current_ship_id: shipId });

@@ -117,6 +117,35 @@ export interface ServerEvents {
     winnerId: string | null;
     finalScores: { player1: number; player2: number };
   };
+  // Combat V2 events
+  "combat-v2:session_start": {
+    sessionId: string;
+    attackerId: string;
+    attackerName: string;
+    defenderId: string;
+    defenderName: string;
+    roundNumber: number;
+    deadline: string;
+    playerAState: any;
+    playerBState: any;
+  };
+  "combat-v2:round_start": {
+    sessionId: string;
+    roundNumber: number;
+    deadline: string;
+    playerAState: any;
+    playerBState: any;
+  };
+  "combat-v2:opponent_ready": { playerId: string };
+  "combat-v2:round_resolved": { sessionId: string; resolution: any };
+  "combat-v2:combat_end": {
+    sessionId: string;
+    status: string;
+    winnerId: string | null;
+    endReason: string;
+    destroyedPlayerId?: string;
+    fledPlayerId?: string;
+  };
 }
 
 // Client -> Server events
@@ -148,4 +177,8 @@ export function allianceRoom(allianceId: string): string {
 
 export function arcadeRoom(sessionId: string): string {
   return `arcade:${sessionId}`;
+}
+
+export function combatV2Room(sessionId: string): string {
+  return `combat:${sessionId}`;
 }

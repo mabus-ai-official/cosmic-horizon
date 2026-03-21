@@ -69,6 +69,8 @@ interface PanelRouterProps {
   eventOverlay: any;
   showToast: (msg: string, type?: ToastType, duration?: number) => number;
   onDrink?: () => void;
+  combatV2Enabled?: boolean;
+  onCombatV2Start?: () => void;
 }
 
 export default function PanelRouter({
@@ -104,6 +106,8 @@ export default function PanelRouter({
   eventOverlay,
   showToast,
   onDrink,
+  combatV2Enabled,
+  onCombatV2Start,
 }: PanelRouterProps) {
   switch (activePanel) {
     case "nav":
@@ -202,6 +206,8 @@ export default function PanelRouter({
           onCombatAnimationDone={game.clearCombatAnimation}
           playerName={game.player?.username}
           refreshKey={refreshKey}
+          combatV2Enabled={combatV2Enabled}
+          onCombatV2Start={onCombatV2Start}
           bare
         />
       );

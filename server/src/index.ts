@@ -48,6 +48,10 @@ import randomEventsRouter from "./api/random-events";
 import combatV2Router from "./api/combat-v2";
 import weaponsRouter from "./api/weapons";
 import crewRouter from "./api/crew";
+import planetExplorerRouter, {
+  setPlanetInstanceManager,
+} from "./api/planet-explorer";
+import { PlanetInstanceManager } from "./engine/planet-instance-mgr";
 import { setupWebSocket } from "./ws/handlers";
 import { startGameTick } from "./engine/game-tick";
 import { recoverActiveSessions } from "./engine/combat-v2-state";
@@ -173,6 +177,13 @@ app.use(
   blockDuringTutorial,
   loadSPContext,
   crewRouter,
+);
+app.use(
+  "/api/planet-explorer",
+  loadTutorialState,
+  blockDuringTutorial,
+  loadSPContext,
+  planetExplorerRouter,
 );
 app.use(
   "/api/social",
@@ -378,6 +389,10 @@ setupWebSocket(io);
 
 // Game tick
 startGameTick(io);
+
+// Planet Explorer instance manager
+const planetInstanceMgr = new PlanetInstanceManager(io);
+setPlanetInstanceManager(planetInstanceMgr);
 
 // Recover any active combat sessions from before restart
 recoverActiveSessions(io).catch((err) =>

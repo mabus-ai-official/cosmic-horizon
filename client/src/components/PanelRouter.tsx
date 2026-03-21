@@ -71,6 +71,7 @@ interface PanelRouterProps {
   onDrink?: () => void;
   combatV2Enabled?: boolean;
   onCombatV2Start?: () => void;
+  onExplore?: (planetId: string, planetName: string) => void;
 }
 
 export default function PanelRouter({
@@ -108,6 +109,7 @@ export default function PanelRouter({
   onDrink,
   combatV2Enabled,
   onCombatV2Start,
+  onExplore,
 }: PanelRouterProps) {
   switch (activePanel) {
     case "nav":
@@ -242,6 +244,7 @@ export default function PanelRouter({
           onLand={game.doLand}
           onLiftoff={handleLiftoff}
           onWarpTo={game.doWarpTo}
+          onExplore={onExplore}
           landedAtPlanetId={game.player?.landedAtPlanetId ?? null}
           limitTabs={["sector", "owned"]}
           bare
@@ -391,6 +394,7 @@ export default function PanelRouter({
           onLand={game.doLand}
           onLiftoff={handleLiftoff}
           onWarpTo={game.doWarpTo}
+          onExplore={onExplore}
           landedAtPlanetId={game.player?.landedAtPlanetId ?? null}
           bare
         />

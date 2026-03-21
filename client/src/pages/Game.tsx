@@ -18,6 +18,7 @@ import StarmallModal from "../components/StarmallModal";
 import PanelModal from "../components/PanelModal";
 import CommScreen from "../components/CommScreen";
 import CombatV2Modal from "../components/CombatV2Modal";
+import PlanetExplorerModal from "../planet-explorer/components/PlanetExplorerModal";
 import type { CommMessage } from "../components/CommScreen";
 import MapArea from "../components/MapArea";
 import SectorMap, { type CommodityFilter } from "../components/SectorMap";
@@ -50,6 +51,10 @@ export default function Game({ onLogout }: GameProps) {
   const [show2DMap, setShow2DMap] = useState(false);
   const [modalPanel, setModalPanel] = useState<PanelId | null>(null);
   const [showCombatV2, setShowCombatV2] = useState(false);
+  const [planetExplorer, setPlanetExplorer] = useState<{
+    planetId: string;
+    planetName: string;
+  } | null>(null);
   const [commMessage, setCommMessage] = useState<CommMessage | null>(null);
   const commIdRef = useRef(0);
   const setCrewInitialTabRef = useRef<
@@ -640,6 +645,9 @@ export default function Game({ onLogout }: GameProps) {
                         onDrink={drunk.addDrink}
                         combatV2Enabled={true}
                         onCombatV2Start={() => setShowCombatV2(true)}
+                        onExplore={(planetId: string, planetName: string) =>
+                          setPlanetExplorer({ planetId, planetName })
+                        }
                       />
                     </div>
                   </div>
@@ -820,8 +828,26 @@ export default function Game({ onLogout }: GameProps) {
             onDrink={drunk.addDrink}
             combatV2Enabled={true}
             onCombatV2Start={() => setShowCombatV2(true)}
+            onExplore={(planetId: string, planetName: string) =>
+              setPlanetExplorer({ planetId, planetName })
+            }
           />
         </PanelModal>
+      )}
+      {/* Planet Explorer Modal — rendered when exploring a planet surface */}
+      {planetExplorer && game.player?.id && (
+        <PlanetExplorerModal
+          planetId={planetExplorer.planetId}
+          planetName={planetExplorer.planetName}
+          playerId={game.player.id}
+          on={on}
+          emit={emit}
+          onClose={() => {
+            setPlanetExplorer(null);
+            game.refreshStatus();
+            game.refreshSector();
+          }}
+        />
       )}
       {/* Combat V2 Modal — rendered when in active combat session */}
       {showCombatV2 && game.player?.id && (

@@ -146,6 +146,11 @@ export interface ServerEvents {
     destroyedPlayerId?: string;
     fledPlayerId?: string;
   };
+  // Planet Explorer events (20Hz state + discrete events)
+  "planet:state": any; // WorldSnapshot broadcast
+  "planet:event": { type: string; data: Record<string, unknown> };
+  "planet:joined": { playerId: string; name: string };
+  "planet:left": { playerId: string; name: string };
 }
 
 // Client -> Server events
@@ -181,4 +186,8 @@ export function arcadeRoom(sessionId: string): string {
 
 export function combatV2Room(sessionId: string): string {
   return `combat:${sessionId}`;
+}
+
+export function planetExplorerRoom(planetId: string): string {
+  return `planet:${planetId}`;
 }

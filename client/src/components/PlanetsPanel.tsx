@@ -72,6 +72,7 @@ interface Props {
   onLand?: (planetId: string) => void;
   onLiftoff?: () => void;
   onWarpTo?: (sectorId: number) => void;
+  onExplore?: (planetId: string, planetName: string) => void;
   landedAtPlanetId?: string | null;
   bare?: boolean;
   limitTabs?: ("sector" | "owned" | "discovered" | "analytics")[];
@@ -140,6 +141,7 @@ export default function PlanetsPanel({
   onLand,
   onLiftoff,
   onWarpTo,
+  onExplore,
   landedAtPlanetId,
   bare,
   limitTabs,
@@ -670,6 +672,18 @@ export default function PlanetsPanel({
                         LIFTOFF
                       </button>
                     )}
+                    {inSector && landedAtPlanetId === p.id && onExplore && (
+                      <button
+                        className="btn-sm"
+                        onClick={() => onExplore(p.id, p.name)}
+                        style={{
+                          color: "var(--cyan)",
+                          borderColor: "var(--cyan)",
+                        }}
+                      >
+                        EXPLORE
+                      </button>
+                    )}
                     {inSector && landedAtPlanetId !== p.id && onLand && (
                       <button
                         className="btn-sm"
@@ -1111,6 +1125,18 @@ export default function PlanetsPanel({
               }}
             >
               LIFTOFF
+            </button>
+          )}
+          {inSector && landedAtPlanetId === p.id && onExplore && (
+            <button
+              className="btn-sm"
+              onClick={() => onExplore(p.id, p.name)}
+              style={{
+                color: "var(--cyan)",
+                borderColor: "var(--cyan)",
+              }}
+            >
+              EXPLORE
             </button>
           )}
           {inSector && landedAtPlanetId !== p.id && onLand && (

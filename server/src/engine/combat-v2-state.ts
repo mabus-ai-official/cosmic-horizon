@@ -354,6 +354,45 @@ async function resolveCurrentRound(
   // Apply results to database
   await applyRoundResults(resolution);
 
+  // Log each round to combat_logs for the activity panel
+  try {
+    const crypto = require("crypto");
+    const sideA = resolution.playerA;
+    const sideB = resolution.playerB;
+    if (sideA.totalDamage > 0) {
+      await db("combat_logs").insert({
+        id: crypto.randomUUID(),
+        attacker_id: sideA.playerId,
+        defender_id: sideB.playerId,
+        sector_id: session.sector_id,
+        energy_expended: 0,
+        damage_dealt: sideA.totalDamage,
+        outcome:
+          resolution.combatEnded &&
+          resolution.destroyedPlayerId === sideB.playerId
+            ? "ship_disabled"
+            : "hit",
+      });
+    }
+    if (sideB.totalDamage > 0) {
+      await db("combat_logs").insert({
+        id: crypto.randomUUID(),
+        attacker_id: sideB.playerId,
+        defender_id: sideA.playerId,
+        sector_id: session.sector_id,
+        energy_expended: 0,
+        damage_dealt: sideB.totalDamage,
+        outcome:
+          resolution.combatEnded &&
+          resolution.destroyedPlayerId === sideA.playerId
+            ? "ship_disabled"
+            : "hit",
+      });
+    }
+  } catch {
+    /* combat_logs table may not exist */
+  }
+
   // Emit round resolved event
   if (io) {
     emitToBothPlayers(io, sessionId, "combat-v2:round_resolved", {
